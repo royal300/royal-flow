@@ -30,7 +30,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, []);
 
   const login = async (email: string, password: string, role: 'admin' | 'staff'): Promise<boolean> => {
-    const newSession = authService.login(email, password, role);
+    const newSession = await authService.login(email, password, role);
     if (newSession) {
       setSession(newSession);
       return true;

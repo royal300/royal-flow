@@ -1,17 +1,11 @@
-// Storage keys - centralized for easy backend migration
-export const STORAGE_KEYS = {
-  STAFF_LIST: 'royal300_staff_list',
-  TASKS: 'royal300_tasks',
-  ATTENDANCE: 'royal300_attendance_records',
-  SESSION: 'royal300_auth_session',
-} as const;
+export const API_URL = 'http://localhost:5001/api';
 
 // Types
 export interface Staff {
   id: string;
   name: string;
   email: string;
-  password: string;
+  password?: string;
   department: string;
   position: string;
   avatar?: string;
@@ -32,8 +26,8 @@ export interface Task {
   id: string;
   title: string;
   description: string;
-  assignedTo: string; // staff id
-  createdBy: string; // 'admin' or staff id
+  assignedTo: string;
+  createdBy: string;
   createdByName: string;
   priority: 'P0' | 'P1' | 'P2';
   status: 'Pending' | 'In Progress' | 'Completed';
@@ -64,6 +58,16 @@ export interface AttendanceRecord {
   workingHours?: number;
 }
 
+export interface DailyReport {
+  id: string;
+  staffId: string;
+  staffName: string;
+  date: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Session {
   userId: string;
   role: 'admin' | 'staff';
@@ -71,134 +75,92 @@ export interface Session {
   email: string;
 }
 
-// Storage service - can be replaced with API calls later
-export const storage = {
-  get<T>(key: string): T | null {
-    const data = localStorage.getItem(key);
-    return data ? JSON.parse(data) : null;
+// Helper for API calls
+const api = {
+  async get<T>(endpoint: string): Promise<T> {
+    const res = await fetch(`${API_URL}${endpoint}`);
+    if (!res.ok) throw new Error(`API Error: ${res.statusText}`);
+    return res.json();
   },
 
-  set<T>(key: string, value: T): void {
-    localStorage.setItem(key, JSON.stringify(value));
+  async post<T>(endpoint: string, data: any): Promise<T> {
+    const res = await fetch(`${API_URL}${endpoint}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error(`API Error: ${res.statusText}`);
+    return res.json();
   },
 
-  remove(key: string): void {
-    localStorage.removeItem(key);
+  async put<T>(endpoint: string, data: any): Promise<T> {
+    const res = await fetch(`${API_URL}${endpoint}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error(`API Error: ${res.statusText}`);
+    return res.json();
   },
+
+  async delete(endpoint: string): Promise<void> {
+    const res = await fetch(`${API_URL}${endpoint}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) throw new Error(`API Error: ${res.statusText}`);
+  }
 };
 
-// Initialize default admin account
-export const initializeDefaultAdmin = () => {
-  const session = storage.get<Session>(STORAGE_KEYS.SESSION);
-  // Only check for first-time setup, not for active session
-  const staffList = storage.get<Staff[]>(STORAGE_KEYS.STAFF_LIST);
-  
-  if (!staffList) {
-    storage.set(STORAGE_KEYS.STAFF_LIST, []);
-  }
-  
-  const tasks = storage.get<Task[]>(STORAGE_KEYS.TASKS);
-  if (!tasks) {
-    storage.set(STORAGE_KEYS.TASKS, []);
-  }
-  
-  const attendance = storage.get<AttendanceRecord[]>(STORAGE_KEYS.ATTENDANCE);
-  if (!attendance) {
-    storage.set(STORAGE_KEYS.ATTENDANCE, []);
-  }
-};
-
-// Staff CRUD operations
+// Staff operations
 export const staffService = {
-  getAll(): Staff[] {
-    return storage.get<Staff[]>(STORAGE_KEYS.STAFF_LIST) || [];
+  async getAll(): Promise<Staff[]> {
+    return api.get<Staff[]>('/staff');
   },
 
-  getById(id: string): Staff | undefined {
-    const staff = this.getAll();
+  async getById(id: string): Promise<Staff | undefined> {
+    const staff = await this.getAll();
     return staff.find(s => s.id === id);
   },
 
-  create(staff: Omit<Staff, 'id' | 'createdAt'>): Staff {
-    const newStaff: Staff = {
-      ...staff,
-      id: crypto.randomUUID(),
-      createdAt: new Date().toISOString(),
-    };
-    const allStaff = this.getAll();
-    storage.set(STORAGE_KEYS.STAFF_LIST, [...allStaff, newStaff]);
-    return newStaff;
+  async create(staff: Omit<Staff, 'id' | 'createdAt'>): Promise<Staff> {
+    return api.post<Staff>('/staff', staff);
   },
 
-  update(id: string, updates: Partial<Staff>): Staff | null {
-    const allStaff = this.getAll();
-    const index = allStaff.findIndex(s => s.id === id);
-    if (index === -1) return null;
-    
-    allStaff[index] = { ...allStaff[index], ...updates };
-    storage.set(STORAGE_KEYS.STAFF_LIST, allStaff);
-    return allStaff[index];
+  async update(id: string, updates: Partial<Staff>): Promise<Staff> {
+    return api.put<Staff>(`/staff/${id}`, updates);
   },
 
-  delete(id: string): boolean {
-    const allStaff = this.getAll();
-    const filtered = allStaff.filter(s => s.id !== id);
-    if (filtered.length === allStaff.length) return false;
-    
-    storage.set(STORAGE_KEYS.STAFF_LIST, filtered);
-    return true;
-  },
-
-  authenticate(email: string, password: string): Staff | null {
-    const staff = this.getAll().find(s => s.email === email && s.password === password);
-    return staff || null;
+  async delete(id: string): Promise<void> {
+    return api.delete(`/staff/${id}`);
   },
 };
 
-// Task CRUD operations
+// Task operations
 export const taskService = {
-  getAll(): Task[] {
-    return storage.get<Task[]>(STORAGE_KEYS.TASKS) || [];
+  async getAll(): Promise<Task[]> {
+    return api.get<Task[]>('/tasks');
   },
 
-  getByStaffId(staffId: string): Task[] {
-    return this.getAll().filter(t => t.assignedTo === staffId);
+  async getByStaffId(staffId: string): Promise<Task[]> {
+    const tasks = await this.getAll();
+    return tasks.filter(t => t.assignedTo === staffId);
   },
 
-  getById(id: string): Task | undefined {
-    return this.getAll().find(t => t.id === id);
+  async getById(id: string): Promise<Task | undefined> {
+    const tasks = await this.getAll();
+    return tasks.find(t => t.id === id);
   },
 
-  create(task: Omit<Task, 'id' | 'createdAt' | 'updatedAt' | 'comments' | 'statusHistory'>): Task {
-    const newTask: Task = {
-      ...task,
-      id: crypto.randomUUID(),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      comments: [],
-      statusHistory: [],
-    };
-    const allTasks = this.getAll();
-    storage.set(STORAGE_KEYS.TASKS, [...allTasks, newTask]);
-    return newTask;
+  async create(task: Omit<Task, 'id' | 'createdAt' | 'updatedAt' | 'comments' | 'statusHistory'>): Promise<Task> {
+    return api.post<Task>('/tasks', task);
   },
 
-  update(id: string, updates: Partial<Task>): Task | null {
-    const allTasks = this.getAll();
-    const index = allTasks.findIndex(t => t.id === id);
-    if (index === -1) return null;
-    
-    allTasks[index] = { 
-      ...allTasks[index], 
-      ...updates, 
-      updatedAt: new Date().toISOString() 
-    };
-    storage.set(STORAGE_KEYS.TASKS, allTasks);
-    return allTasks[index];
+  async update(id: string, updates: Partial<Task>): Promise<Task> {
+    return api.put<Task>(`/tasks/${id}`, updates);
   },
 
-  updateStatus(taskId: string, newStatus: 'Pending' | 'In Progress' | 'Completed', updatedBy: string, updatedByName: string): Task | null {
-    const task = this.getById(taskId);
+  async updateStatus(taskId: string, newStatus: 'Pending' | 'In Progress' | 'Completed', updatedBy: string, updatedByName: string): Promise<Task | null> {
+    const task = await this.getById(taskId);
     if (!task) return null;
 
     const statusUpdate: StatusUpdate = {
@@ -217,133 +179,132 @@ export const taskService = {
     });
   },
 
-  addComment(taskId: string, comment: Omit<TaskComment, 'id' | 'createdAt'>): TaskComment | null {
-    const task = this.getById(taskId);
+  async addComment(taskId: string, comment: Omit<TaskComment, 'id' | 'createdAt'>): Promise<TaskComment | null> {
+    const task = await this.getById(taskId);
     if (!task) return null;
 
     const newComment: TaskComment = {
       ...comment,
       id: crypto.randomUUID(),
+      taskId,
       createdAt: new Date().toISOString(),
     };
 
-    this.update(taskId, { 
-      comments: [...task.comments, newComment] 
+    await this.update(taskId, {
+      comments: [...task.comments, newComment]
     });
     return newComment;
   },
 
-  delete(id: string): boolean {
-    const allTasks = this.getAll();
-    const filtered = allTasks.filter(t => t.id !== id);
-    if (filtered.length === allTasks.length) return false;
-    
-    storage.set(STORAGE_KEYS.TASKS, filtered);
-    return true;
+  async delete(id: string): Promise<void> {
+    return api.delete(`/tasks/${id}`);
   },
 };
 
 // Attendance operations
 export const attendanceService = {
-  getAll(): AttendanceRecord[] {
-    return storage.get<AttendanceRecord[]>(STORAGE_KEYS.ATTENDANCE) || [];
+  async getAll(): Promise<AttendanceRecord[]> {
+    return api.get<AttendanceRecord[]>('/attendance');
   },
 
-  getByStaffId(staffId: string): AttendanceRecord[] {
-    return this.getAll().filter(a => a.staffId === staffId);
+  async getByStaffId(staffId: string): Promise<AttendanceRecord[]> {
+    const records = await this.getAll();
+    return records.filter(a => a.staffId === staffId);
   },
 
-  getByDate(date: string): AttendanceRecord[] {
-    return this.getAll().filter(a => a.date === date);
+  async getByDate(date: string): Promise<AttendanceRecord[]> {
+    const records = await this.getAll();
+    return records.filter(a => a.date === date);
   },
 
-  getTodayForStaff(staffId: string): AttendanceRecord | undefined {
+  async getTodayForStaff(staffId: string): Promise<AttendanceRecord | undefined> {
     const today = new Date().toISOString().split('T')[0];
-    return this.getAll().find(a => a.staffId === staffId && a.date === today);
+    const records = await this.getAll();
+    return records.find(a => a.staffId === staffId && a.date === today);
   },
 
-  clockIn(staffId: string): AttendanceRecord {
+  async clockIn(staffId: string): Promise<AttendanceRecord> {
     const today = new Date().toISOString().split('T')[0];
     const now = new Date().toISOString();
     const hour = new Date().getHours();
-    
-    // Consider late if after 9 AM
     const status: 'present' | 'late' = hour >= 9 ? 'late' : 'present';
-    
-    const record: AttendanceRecord = {
-      id: crypto.randomUUID(),
+
+    const record = {
       staffId,
       date: today,
       clockIn: now,
       status,
     };
-    
-    const allRecords = this.getAll();
-    storage.set(STORAGE_KEYS.ATTENDANCE, [...allRecords, record]);
-    return record;
+    return api.post<AttendanceRecord>('/attendance', record);
   },
 
-  clockOut(recordId: string): AttendanceRecord | null {
-    const allRecords = this.getAll();
-    const index = allRecords.findIndex(r => r.id === recordId);
-    if (index === -1) return null;
-    
+  async clockOut(recordId: string): Promise<AttendanceRecord | null> {
+    const records = await this.getAll();
+    const record = records.find(r => r.id === recordId);
+    if (!record) return null;
+
     const now = new Date();
-    const clockIn = new Date(allRecords[index].clockIn!);
+    const clockIn = new Date(record.clockIn!);
     const workingHours = (now.getTime() - clockIn.getTime()) / (1000 * 60 * 60);
-    
-    allRecords[index] = {
-      ...allRecords[index],
+
+    return api.put<AttendanceRecord>(`/attendance/${recordId}`, {
       clockOut: now.toISOString(),
       workingHours: Math.round(workingHours * 100) / 100,
-    };
-    
-    storage.set(STORAGE_KEYS.ATTENDANCE, allRecords);
-    return allRecords[index];
+    });
+  },
+};
+
+// Daily Report operations
+export const dailyReportService = {
+  async getAll(): Promise<DailyReport[]> {
+    return api.get<DailyReport[]>('/daily-reports');
+  },
+
+  async getByStaffId(staffId: string): Promise<DailyReport[]> {
+    const reports = await this.getAll();
+    return reports.filter(r => r.staffId === staffId);
+  },
+
+  async create(report: Omit<DailyReport, 'id' | 'createdAt' | 'updatedAt'>): Promise<DailyReport> {
+    return api.post<DailyReport>('/daily-reports', report);
+  },
+
+  async update(id: string, content: string): Promise<DailyReport> {
+    return api.put<DailyReport>(`/daily-reports/${id}`, { content });
+  },
+
+  async delete(id: string): Promise<void> {
+    return api.delete(`/daily-reports/${id}`);
   },
 };
 
 // Auth operations
 export const authService = {
-  login(email: string, password: string, role: 'admin' | 'staff'): Session | null {
-    if (role === 'admin') {
-      // Default admin credentials
-      if (email === 'admin@royal300.com' && password === 'admin123') {
-        const session: Session = {
-          userId: 'admin',
-          role: 'admin',
-          name: 'Administrator',
-          email: 'admin@royal300.com',
-        };
-        storage.set(STORAGE_KEYS.SESSION, session);
-        return session;
-      }
+  async login(email: string, password: string, role: 'admin' | 'staff'): Promise<Session | null> {
+    try {
+      const session = await api.post<Session>('/auth/login', { email, password, role });
+      localStorage.setItem('royal300_auth_session', JSON.stringify(session));
+      return session;
+    } catch (e) {
+      console.error('Login failed:', e);
       return null;
     }
-    
-    // Staff login
-    const staff = staffService.authenticate(email, password);
-    if (!staff) return null;
-    
-    const session: Session = {
-      userId: staff.id,
-      role: 'staff',
-      name: staff.name,
-      email: staff.email,
-    };
-    storage.set(STORAGE_KEYS.SESSION, session);
-    return session;
   },
 
   logout(): void {
-    storage.remove(STORAGE_KEYS.SESSION);
+    localStorage.removeItem('royal300_auth_session');
   },
 
   getSession(): Session | null {
-    return storage.get<Session>(STORAGE_KEYS.SESSION);
+    const data = localStorage.getItem('royal300_auth_session');
+    return data ? JSON.parse(data) : null;
   },
 
   isAuthenticated(): boolean {
     return this.getSession() !== null;
   },
+};
+
+export const initializeDefaultAdmin = () => {
+  // Deprecated: Admin is handled by backend now.
 };

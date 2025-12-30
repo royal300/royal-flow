@@ -3,7 +3,7 @@ import { GlassCard, CardContent, CardHeader, CardTitle } from '@/components/ui/c
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { 
+import {
   Search,
   Calendar,
   Clock,
@@ -37,9 +37,17 @@ const AdminAttendancePage = () => {
     loadData();
   }, []);
 
-  const loadData = () => {
-    setAttendance(attendanceService.getAll());
-    setStaffList(staffService.getAll());
+  const loadData = async () => {
+    try {
+      const [allAttendance, allStaff] = await Promise.all([
+        attendanceService.getAll(),
+        staffService.getAll()
+      ]);
+      setAttendance(allAttendance);
+      setStaffList(allStaff);
+    } catch (error) {
+      console.error("Failed to load attendance data", error);
+    }
   };
 
   const filteredAttendance = attendance.filter(record => {
@@ -91,7 +99,7 @@ const AdminAttendancePage = () => {
       record.workingHours?.toFixed(2) || '-',
       record.status,
     ]);
-    
+
     const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);

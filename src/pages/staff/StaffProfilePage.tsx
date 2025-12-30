@@ -1,18 +1,44 @@
+
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { GlassCard, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { 
+import {
   User,
   Mail,
   Building2,
   Briefcase,
   Calendar
 } from 'lucide-react';
-import { staffService } from '@/lib/storage';
+import { staffService, Staff } from '@/lib/storage';
 
 const StaffProfilePage = () => {
   const { session } = useAuth();
-  const staff = session?.userId ? staffService.getById(session.userId) : null;
+  const [staff, setStaff] = useState<Staff | undefined>(undefined);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadStaff = async () => {
+      if (session?.userId) {
+        try {
+          const data = await staffService.getById(session.userId);
+          setStaff(data);
+        } catch (error) {
+          console.error("Failed to load profile", error);
+        }
+      }
+      setLoading(false);
+    };
+    loadStaff();
+  }, [session?.userId]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <p className="text-muted-foreground">Loading profile...</p>
+      </div>
+    );
+  }
 
   if (!staff) {
     return (

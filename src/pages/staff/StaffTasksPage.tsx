@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { 
+import {
   CheckSquare,
   Calendar,
   MessageSquare,
@@ -53,9 +53,14 @@ const StaffTasksPage = () => {
     }
   }, [session]);
 
-  const loadTasks = () => {
+  const loadTasks = async () => {
     if (session?.userId) {
-      setTasks(taskService.getByStaffId(session.userId));
+      try {
+        const data = await taskService.getByStaffId(session.userId);
+        setTasks(data);
+      } catch (error) {
+        console.error("Failed to load tasks", error);
+      }
     }
   };
 
@@ -77,61 +82,73 @@ const StaffTasksPage = () => {
     }
   };
 
-  const handleStatusChange = (taskId: string, newStatus: 'Pending' | 'In Progress' | 'Completed') => {
+  const handleStatusChange = async (taskId: string, newStatus: 'Pending' | 'In Progress' | 'Completed') => {
     if (!session) return;
-    taskService.updateStatus(taskId, newStatus, session.userId, session.name);
-    toast({ title: `Task marked as ${newStatus}` });
-    loadTasks();
-    if (selectedTask?.id === taskId) {
-      const updatedTask = taskService.getById(taskId);
-      if (updatedTask) setSelectedTask(updatedTask);
+    try {
+      await taskService.updateStatus(taskId, newStatus, session.userId, session.name);
+      toast({ title: `Task marked as ${newStatus}` });
+      loadTasks();
+      if (selectedTask?.id === taskId) {
+        const updatedTask = await taskService.getById(taskId);
+        if (updatedTask) setSelectedTask(updatedTask);
+      }
+    } catch (error) {
+      toast({ title: 'Failed to update status', variant: 'destructive' });
     }
   };
 
-  const handleAddComment = () => {
+  const handleAddComment = async () => {
     if (!selectedTask || !comment.trim() || !session) return;
-    
-    taskService.addComment(selectedTask.id, {
-      taskId: selectedTask.id,
-      authorId: session.userId,
-      authorName: session.name,
-      content: comment.trim(),
-    });
-    
-    toast({ title: 'Comment added' });
-    setComment('');
-    loadTasks();
-    
-    const updatedTask = taskService.getById(selectedTask.id);
-    if (updatedTask) {
-      setSelectedTask(updatedTask);
+
+    try {
+      await taskService.addComment(selectedTask.id, {
+        taskId: selectedTask.id,
+        authorId: session.userId,
+        authorName: session.name,
+        content: comment.trim(),
+      });
+
+      toast({ title: 'Comment added' });
+      setComment('');
+      loadTasks();
+
+      const updatedTask = await taskService.getById(selectedTask.id);
+      if (updatedTask) {
+        setSelectedTask(updatedTask);
+      }
+    } catch (error) {
+      toast({ title: 'Failed to add comment', variant: 'destructive' });
     }
   };
 
-  const handleCreateTask = (e: React.FormEvent) => {
+  const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!session) return;
 
-    taskService.create({
-      title: formData.title,
-      description: formData.description,
-      assignedTo: session.userId,
-      createdBy: session.userId,
-      createdByName: session.name,
-      priority: formData.priority,
-      deadline: formData.deadline,
-      status: 'Pending',
-    });
-    
-    toast({ title: 'Task created successfully' });
-    setIsDialogOpen(false);
-    setFormData({
-      title: '',
-      description: '',
-      priority: 'P1',
-      deadline: '',
-    });
-    loadTasks();
+    try {
+      await taskService.create({
+        title: formData.title,
+        description: formData.description,
+        assignedTo: session.userId,
+        createdBy: session.userId,
+        createdByName: session.name,
+        priority: formData.priority,
+        deadline: formData.deadline,
+        status: 'Pending',
+      });
+
+      toast({ title: 'Task created successfully' });
+      setIsDialogOpen(false);
+      setFormData({
+        title: '',
+        description: '',
+        priority: 'P1',
+        deadline: '',
+      });
+      loadTasks();
+    } catch (error) {
+      toast({ title: 'Failed to create task', variant: 'destructive' });
+    }
   };
 
   const isOverdue = (deadline: string) => {
@@ -191,7 +208,7 @@ const StaffTasksPage = () => {
         {/* Task List */}
         <div className="space-y-3">
           <h2 className="text-lg font-semibold">Task List</h2>
-          
+
           {tasks.length === 0 ? (
             <GlassCard>
               <CardContent className="py-12 text-center">
@@ -204,11 +221,10 @@ const StaffTasksPage = () => {
             </GlassCard>
           ) : (
             tasks.map((task) => (
-              <GlassCard 
-                key={task.id} 
-                className={`cursor-pointer transition-all ${
-                  selectedTask?.id === task.id ? 'ring-2 ring-primary' : 'hover:-translate-y-0.5'
-                }`}
+              <GlassCard
+                key={task.id}
+                className={`cursor-pointer transition-all ${selectedTask?.id === task.id ? 'ring-2 ring-primary' : 'hover:-translate-y-0.5'
+                  }`}
                 onClick={() => setSelectedTask(task)}
               >
                 <CardContent className="p-4">
@@ -218,11 +234,11 @@ const StaffTasksPage = () => {
                       {task.priority}
                     </Badge>
                   </div>
-                  
+
                   <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
                     {task.description}
                   </p>
-                  
+
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <Calendar className="w-3 h-3" />
@@ -246,7 +262,7 @@ const StaffTasksPage = () => {
         {/* Task Details */}
         <div className="space-y-3">
           <h2 className="text-lg font-semibold">Task Details</h2>
-          
+
           {!selectedTask ? (
             <GlassCard>
               <CardContent className="py-12 text-center">
@@ -274,10 +290,10 @@ const StaffTasksPage = () => {
                   </div>
                 </div>
               </CardHeader>
-              
+
               <CardContent className="space-y-4">
                 <p className="text-sm text-muted-foreground">{selectedTask.description}</p>
-                
+
                 <div className="flex items-center gap-4 text-sm">
                   <div className="flex items-center gap-1">
                     <Calendar className="w-4 h-4 text-muted-foreground" />
@@ -288,8 +304,8 @@ const StaffTasksPage = () => {
                 {/* Status Actions */}
                 <div className="flex flex-wrap gap-2">
                   {selectedTask.status !== 'In Progress' && (
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       size="sm"
                       onClick={() => handleStatusChange(selectedTask.id, 'In Progress')}
                     >
@@ -298,8 +314,8 @@ const StaffTasksPage = () => {
                     </Button>
                   )}
                   {selectedTask.status !== 'Completed' && (
-                    <Button 
-                      variant="success" 
+                    <Button
+                      variant="success"
                       size="sm"
                       onClick={() => handleStatusChange(selectedTask.id, 'Completed')}
                     >
@@ -315,7 +331,7 @@ const StaffTasksPage = () => {
                     <MessageSquare className="w-4 h-4" />
                     Updates ({selectedTask.comments.length})
                   </h4>
-                  
+
                   <div className="space-y-3 max-h-48 overflow-y-auto mb-4">
                     {selectedTask.comments.length === 0 ? (
                       <p className="text-sm text-muted-foreground text-center py-2">
@@ -345,8 +361,8 @@ const StaffTasksPage = () => {
                       rows={2}
                       className="flex-1"
                     />
-                    <Button 
-                      variant="royal" 
+                    <Button
+                      variant="royal"
                       size="icon"
                       onClick={handleAddComment}
                       disabled={!comment.trim()}

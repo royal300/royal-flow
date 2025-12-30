@@ -2,10 +2,10 @@ import { useState, useEffect } from 'react';
 import { GlassCard, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { 
-  Users, 
-  CheckSquare, 
-  Clock, 
+import {
+  Users,
+  CheckSquare,
+  Clock,
   TrendingUp,
   ArrowUpRight,
   AlertTriangle,
@@ -29,22 +29,31 @@ const AdminDashboard = () => {
   const [staffList, setStaffList] = useState<Staff[]>([]);
 
   useEffect(() => {
-    const staff = staffService.getAll();
-    const tasks = taskService.getAll();
-    const today = new Date().toISOString().split('T')[0];
-    const todayAttendance = attendanceService.getByDate(today);
+    const loadDashboardData = async () => {
+      try {
+        const today = new Date().toISOString().split('T')[0];
+        const [staff, tasks, todayAttendance] = await Promise.all([
+          staffService.getAll(),
+          taskService.getAll(),
+          attendanceService.getByDate(today)
+        ]);
 
-    setStaffList(staff);
-    setRecentTasks(tasks.slice(-5).reverse());
-    setStats({
-      totalStaff: staff.length,
-      totalTasks: tasks.length,
-      completedTasks: tasks.filter(t => t.status === 'Completed').length,
-      pendingTasks: tasks.filter(t => t.status === 'Pending').length,
-      inProgressTasks: tasks.filter(t => t.status === 'In Progress').length,
-      presentToday: todayAttendance.filter(a => a.status === 'present').length,
-      lateToday: todayAttendance.filter(a => a.status === 'late').length,
-    });
+        setStaffList(staff);
+        setRecentTasks(tasks.slice(-5).reverse());
+        setStats({
+          totalStaff: staff.length,
+          totalTasks: tasks.length,
+          completedTasks: tasks.filter(t => t.status === 'Completed').length,
+          pendingTasks: tasks.filter(t => t.status === 'Pending').length,
+          inProgressTasks: tasks.filter(t => t.status === 'In Progress').length,
+          presentToday: todayAttendance.filter(a => a.status === 'present').length,
+          lateToday: todayAttendance.filter(a => a.status === 'late').length,
+        });
+      } catch (error) {
+        console.error('Failed to load dashboard data', error);
+      }
+    };
+    loadDashboardData();
   }, []);
 
   const getStaffName = (staffId: string) => {
@@ -70,8 +79,8 @@ const AdminDashboard = () => {
     }
   };
 
-  const completionRate = stats.totalTasks > 0 
-    ? Math.round((stats.completedTasks / stats.totalTasks) * 100) 
+  const completionRate = stats.totalTasks > 0
+    ? Math.round((stats.completedTasks / stats.totalTasks) * 100)
     : 0;
 
   return (
@@ -126,7 +135,7 @@ const AdminDashboard = () => {
               </div>
             </div>
             <div className="w-full bg-muted rounded-full h-1.5 mt-3">
-              <div 
+              <div
                 className="h-full rounded-full gradient-success transition-all duration-500"
                 style={{ width: `${completionRate}%` }}
               />
@@ -230,7 +239,7 @@ const AdminDashboard = () => {
                 </p>
               ) : (
                 recentTasks.map((task) => (
-                  <div 
+                  <div
                     key={task.id}
                     className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/30 transition-colors"
                   >

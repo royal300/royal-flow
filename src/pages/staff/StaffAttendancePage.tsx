@@ -3,7 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { GlassCard, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { 
+import {
   Clock,
   LogIn,
   LogOut,
@@ -26,55 +26,68 @@ const StaffAttendancePage = () => {
     if (session?.userId) {
       loadAttendance();
     }
-    
+
     const interval = setInterval(() => {
       setCurrentTime(new Date());
     }, 1000);
-    
+
     return () => clearInterval(interval);
   }, [session]);
 
-  const loadAttendance = () => {
+  const loadAttendance = async () => {
     if (session?.userId) {
-      const today = attendanceService.getTodayForStaff(session.userId);
-      setTodayRecord(today || null);
-      setAttendanceHistory(attendanceService.getByStaffId(session.userId).reverse());
+      try {
+        const today = await attendanceService.getTodayForStaff(session.userId);
+        setTodayRecord(today || null);
+        const history = await attendanceService.getByStaffId(session.userId);
+        setAttendanceHistory(history.reverse());
+      } catch (error) {
+        console.error("Failed to load attendance", error);
+      }
     }
   };
 
-  const handleClockIn = () => {
+  const handleClockIn = async () => {
     if (!session?.userId) return;
-    
-    const record = attendanceService.clockIn(session.userId);
-    setTodayRecord(record);
-    
-    if (record.status === 'late') {
-      toast({
-        title: 'Clocked in (Late)',
-        description: 'You clocked in after 9:00 AM',
-        variant: 'destructive',
-      });
-    } else {
-      toast({
-        title: 'Clocked in successfully',
-        description: 'Have a productive day!',
-      });
+
+    try {
+      const record = await attendanceService.clockIn(session.userId);
+      setTodayRecord(record);
+
+      if (record.status === 'late') {
+        toast({
+          title: 'Clocked in (Late)',
+          description: 'You clocked in after 9:00 AM',
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Clocked in successfully',
+          description: 'Have a productive day!',
+        });
+      }
+
+      loadAttendance();
+    } catch (error) {
+      toast({ title: 'Failed to clock in', variant: 'destructive' });
     }
-    
-    loadAttendance();
   };
 
-  const handleClockOut = () => {
+  const handleClockOut = async () => {
     if (!todayRecord) return;
-    
-    const updated = attendanceService.clockOut(todayRecord.id);
-    if (updated) {
-      setTodayRecord(updated);
-      toast({
-        title: 'Clocked out successfully',
-        description: `Total working hours: ${updated.workingHours?.toFixed(1)}h`,
-      });
-      loadAttendance();
+
+    try {
+      const updated = await attendanceService.clockOut(todayRecord.id);
+      if (updated) {
+        setTodayRecord(updated);
+        toast({
+          title: 'Clocked out successfully',
+          description: `Total working hours: ${updated.workingHours?.toFixed(1)}h`,
+        });
+        loadAttendance();
+      }
+    } catch (error) {
+      toast({ title: 'Failed to clock out', variant: 'destructive' });
     }
   };
 
@@ -195,9 +208,9 @@ const StaffAttendancePage = () => {
               </div>
 
               {!todayRecord.clockOut && (
-                <Button 
-                  variant="destructive" 
-                  size="lg" 
+                <Button
+                  variant="destructive"
+                  size="lg"
                   className="w-full"
                   onClick={handleClockOut}
                 >
@@ -233,7 +246,7 @@ const StaffAttendancePage = () => {
           ) : (
             <div className="space-y-2">
               {attendanceHistory.slice(0, 10).map((record) => (
-                <div 
+                <div
                   key={record.id}
                   className="flex items-center justify-between p-3 rounded-lg border border-border"
                 >

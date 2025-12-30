@@ -23,6 +23,7 @@ import StaffLayout from "@/layouts/StaffLayout";
 import StaffTasksPage from "@/pages/staff/StaffTasksPage";
 import StaffAttendancePage from "@/pages/staff/StaffAttendancePage";
 import StaffProfilePage from "@/pages/staff/StaffProfilePage";
+import StaffDailyReportPage from "@/pages/staff/StaffDailyReportPage";
 
 const queryClient = new QueryClient();
 
@@ -97,6 +98,16 @@ const App = () => (
                 <ProtectedRoute allowedRole="staff">
                   <StaffLayout>
                     <StaffTasksPage />
+                  </StaffLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/staff/reports"
+              element={
+                <ProtectedRoute allowedRole="staff">
+                  <StaffLayout>
+                    <StaffDailyReportPage />
                   </StaffLayout>
                 </ProtectedRoute>
               }

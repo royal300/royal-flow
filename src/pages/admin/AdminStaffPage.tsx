@@ -3,10 +3,10 @@ import { GlassCard, CardContent, CardHeader, CardTitle, CardDescription } from '
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Plus, 
-  Pencil, 
-  Trash2, 
+import {
+  Plus,
+  Pencil,
+  Trash2,
   Search,
   UserPlus,
   X
@@ -50,11 +50,17 @@ const AdminStaffPage = () => {
     loadStaff();
   }, []);
 
-  const loadStaff = () => {
-    setStaffList(staffService.getAll());
+  const loadStaff = async () => {
+    try {
+      const data = await staffService.getAll();
+      setStaffList(data);
+    } catch (error) {
+      console.error('Failed to load staff', error);
+      toast({ title: 'Failed to load staff', variant: 'destructive' });
+    }
   };
 
-  const filteredStaff = staffList.filter(staff => 
+  const filteredStaff = staffList.filter(staff =>
     staff.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     staff.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
     staff.department.toLowerCase().includes(searchQuery.toLowerCase())
@@ -78,39 +84,43 @@ const AdminStaffPage = () => {
     setIsDialogOpen(true);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (editingStaff) {
-      const updates: Partial<Staff> = {
-        name: formData.name,
-        email: formData.email,
-        department: formData.department,
-        position: formData.position,
-      };
-      if (formData.password) {
-        updates.password = formData.password;
+
+    try {
+      if (editingStaff) {
+        const updates: Partial<Staff> = {
+          name: formData.name,
+          email: formData.email,
+          department: formData.department,
+          position: formData.position,
+        };
+        if (formData.password) {
+          updates.password = formData.password;
+        }
+        await staffService.update(editingStaff.id, updates);
+        toast({ title: 'Staff updated successfully' });
+      } else {
+        await staffService.create({
+          name: formData.name,
+          email: formData.email,
+          password: formData.password as string, // Cast enforced by form validation
+          department: formData.department,
+          position: formData.position,
+        });
+        toast({ title: 'Staff member added successfully' });
       }
-      staffService.update(editingStaff.id, updates);
-      toast({ title: 'Staff updated successfully' });
-    } else {
-      staffService.create({
-        name: formData.name,
-        email: formData.email,
-        password: formData.password,
-        department: formData.department,
-        position: formData.position,
-      });
-      toast({ title: 'Staff member added successfully' });
+
+      setIsDialogOpen(false);
+      loadStaff();
+    } catch (error) {
+      toast({ title: 'Operation failed', variant: 'destructive' });
     }
-    
-    setIsDialogOpen(false);
-    loadStaff();
   };
 
-  const handleDelete = (staffId: string) => {
+  const handleDelete = async (staffId: string) => {
     if (confirm('Are you sure you want to delete this staff member?')) {
-      staffService.delete(staffId);
+      await staffService.delete(staffId);
       toast({ title: 'Staff member deleted' });
       loadStaff();
     }
@@ -174,7 +184,7 @@ const AdminStaffPage = () => {
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="space-y-2 mb-4">
                   <div className="flex items-center gap-2">
                     <Badge variant="secondary">{staff.department}</Badge>
@@ -183,18 +193,18 @@ const AdminStaffPage = () => {
                 </div>
 
                 <div className="flex items-center gap-2 pt-3 border-t border-border">
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     className="flex-1"
                     onClick={() => openEditDialog(staff)}
                   >
                     <Pencil className="w-4 h-4 mr-1" />
                     Edit
                   </Button>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     className="flex-1 text-destructive hover:text-destructive hover:bg-destructive/10"
                     onClick={() => handleDelete(staff.id)}
                   >
@@ -216,7 +226,7 @@ const AdminStaffPage = () => {
               {editingStaff ? 'Edit Staff Member' : 'Add New Staff'}
             </DialogTitle>
             <DialogDescription>
-              {editingStaff 
+              {editingStaff
                 ? 'Update staff information and credentials'
                 : 'Create login credentials for a new team member'
               }
