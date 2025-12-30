@@ -10,7 +10,8 @@ import {
   Calendar,
   MessageSquare,
   Trash2,
-  Filter
+  Filter,
+  History
 } from 'lucide-react';
 import { Task, Staff, staffService, taskService } from '@/lib/storage';
 import { useToast } from '@/hooks/use-toast';
@@ -101,6 +102,8 @@ const AdminTasksPage = () => {
       title: formData.title,
       description: formData.description,
       assignedTo: formData.assignedTo,
+      createdBy: 'admin',
+      createdByName: 'Administrator',
       priority: formData.priority,
       deadline: formData.deadline,
       status: formData.status,
@@ -120,7 +123,7 @@ const AdminTasksPage = () => {
   };
 
   const handleStatusChange = (taskId: string, newStatus: 'Pending' | 'In Progress' | 'Completed') => {
-    taskService.update(taskId, { status: newStatus });
+    taskService.updateStatus(taskId, newStatus, 'admin', 'Administrator');
     toast({ title: `Task status updated to ${newStatus}` });
     loadData();
   };
@@ -259,10 +262,34 @@ const AdminTasksPage = () => {
                         </Button>
                       </div>
 
-                      {task.comments.length > 0 && (
-                        <div className="flex items-center gap-1 mt-2 pt-2 border-t border-border text-xs text-muted-foreground">
-                          <MessageSquare className="w-3 h-3" />
-                          {task.comments.length} comment{task.comments.length !== 1 && 's'}
+                      {(task.comments.length > 0 || (task.statusHistory && task.statusHistory.length > 0)) && (
+                        <div className="flex items-center gap-3 mt-2 pt-2 border-t border-border text-xs text-muted-foreground">
+                          {task.comments.length > 0 && (
+                            <span className="flex items-center gap-1">
+                              <MessageSquare className="w-3 h-3" />
+                              {task.comments.length} comment{task.comments.length !== 1 && 's'}
+                            </span>
+                          )}
+                          {task.statusHistory && task.statusHistory.length > 0 && (
+                            <span className="flex items-center gap-1">
+                              <History className="w-3 h-3" />
+                              {task.statusHistory.length} update{task.statusHistory.length !== 1 && 's'}
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Status History Preview */}
+                      {task.statusHistory && task.statusHistory.length > 0 && (
+                        <div className="mt-2 pt-2 border-t border-border">
+                          <p className="text-xs text-muted-foreground mb-1">Latest update:</p>
+                          <p className="text-xs">
+                            <span className="font-medium">{task.statusHistory[task.statusHistory.length - 1].updatedByName}</span>
+                            {' → '}
+                            <Badge variant={getStatusVariant(task.statusHistory[task.statusHistory.length - 1].newStatus) as any} className="text-[10px] px-1 py-0">
+                              {task.statusHistory[task.statusHistory.length - 1].newStatus}
+                            </Badge>
+                          </p>
                         </div>
                       )}
                     </CardContent>
