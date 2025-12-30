@@ -18,17 +18,30 @@ export interface Staff {
   createdAt: string;
 }
 
+export interface StatusUpdate {
+  id: string;
+  taskId: string;
+  previousStatus: 'Pending' | 'In Progress' | 'Completed';
+  newStatus: 'Pending' | 'In Progress' | 'Completed';
+  updatedBy: string;
+  updatedByName: string;
+  updatedAt: string;
+}
+
 export interface Task {
   id: string;
   title: string;
   description: string;
   assignedTo: string; // staff id
+  createdBy: string; // 'admin' or staff id
+  createdByName: string;
   priority: 'P0' | 'P1' | 'P2';
   status: 'Pending' | 'In Progress' | 'Completed';
   deadline: string;
   createdAt: string;
   updatedAt: string;
   comments: TaskComment[];
+  statusHistory: StatusUpdate[];
   files?: string[];
 }
 
@@ -156,13 +169,14 @@ export const taskService = {
     return this.getAll().find(t => t.id === id);
   },
 
-  create(task: Omit<Task, 'id' | 'createdAt' | 'updatedAt' | 'comments'>): Task {
+  create(task: Omit<Task, 'id' | 'createdAt' | 'updatedAt' | 'comments' | 'statusHistory'>): Task {
     const newTask: Task = {
       ...task,
       id: crypto.randomUUID(),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       comments: [],
+      statusHistory: [],
     };
     const allTasks = this.getAll();
     storage.set(STORAGE_KEYS.TASKS, [...allTasks, newTask]);
@@ -181,6 +195,26 @@ export const taskService = {
     };
     storage.set(STORAGE_KEYS.TASKS, allTasks);
     return allTasks[index];
+  },
+
+  updateStatus(taskId: string, newStatus: 'Pending' | 'In Progress' | 'Completed', updatedBy: string, updatedByName: string): Task | null {
+    const task = this.getById(taskId);
+    if (!task) return null;
+
+    const statusUpdate: StatusUpdate = {
+      id: crypto.randomUUID(),
+      taskId,
+      previousStatus: task.status,
+      newStatus,
+      updatedBy,
+      updatedByName,
+      updatedAt: new Date().toISOString(),
+    };
+
+    return this.update(taskId, {
+      status: newStatus,
+      statusHistory: [...(task.statusHistory || []), statusUpdate],
+    });
   },
 
   addComment(taskId: string, comment: Omit<TaskComment, 'id' | 'createdAt'>): TaskComment | null {

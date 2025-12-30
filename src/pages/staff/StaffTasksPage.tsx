@@ -4,6 +4,7 @@ import { GlassCard, CardContent, CardHeader, CardTitle } from '@/components/ui/c
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { 
   CheckSquare,
   Calendar,
@@ -11,16 +12,39 @@ import {
   Clock,
   Send,
   AlertTriangle,
-  CheckCircle2
+  CheckCircle2,
+  Plus
 } from 'lucide-react';
 import { Task, taskService, staffService } from '@/lib/storage';
 import { useToast } from '@/hooks/use-toast';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 const StaffTasksPage = () => {
   const { session } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [comment, setComment] = useState('');
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    priority: 'P1' as 'P0' | 'P1' | 'P2',
+    deadline: '',
+  });
   const { toast } = useToast();
 
   useEffect(() => {
@@ -54,11 +78,13 @@ const StaffTasksPage = () => {
   };
 
   const handleStatusChange = (taskId: string, newStatus: 'Pending' | 'In Progress' | 'Completed') => {
-    taskService.update(taskId, { status: newStatus });
+    if (!session) return;
+    taskService.updateStatus(taskId, newStatus, session.userId, session.name);
     toast({ title: `Task marked as ${newStatus}` });
     loadTasks();
     if (selectedTask?.id === taskId) {
-      setSelectedTask({ ...selectedTask, status: newStatus });
+      const updatedTask = taskService.getById(taskId);
+      if (updatedTask) setSelectedTask(updatedTask);
     }
   };
 
@@ -82,6 +108,32 @@ const StaffTasksPage = () => {
     }
   };
 
+  const handleCreateTask = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!session) return;
+
+    taskService.create({
+      title: formData.title,
+      description: formData.description,
+      assignedTo: session.userId,
+      createdBy: session.userId,
+      createdByName: session.name,
+      priority: formData.priority,
+      deadline: formData.deadline,
+      status: 'Pending',
+    });
+    
+    toast({ title: 'Task created successfully' });
+    setIsDialogOpen(false);
+    setFormData({
+      title: '',
+      description: '',
+      priority: 'P1',
+      deadline: '',
+    });
+    loadTasks();
+  };
+
   const isOverdue = (deadline: string) => {
     return new Date(deadline) < new Date() && deadline;
   };
@@ -95,6 +147,18 @@ const StaffTasksPage = () => {
 
   return (
     <div className="space-y-6 animate-fade-up">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold">My Tasks</h2>
+          <p className="text-muted-foreground">View and manage your assigned tasks</p>
+        </div>
+        <Button variant="royal" onClick={() => setIsDialogOpen(true)}>
+          <Plus className="w-4 h-4 mr-2" />
+          Create Task
+        </Button>
+      </div>
+
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <GlassCard>
@@ -126,7 +190,7 @@ const StaffTasksPage = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Task List */}
         <div className="space-y-3">
-          <h2 className="text-lg font-semibold">My Tasks</h2>
+          <h2 className="text-lg font-semibold">Task List</h2>
           
           {tasks.length === 0 ? (
             <GlassCard>
@@ -296,6 +360,79 @@ const StaffTasksPage = () => {
           )}
         </div>
       </div>
+
+      {/* Create Task Dialog */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Create New Task</DialogTitle>
+            <DialogDescription>
+              Create a task for yourself with priority and deadline
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleCreateTask} className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Task Title</label>
+              <Input
+                required
+                placeholder="Enter task title"
+                value={formData.title}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Description</label>
+              <Textarea
+                required
+                placeholder="Describe the task..."
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                rows={3}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Priority</label>
+                <Select
+                  value={formData.priority}
+                  onValueChange={(value: 'P0' | 'P1' | 'P2') => setFormData({ ...formData, priority: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="P0">P0 (High)</SelectItem>
+                    <SelectItem value="P1">P1 (Medium)</SelectItem>
+                    <SelectItem value="P2">P2 (Low)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Deadline</label>
+                <Input
+                  type="date"
+                  required
+                  value={formData.deadline}
+                  onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <DialogFooter className="pt-4">
+              <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" variant="royal">
+                Create Task
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
