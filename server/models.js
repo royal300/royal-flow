@@ -8,6 +8,8 @@ const staffSchema = new mongoose.Schema({
   department: String,
   position: String,
   avatar: String,
+  faceDescriptor: [Number], // Face embedding for biometric recognition
+  faceImage: String, // Base64 encoded face snapshot
   createdAt: String
 });
 
@@ -46,9 +48,10 @@ const taskSchema = new mongoose.Schema({
 const attendanceSchema = new mongoose.Schema({
   id: { type: String, required: true, unique: true },
   staffId: String,
+  staffName: String, // Staff name for display
   date: String,
-  clockIn: String,
-  clockOut: String,
+  checkIn: String, // Biometric check-in time
+  checkOut: String, // Biometric check-out time
   status: String,
   workingHours: Number
 });

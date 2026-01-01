@@ -438,14 +438,39 @@ const AdminTasksPage = () => {
                 </div>
               </div>
 
+              {/* Task Updates/Comments from Staff */}
+              {selectedTask?.comments && selectedTask.comments.length > 0 && (
+                <div className="space-y-3">
+                  <h4 className="text-sm font-medium flex items-center gap-2">
+                    <MessageSquare className="w-4 h-4" />
+                    Task Updates ({selectedTask.comments.length})
+                  </h4>
+                  <div className="space-y-3">
+                    {[...selectedTask.comments].reverse().map((comment, index) => (
+                      <div key={index} className="p-3 bg-muted/30 rounded-lg space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium">{comment.authorName}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {new Date(comment.createdAt).toLocaleString()}
+                          </span>
+                        </div>
+                        <p className="text-sm text-foreground whitespace-pre-wrap">
+                          {comment.content}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-3">
                 <h4 className="text-sm font-medium flex items-center gap-2">
                   <History className="w-4 h-4" />
-                  Activity History
+                  Status History
                 </h4>
 
                 {!selectedTask?.statusHistory?.length ? (
-                  <p className="text-sm text-muted-foreground italic">No updates recorded yet.</p>
+                  <p className="text-sm text-muted-foreground italic">No status changes yet.</p>
                 ) : (
                   <div className="space-y-4 border-l-2 border-border ml-2 pl-4">
                     {[...selectedTask.statusHistory].reverse().map((update, index) => (

@@ -20,9 +20,9 @@ const LoginPage = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
+
     const success = await login(email, password, role);
-    
+
     if (success) {
       toast({
         title: 'Welcome back!',
@@ -36,7 +36,7 @@ const LoginPage = () => {
         variant: 'destructive',
       });
     }
-    
+
     setIsLoading(false);
   };
 
@@ -69,11 +69,10 @@ const LoginPage = () => {
           <button
             type="button"
             onClick={() => setRole('staff')}
-            className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-medium transition-all duration-200 ${
-              role === 'staff'
-                ? 'bg-card shadow-sm text-success'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-medium transition-all duration-200 ${role === 'staff'
+              ? 'bg-card shadow-sm text-success'
+              : 'text-muted-foreground hover:text-foreground'
+              }`}
           >
             <User className="w-4 h-4" />
             Staff
@@ -81,11 +80,10 @@ const LoginPage = () => {
           <button
             type="button"
             onClick={() => setRole('admin')}
-            className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-medium transition-all duration-200 ${
-              role === 'admin'
-                ? 'bg-card shadow-sm text-destructive'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-medium transition-all duration-200 ${role === 'admin'
+              ? 'bg-card shadow-sm text-destructive'
+              : 'text-muted-foreground hover:text-foreground'
+              }`}
           >
             <Shield className="w-4 h-4" />
             Admin
@@ -99,8 +97,8 @@ const LoginPage = () => {
               {role === 'admin' ? 'Admin Login' : 'Staff Login'}
             </CardTitle>
             <CardDescription>
-              {role === 'admin' 
-                ? 'Access the admin dashboard' 
+              {role === 'admin'
+                ? 'Access the admin dashboard'
                 : 'Sign in to view your tasks'}
             </CardDescription>
           </CardHeader>
@@ -113,14 +111,14 @@ const LoginPage = () => {
                 <Input
                   id="email"
                   type="email"
-                  placeholder={role === 'admin' ? 'admin@royal300.com' : 'your@email.com'}
+                  placeholder="Enter your email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   className="h-11"
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <label htmlFor="password" className="text-sm font-medium">
                   Password
@@ -129,7 +127,7 @@ const LoginPage = () => {
                   <Input
                     id="password"
                     type={showPassword ? 'text' : 'password'}
-                    placeholder={role === 'admin' ? 'admin123' : '••••••••'}
+                    placeholder="Enter your password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
@@ -147,9 +145,11 @@ const LoginPage = () => {
 
               <Button
                 type="submit"
-                variant={role === 'admin' ? 'default' : 'success'}
                 size="lg"
-                className="w-full mt-6"
+                className={`w-full mt-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 ${role === 'admin'
+                    ? 'bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700'
+                    : 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700'
+                  }`}
                 disabled={isLoading}
               >
                 {isLoading ? (
@@ -165,12 +165,6 @@ const LoginPage = () => {
                 )}
               </Button>
             </form>
-
-            {role === 'admin' && (
-              <p className="text-xs text-muted-foreground text-center mt-4">
-                Demo: admin@royal300.com / admin123
-              </p>
-            )}
           </CardContent>
         </GlassCard>
       </div>

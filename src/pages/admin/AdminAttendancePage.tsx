@@ -8,9 +8,14 @@ import {
   Calendar,
   Clock,
   Filter,
-  Download
+  Download,
+  Fingerprint,
+  Users,
+  Settings
 } from 'lucide-react';
-import { AttendanceRecord, Staff, staffService, attendanceService } from '@/lib/storage';
+import { AttendanceRecord, Staff, staffService, attendanceService, settingsService } from '@/lib/storage';
+import { FaceRegistrationModal } from '@/components/FaceRegistrationModal';
+import FaceManagementModal from '@/components/FaceManagementModal';
 import {
   Select,
   SelectContent,
@@ -32,6 +37,10 @@ const AdminAttendancePage = () => {
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [dateFilter, setDateFilter] = useState(new Date().toISOString().split('T')[0]);
   const [staffFilter, setStaffFilter] = useState('all');
+  const [registrationModalOpen, setRegistrationModalOpen] = useState(false);
+  const [faceManagementModalOpen, setFaceManagementModalOpen] = useState(false);
+  const [settingsModalOpen, setSettingsModalOpen] = useState(false);
+  const [lateThreshold, setLateThreshold] = useState(9); // Default 9 AM
 
   useEffect(() => {
     loadData();
@@ -39,14 +48,25 @@ const AdminAttendancePage = () => {
 
   const loadData = async () => {
     try {
-      const [allAttendance, allStaff] = await Promise.all([
+      const [allAttendance, allStaff, thresholdSetting] = await Promise.all([
         attendanceService.getAll(),
-        staffService.getAll()
+        staffService.getAll(),
+        settingsService.get('lateThreshold')
       ]);
       setAttendance(allAttendance);
       setStaffList(allStaff);
+      setLateThreshold(thresholdSetting.value || 9);
     } catch (error) {
       console.error("Failed to load attendance data", error);
+    }
+  };
+
+  const saveLateThreshold = async (newThreshold: number) => {
+    try {
+      await settingsService.update('lateThreshold', newThreshold);
+      setLateThreshold(newThreshold);
+    } catch (error) {
+      console.error("Failed to save late threshold", error);
     }
   };
 
@@ -117,11 +137,33 @@ const AdminAttendancePage = () => {
           <h2 className="text-2xl font-bold">Attendance Records</h2>
           <p className="text-muted-foreground">Track employee attendance and working hours</p>
         </div>
-        <Button variant="outline" onClick={exportToCSV}>
-          <Download className="w-4 h-4 mr-2" />
-          Export CSV
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={() => setRegistrationModalOpen(true)}>
+            <Fingerprint className="w-4 h-4 mr-2" />
+            Register Face
+          </Button>
+          <Button variant="outline" onClick={() => setFaceManagementModalOpen(true)}>
+            <Users className="w-4 h-4 mr-2" />
+            Manage Faces
+          </Button>
+          <Button variant="outline" onClick={() => setSettingsModalOpen(true)}>
+            <Settings className="w-4 h-4 mr-2" />
+            Settings
+          </Button>
+          <Button variant="outline" onClick={exportToCSV}>
+            <Download className="w-4 h-4 mr-2" />
+            Export CSV
+          </Button>
+        </div>
       </div>
+
+      {/* Face Registration Modal */}
+      <FaceRegistrationModal
+        open={registrationModalOpen}
+        onOpenChange={setRegistrationModalOpen}
+        staffList={staffList}
+        onSuccess={loadData}
+      />
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -201,16 +243,16 @@ const AdminAttendancePage = () => {
                 filteredAttendance.map((record) => (
                   <TableRow key={record.id}>
                     <TableCell className="font-medium">
-                      {getStaffName(record.staffId)}
+                      {record.staffName || getStaffName(record.staffId)}
                     </TableCell>
                     <TableCell>{record.date}</TableCell>
                     <TableCell>
                       <span className="flex items-center gap-1">
                         <Clock className="w-3 h-3 text-muted-foreground" />
-                        {formatTime(record.clockIn)}
+                        {formatTime(record.checkIn || record.clockIn)}
                       </span>
                     </TableCell>
-                    <TableCell>{formatTime(record.clockOut)}</TableCell>
+                    <TableCell>{formatTime(record.checkOut || record.clockOut)}</TableCell>
                     <TableCell>
                       {record.workingHours ? `${record.workingHours.toFixed(1)}h` : '-'}
                     </TableCell>
@@ -222,6 +264,59 @@ const AdminAttendancePage = () => {
           </Table>
         </CardContent>
       </GlassCard>
+
+      {/* Face Registration Modal */}
+      <FaceRegistrationModal
+        open={registrationModalOpen}
+        onOpenChange={setRegistrationModalOpen}
+        staffList={staffList}
+        onSuccess={loadData}
+      />
+
+      {/* Face Management Modal */}
+      <FaceManagementModal
+        open={faceManagementModalOpen}
+        onOpenChange={setFaceManagementModalOpen}
+        onFaceDeleted={loadData}
+      />
+
+      {/* Settings Dialog */}
+      {settingsModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold mb-4">Attendance Settings</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Late Threshold (Hour of Day)
+                </label>
+                <Input
+                  type="number"
+                  min="0"
+                  max="23"
+                  value={lateThreshold}
+                  onChange={(e) => setLateThreshold(parseInt(e.target.value) || 9)}
+                  className="w-full"
+                />
+                <p className="text-sm text-muted-foreground mt-1">
+                  Staff checking in after {lateThreshold}:00 will be marked as late
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-6">
+              <Button variant="outline" onClick={() => setSettingsModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={() => {
+                saveLateThreshold(lateThreshold);
+                setSettingsModalOpen(false);
+              }}>
+                Save Settings
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

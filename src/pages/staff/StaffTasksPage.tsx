@@ -13,7 +13,8 @@ import {
   Send,
   AlertTriangle,
   CheckCircle2,
-  Plus
+  Plus,
+  Trash2
 } from 'lucide-react';
 import { Task, taskService, staffService } from '@/lib/storage';
 import { useToast } from '@/hooks/use-toast';
@@ -148,6 +149,32 @@ const StaffTasksPage = () => {
       loadTasks();
     } catch (error) {
       toast({ title: 'Failed to create task', variant: 'destructive' });
+    }
+  };
+
+  const handleDeleteTask = async (taskId: string) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task || !session) return;
+
+    // Check if staff created this task
+    if (task.createdBy !== session.userId) {
+      toast({
+        title: 'Permission denied',
+        description: 'You can only delete tasks you created',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    if (!confirm('Are you sure you want to delete this task?')) return;
+
+    try {
+      await taskService.delete(taskId);
+      toast({ title: 'Task deleted successfully' });
+      if (selectedTask?.id === taskId) setSelectedTask(null);
+      loadTasks();
+    } catch (error) {
+      toast({ title: 'Failed to delete task', variant: 'destructive' });
     }
   };
 
@@ -321,6 +348,18 @@ const StaffTasksPage = () => {
                     >
                       <CheckCircle2 className="w-4 h-4 mr-1" />
                       Mark Complete
+                    </Button>
+                  )}
+                  {/* Delete button - only for tasks created by this staff member */}
+                  {session && selectedTask.createdBy === session.userId && (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => handleDeleteTask(selectedTask.id)}
+                      className="ml-auto"
+                    >
+                      <Trash2 className="w-4 h-4 mr-1" />
+                      Delete
                     </Button>
                   )}
                 </div>

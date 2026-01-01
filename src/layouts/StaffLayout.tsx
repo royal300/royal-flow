@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import {
   Crown,
   CheckSquare,
-  Clock,
   User,
   LogOut,
   Menu,
@@ -21,7 +20,6 @@ interface StaffLayoutProps {
 const navItems = [
   { icon: CheckSquare, label: 'My Tasks', path: '/staff' },
   { icon: FileText, label: 'Daily Reports', path: '/staff/reports' },
-  { icon: Clock, label: 'Attendance', path: '/staff/attendance' },
   { icon: User, label: 'Profile', path: '/staff/profile' },
 ];
 

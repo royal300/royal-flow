@@ -9,6 +9,8 @@ export interface Staff {
   department: string;
   position: string;
   avatar?: string;
+  faceDescriptor?: number[]; // Face embedding for biometric recognition
+  faceImage?: string; // Base64 encoded face snapshot
   createdAt: string;
 }
 
@@ -51,9 +53,12 @@ export interface TaskComment {
 export interface AttendanceRecord {
   id: string;
   staffId: string;
+  staffName?: string; // Staff name for display
   date: string;
-  clockIn?: string;
-  clockOut?: string;
+  checkIn?: string; // Biometric check-in time
+  checkOut?: string; // Biometric check-out time
+  clockIn?: string; // Legacy field for compatibility
+  clockOut?: string; // Legacy field for compatibility
   status: 'present' | 'absent' | 'late';
   workingHours?: number;
 }
@@ -103,11 +108,14 @@ const api = {
     return res.json();
   },
 
-  async delete(endpoint: string): Promise<void> {
+  async delete<T = void>(endpoint: string): Promise<T> {
     const res = await fetch(`${API_URL}${endpoint}`, {
       method: 'DELETE',
     });
     if (!res.ok) throw new Error(`API Error: ${res.statusText}`);
+    // Return JSON if response has content, otherwise return void
+    const text = await res.text();
+    return text ? JSON.parse(text) : undefined as T;
   }
 };
 
@@ -304,6 +312,41 @@ export const authService = {
     return this.getSession() !== null;
   },
 };
+
+// Biometric operations
+export const biometricService = {
+  async registerFace(staffId: string, faceDescriptor: number[], faceImage: string): Promise<{ success: boolean; staff: Staff }> {
+    return api.post(`/staff/${staffId}/register-face`, { faceDescriptor, faceImage });
+  },
+
+  async getBiometricStaff(): Promise<Array<{ id: string; name: string; descriptor: number[] }>> {
+    return api.get('/staff/biometric');
+  },
+
+  async scanAttendance(staffId: string, staffName: string): Promise<{
+    type: 'checkin' | 'checkout';
+    record: AttendanceRecord;
+    message: string;
+  }> {
+    return api.post('/attendance/scan', { staffId, staffName });
+  },
+
+  async deleteFace(staffId: string): Promise<{ success: boolean; staff: Staff }> {
+    return api.delete(`/staff/${staffId}/face`);
+  },
+};
+
+// Settings operations
+export const settingsService = {
+  async get(key: string): Promise<{ key: string; value: any }> {
+    return api.get(`/settings/${key}`);
+  },
+
+  async update(key: string, value: any): Promise<{ key: string; value: any }> {
+    return api.put(`/settings/${key}`, { value });
+  },
+};
+
 
 export const initializeDefaultAdmin = () => {
   // Deprecated: Admin is handled by backend now.
