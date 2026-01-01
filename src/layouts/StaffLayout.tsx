@@ -51,14 +51,8 @@ const StaffLayout = ({ children }: StaffLayoutProps) => {
       )}>
         {/* Logo */}
         <div className="h-16 flex items-center justify-between px-4 border-b border-border">
-          <Link to="/staff" className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-lg gradient-royal flex items-center justify-center">
-              <Crown className="w-5 h-5 text-primary-foreground" />
-            </div>
-            <span className="font-bold text-lg">
-              <span className="text-gradient-royal">ROYAL</span>
-              <span className="text-secondary">300</span>
-            </span>
+          <Link to="/staff" className="flex items-center">
+            <img src="/logo.png" alt="Royal 300" className="h-10" />
           </Link>
           <button
             onClick={() => setSidebarOpen(false)}

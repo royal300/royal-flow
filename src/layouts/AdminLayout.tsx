@@ -2,13 +2,13 @@ import { ReactNode, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { 
-  Crown, 
-  LayoutDashboard, 
-  Users, 
-  CheckSquare, 
-  Calendar, 
-  BarChart3, 
+import {
+  Crown,
+  LayoutDashboard,
+  Users,
+  CheckSquare,
+  Calendar,
+  BarChart3,
   LogOut,
   Menu,
   X
@@ -42,7 +42,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
     <div className="min-h-screen flex w-full bg-background">
       {/* Mobile overlay */}
       {sidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-foreground/20 backdrop-blur-sm z-40 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
@@ -55,16 +55,10 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
       )}>
         {/* Logo */}
         <div className="h-16 flex items-center justify-between px-4 border-b border-border">
-          <Link to="/admin" className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-lg gradient-royal flex items-center justify-center">
-              <Crown className="w-5 h-5 text-primary-foreground" />
-            </div>
-            <span className="font-bold text-lg">
-              <span className="text-gradient-royal">ROYAL</span>
-              <span className="text-secondary">300</span>
-            </span>
+          <Link to="/admin" className="flex items-center">
+            <img src="/logo.png" alt="Royal 300" className="h-10" />
           </Link>
-          <button 
+          <button
             onClick={() => setSidebarOpen(false)}
             className="lg:hidden p-1 text-muted-foreground hover:text-foreground"
           >
@@ -83,8 +77,8 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
                 onClick={() => setSidebarOpen(false)}
                 className={cn(
                   "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
-                  isActive 
-                    ? "bg-primary text-primary-foreground shadow-sm" 
+                  isActive
+                    ? "bg-primary text-primary-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted"
                 )}
               >
@@ -106,9 +100,9 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
               <p className="text-xs text-muted-foreground truncate">Administrator</p>
             </div>
           </div>
-          <Button 
-            variant="ghost" 
-            size="sm" 
+          <Button
+            variant="ghost"
+            size="sm"
             className="w-full justify-start text-muted-foreground hover:text-destructive"
             onClick={handleLogout}
           >
@@ -128,13 +122,13 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
           >
             <Menu className="w-5 h-5" />
           </button>
-          
+
           <div className="flex-1 lg:ml-0">
             <h1 className="text-lg font-semibold">
               {navItems.find(item => item.path === location.pathname)?.label || 'Dashboard'}
             </h1>
           </div>
-          
+
           <div className="flex items-center gap-2">
             <div className="hidden sm:block px-3 py-1.5 rounded-full bg-destructive/10 text-destructive text-xs font-medium">
               Admin Panel

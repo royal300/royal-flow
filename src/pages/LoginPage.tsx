@@ -52,14 +52,8 @@ const LoginPage = () => {
       <div className="relative z-10 w-full max-w-md animate-fade-up">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 mb-4">
-            <div className="w-12 h-12 rounded-xl gradient-royal flex items-center justify-center shadow-glow">
-              <Crown className="w-6 h-6 text-primary-foreground" />
-            </div>
-            <span className="text-3xl font-bold tracking-tight">
-              <span className="text-gradient-royal">ROYAL</span>
-              <span className="text-secondary">300</span>
-            </span>
+          <div className="inline-flex items-center justify-center mb-4">
+            <img src="/logo.png" alt="Royal 300" className="h-16" />
           </div>
           <p className="text-muted-foreground">Employee Task Tracker</p>
         </div>
@@ -147,8 +141,8 @@ const LoginPage = () => {
                 type="submit"
                 size="lg"
                 className={`w-full mt-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 ${role === 'admin'
-                    ? 'bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700'
-                    : 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700'
+                  ? 'bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700'
+                  : 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700'
                   }`}
                 disabled={isLoading}
               >
