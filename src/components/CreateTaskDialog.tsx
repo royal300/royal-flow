@@ -155,6 +155,12 @@ export const CreateTaskDialog = ({ isOpen, onOpenChange, onSuccess }: CreateTask
     }
   };
 
+  // Format a date string (YYYY-MM-DD) to dd/mm/yyyy
+  const fmtDate = (d: string) => {
+    const [y, m, day] = d.split('-');
+    return `${day}/${m}/${y}`;
+  };
+
   const handleSendToClient = () => {
     if (!formData.clientWap) {
       toast({ title: 'Please enter a Client WhatsApp number', variant: 'destructive' });
@@ -164,19 +170,22 @@ export const CreateTaskDialog = ({ isOpen, onOpenChange, onSuccess }: CreateTask
     let message = `*Campaign: ${formData.campaignName}*\n`;
     message += `Client: ${formData.clientName} | Year: ${formData.year}\n`;
     if (formData.location) message += `Location: ${formData.location}\n`;
-    message += `--------------------------\n`;
+    message += `━━━━━━━━━━━━━━━━━━━━\n\n`;
 
     Object.entries(platforms).forEach(([name, data]) => {
       if (data.selectedDates.length > 0) {
-        message += `*${name}*: ${data.selectedDates.join(', ')}`;
+        // Short alias: Facebook/Instagram → Fb/Insta
+        const alias = name === 'Facebook/Instagram' ? 'Fb/Insta' : name;
+        message += `*${alias}*\n`;
+        message += `Date : ${data.selectedDates.map(fmtDate).join(', ')}\n`;
         if (!NO_AMOUNT_PLATFORMS.includes(name) && data.amount) {
-          message += ` | ₹${data.amount}/day`;
+          message += `Amount : ₹${data.amount}/day\n`;
         }
         message += `\n`;
       }
     });
 
-    if (formData.remarks) message += `\n*Remarks:* ${formData.remarks}`;
+    if (formData.remarks) message += `*Remarks:* ${formData.remarks}\n`;
 
     const encodedMessage = encodeURIComponent(message);
     const whatsappUrl = `https://wa.me/${formData.clientWap.replace(/\D/g, '')}?text=${encodedMessage}`;
