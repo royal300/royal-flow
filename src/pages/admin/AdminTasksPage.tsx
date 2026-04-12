@@ -58,6 +58,8 @@ const AdminTasksPage = () => {
     clientName: '',
     clientWap: '',
     campaignName: '',
+    year: new Date().getFullYear().toString(),
+    location: '',
     remarks: '',
     assignedStaff: [] as string[],
     priority: 'P1' as 'P0' | 'P1' | 'P2',
@@ -140,6 +142,8 @@ const AdminTasksPage = () => {
         clientName: formData.clientName,
         clientWap: formData.clientWap,
         campaignName: formData.campaignName,
+        year: formData.year,
+        location: formData.location,
         remarks: formData.remarks,
         platforms: activePlatforms,
         assignedStaff: formData.assignedStaff,
@@ -166,6 +170,8 @@ const AdminTasksPage = () => {
       clientName: '',
       clientWap: '',
       campaignName: '',
+      year: new Date().getFullYear().toString(),
+      location: '',
       remarks: '',
       assignedStaff: [],
       priority: 'P1',
@@ -189,6 +195,8 @@ const AdminTasksPage = () => {
 
     let message = `*Campaign Details: ${formData.campaignName}*\n\n`;
     message += `Client: ${formData.clientName}\n`;
+    message += `Year: ${formData.year}\n`;
+    message += `Location: ${formData.location}\n`;
     message += `--------------------------\n`;
     
     Object.entries(platforms).forEach(([name, data]) => {
@@ -400,7 +408,7 @@ const AdminTasksPage = () => {
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col p-0">
+        <DialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col p-0 overflow-hidden">
           <DialogHeader className="p-6 pb-2">
             <DialogTitle>Create New Marketing Task</DialogTitle>
             <DialogDescription>
@@ -411,7 +419,7 @@ const AdminTasksPage = () => {
           <ScrollArea className="flex-1 px-6 pb-6">
             <form id="task-form" onSubmit={handleSubmit} className="space-y-6 pt-2">
               {/* Client & Campaign Info */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Client Name</label>
                   <Input
@@ -437,6 +445,30 @@ const AdminTasksPage = () => {
                     placeholder="e.g. Summer Sale"
                     value={formData.campaignName}
                     onChange={(e) => setFormData({ ...formData, campaignName: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Year</label>
+                  <Select 
+                    value={formData.year} 
+                    onValueChange={(value) => setFormData({ ...formData, year: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select year" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[2024, 2025, 2026, 2027].map(y => (
+                        <SelectItem key={y} value={y.toString()}>{y}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2 flex-1 md:col-span-2 lg:col-span-2">
+                  <label className="text-sm font-medium">Location</label>
+                  <Input
+                    placeholder="e.g. Kolkata, Mumbai, Bangalore"
+                    value={formData.location}
+                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                   />
                 </div>
               </div>

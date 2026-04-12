@@ -39,6 +39,8 @@ export interface Task {
   clientName?: string;
   clientWap?: string;
   campaignName?: string;
+  year?: string;
+  location?: string;
   platforms?: PlatformData[];
   remarks?: string;
   assignedStaff: string[]; // Multiple staff IDs

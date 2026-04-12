@@ -208,7 +208,9 @@ const StaffTasksPage = () => {
               date: dateStr,
               amount: platform.amount,
               status: platform.status,
-              priority: task.priority
+              priority: task.priority,
+              year: task.year,
+              location: task.location
             });
           }
         });
@@ -373,7 +375,7 @@ const StaffTasksPage = () => {
                                 {item.clientName !== 'N/A' ? `${item.clientName}: ` : ''}{item.platformName}
                               </h4>
                               <p className="text-[11px] text-muted-foreground">
-                                {item.campaignName} {item.amount > 0 ? `• ₹${item.amount}/day` : ''}
+                                {item.campaignName} {item.year ? `(${item.year})` : ''} {item.location ? `• ${item.location}` : ''} {item.amount > 0 ? `• ₹${item.amount}/day` : ''}
                               </p>
                             </div>
                           </div>
@@ -434,7 +436,8 @@ const StaffTasksPage = () => {
                     </div>
                     <div className="space-y-1">
                       <p className="text-[10px] uppercase font-bold text-muted-foreground">Campaign</p>
-                      <p className="font-medium">{selectedTask.campaignName}</p>
+                      <p className="font-medium">{selectedTask.campaignName} {selectedTask.year && `(${selectedTask.year})`}</p>
+                      {selectedTask.location && <p className="text-muted-foreground">{selectedTask.location}</p>}
                     </div>
                   </div>
                 )}

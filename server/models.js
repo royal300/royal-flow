@@ -21,6 +21,8 @@ const taskSchema = new mongoose.Schema({
   clientName: String,
   clientWap: String,
   campaignName: String,
+  year: String,
+  location: String,
   platforms: [{
     name: String,
     startDate: String,

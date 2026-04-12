@@ -20,6 +20,7 @@ const badgeVariants = cva(
         status_pending: "border-muted bg-muted text-muted-foreground",
         status_progress: "border-primary/20 bg-primary/10 text-primary",
         status_completed: "border-success/20 bg-success/10 text-success",
+        royal: "gradient-royal text-white border-transparent",
       },
     },
     defaultVariants: {
