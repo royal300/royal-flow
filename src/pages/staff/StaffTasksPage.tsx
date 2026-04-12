@@ -89,18 +89,16 @@ const StaffTasksPage = () => {
     }
   };
 
-  // Toggle a SPECIFIC platform entry (by platform name + date) in isolation
-  const handlePlatformToggle = async (taskId: string, platformName: string, dateKey: string, currentStatus: string) => {
+  // Toggle a SPECIFIC platform entry by its ARRAY INDEX — fully isolated
+  const handlePlatformToggle = async (taskId: string, platformIndex: number, currentStatus: string) => {
     const newStatus = currentStatus === 'Completed' ? 'Pending' : 'Completed';
     try {
       const task = tasks.find(t => t.id === taskId);
       if (!task || !task.platforms) return;
 
-      const updatedPlatforms = task.platforms.map(p =>
-        // Match by BOTH name AND date so we only touch this exact entry
-        (p.name === platformName && p.startDate === dateKey)
-          ? { ...p, status: newStatus as any }
-          : p
+      // Match ONLY by index — no chance of hitting a same-named entry
+      const updatedPlatforms = task.platforms.map((p, idx) =>
+        idx === platformIndex ? { ...p, status: newStatus as any } : p
       );
 
       const allCompleted = updatedPlatforms.every(p => p.status === 'Completed');
@@ -186,14 +184,15 @@ const StaffTasksPage = () => {
     completed: tasks.filter(t => t.status === 'Completed').length,
   };
 
-  // Build daily date-sorted entries PER TASK for the detail view
+  // Build daily date-sorted entries PER TASK for the detail view — includes original index for isolation
   const getTaskDailyItems = (task: Task) => {
     if (!task.platforms || task.platforms.length === 0) return [];
-    const items = task.platforms.map(p => ({
+    const items = task.platforms.map((p, idx) => ({
       platformName: p.name,
       date: p.startDate,
       amount: p.amount,
       status: p.status,
+      platformIndex: idx,  // ← unique key for toggle isolation
     }));
     // Sort ascending by date
     return items.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
@@ -269,32 +268,32 @@ const StaffTasksPage = () => {
               return (
                 <GlassCard
                   key={task.id}
-                  className="cursor-pointer hover:-translate-y-0.5 transition-all"
+                  className="cursor-pointer hover:-translate-y-0.5 transition-all bg-primary text-primary-foreground border-primary/50"
                   onClick={() => setExpandedTaskId(task.id)}
                 >
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <h4 className="font-semibold text-sm truncate">
+                          <h4 className="font-semibold text-sm truncate text-white">
                             {task.clientName || task.title}
                           </h4>
                           <Badge variant={getPriorityVariant(task.priority) as any} className="text-[10px] h-4 px-1 shrink-0">
                             {task.priority}
                           </Badge>
                         </div>
-                        <p className="text-xs text-muted-foreground mt-0.5">
+                        <p className="text-xs text-primary-foreground/80 mt-0.5">
                           {task.campaignName} {task.year ? `(${task.year})` : ''} {task.location ? `• ${task.location}` : ''}
                         </p>
                         {progress && (
                           <div className="mt-2 flex items-center gap-2">
-                            <div className="flex-1 bg-muted rounded-full h-1.5">
+                            <div className="flex-1 bg-white/30 rounded-full h-1.5">
                               <div
-                                className="h-full rounded-full bg-primary transition-all"
+                                className="h-full rounded-full bg-white transition-all"
                                 style={{ width: `${progress.pct}%` }}
                               />
                             </div>
-                            <span className="text-[11px] text-muted-foreground shrink-0">
+                            <span className="text-[11px] text-white/80 shrink-0">
                               {progress.done}/{progress.total}
                             </span>
                           </div>
@@ -304,7 +303,7 @@ const StaffTasksPage = () => {
                         <Badge variant={getStatusVariant(task.status) as any} className="text-[10px] h-5 shrink-0">
                           {task.status}
                         </Badge>
-                        <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+                        <ChevronRight className="w-4 h-4 text-white/70 shrink-0" />
                       </div>
                     </div>
                   </CardContent>
@@ -350,10 +349,10 @@ const StaffTasksPage = () => {
                       <CardContent className="p-3">
                         <div className="flex items-center gap-3">
                           <Checkbox
-                            id={`cb-${selectedTask.id}-${item.platformName}-${item.date}`}
+                            id={`cb-${selectedTask.id}-idx-${item.platformIndex}`}
                             checked={item.status === 'Completed'}
                             onCheckedChange={() =>
-                              handlePlatformToggle(selectedTask.id, item.platformName, item.date, item.status)
+                              handlePlatformToggle(selectedTask.id, item.platformIndex, item.status)
                             }
                           />
                           <div className="flex-1">
