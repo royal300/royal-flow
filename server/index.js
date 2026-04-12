@@ -5,6 +5,7 @@ const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 const { Staff, Task, Attendance, DailyReport } = require('./models');
 const Settings = require('./settings');
+const { validateLocation } = require('./utils/locationValidator');
 const crypto = require('crypto');
 
 const app = express();
@@ -401,6 +402,54 @@ app.delete('/api/staff/:id/face', async (req, res) => {
         res.status(500).json({ error: 'Failed to delete face data' });
     }
 });
+
+// --- Location Validation Endpoint ---
+app.post('/api/validate-location', async (req, res) => {
+    try {
+        const { latitude, longitude } = req.body;
+
+        console.log('📍 Location validation request:', { latitude, longitude });
+
+        if (!latitude || !longitude) {
+            return res.status(400).json({
+                allowed: false,
+                message: 'Latitude and longitude are required'
+            });
+        }
+
+        // Get office coordinates from environment
+        const officeLat = parseFloat(process.env.OFFICE_LATITUDE);
+        const officeLon = parseFloat(process.env.OFFICE_LONGITUDE);
+        const officeRadius = parseFloat(process.env.OFFICE_RADIUS);
+
+        if (!officeLat || !officeLon || !officeRadius) {
+            console.error('❌ Office location not configured in environment');
+            return res.status(500).json({
+                allowed: false,
+                message: 'Office location not configured'
+            });
+        }
+
+        // Validate location
+        const result = validateLocation(
+            parseFloat(latitude),
+            parseFloat(longitude),
+            officeLat,
+            officeLon,
+            officeRadius
+        );
+
+        console.log('✅ Validation result:', result);
+        res.json(result);
+    } catch (error) {
+        console.error('❌ Location validation error:', error);
+        res.status(500).json({
+            allowed: false,
+            message: 'Failed to validate location'
+        });
+    }
+});
+
 
 
 const PORT = 5001;
