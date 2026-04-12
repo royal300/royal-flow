@@ -100,12 +100,12 @@ const LoginPage = () => {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <label htmlFor="email" className="text-sm font-medium">
-                  Email
+                  {role === 'admin' ? 'Login ID' : 'Email'}
                 </label>
                 <Input
                   id="email"
-                  type="email"
-                  placeholder="Enter your email"
+                  type={role === 'admin' ? 'text' : 'email'}
+                  placeholder={role === 'admin' ? 'Enter your admin ID' : 'Enter your email'}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required

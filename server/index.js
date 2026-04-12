@@ -77,12 +77,12 @@ app.post('/api/auth/login', async (req, res) => {
     const { email, password, role } = req.body;
 
     if (role === 'admin') {
-        if (email === 'admin@royal300.com' && password === 'admin123') {
+        if (email === 'royal300' && password === 'admin123') {
             return res.json({
                 userId: 'admin',
                 role: 'admin',
                 name: 'Administrator',
-                email: 'admin@royal300.com'
+                email: 'royal300'
             });
         }
     }
