@@ -9,7 +9,9 @@ import {
   ChevronUp,
   Share2,
   Users,
-  X
+  X,
+  Calendar as CalendarIcon,
+  Trash2
 } from 'lucide-react';
 import { Staff, staffService, taskService, PlatformData } from '@/lib/storage';
 import { useToast } from '@/hooks/use-toast';
@@ -27,6 +29,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { format, parseISO } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 interface CreateTaskDialogProps {
   isOpen: boolean;
@@ -108,6 +118,13 @@ export const CreateTaskDialog = ({ isOpen, onOpenChange, onSuccess }: CreateTask
     });
   };
 
+  const clearDatesForPlatform = (name: string) => {
+    setPlatforms({
+      ...platforms,
+      [name]: { ...platforms[name], selectedDates: [] }
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -157,8 +174,23 @@ export const CreateTaskDialog = ({ isOpen, onOpenChange, onSuccess }: CreateTask
 
   // Format a date string (YYYY-MM-DD) to dd/mm/yyyy
   const fmtDate = (d: string) => {
-    const [y, m, day] = d.split('-');
-    return `${day}/${m}/${y}`;
+    try {
+      if (!d) return '';
+      const [y, m, day] = d.split('-');
+      return `${day}/${m}/${y}`;
+    } catch (e) {
+      return d;
+    }
+  };
+
+  const fmtDateCondensed = (d: string) => {
+    try {
+      if (!d) return '';
+      const [y, m, day] = d.split('-');
+      return `${day}/${m}`;
+    } catch (e) {
+      return d;
+    }
   };
 
   const handleSendToClient = () => {
@@ -275,32 +307,62 @@ export const CreateTaskDialog = ({ isOpen, onOpenChange, onSuccess }: CreateTask
 
                     {(!isOptional || data.active) && (
                       <div className={`grid gap-3 ${showAmount ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'}`}>
-                        {/* Date picker */}
+                        {/* Date selection inside input-like field */}
                         <div className="space-y-1">
-                          <label className="text-[11px] text-muted-foreground">Add Dates</label>
-                          <Input type="date" className="h-8 text-xs"
-                            onChange={(e) => { addDateToPlatform(name, e.target.value); e.target.value = ''; }}
-                          />
-                          {data.selectedDates.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mt-1">
-                              {data.selectedDates.map(d => (
-                                <span key={d}
-                                  className="inline-flex items-center gap-1 bg-primary/10 text-primary text-[11px] px-2 py-0.5 rounded-full">
-                                  {new Date(d + 'T00:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
-                                  <button type="button" onClick={() => removeDateFromPlatform(name, d)}
-                                    className="hover:text-destructive">
-                                    <X className="w-2.5 h-2.5" />
-                                  </button>
-                                </span>
-                              ))}
-                            </div>
-                          )}
+                          <label className="text-[11px] text-muted-foreground">Select Dates</label>
+                          <div className="flex items-center gap-1">
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  className={cn(
+                                    "flex-1 h-10 px-3 justify-start text-left font-normal bg-background border-input",
+                                    data.selectedDates.length === 0 && "text-muted-foreground"
+                                  )}
+                                >
+                                  <CalendarIcon className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
+                                  <span className="truncate">
+                                    {data.selectedDates.length > 0 
+                                      ? data.selectedDates.map(fmtDateCondensed).join(', ') 
+                                      : "Pick dates"}
+                                  </span>
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar
+                                  mode="multiple"
+                                  selected={data.selectedDates.map(d => parseISO(d))}
+                                  onSelect={(dates) => {
+                                    const dateStrings = (dates || []).map(d => format(d, 'yyyy-MM-dd')).sort();
+                                    setPlatforms({
+                                      ...platforms,
+                                      [name]: { ...platforms[name], selectedDates: dateStrings }
+                                    });
+                                  }}
+                                  initialFocus
+                                  disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))}
+                                />
+                              </PopoverContent>
+                            </Popover>
+                            
+                            {data.selectedDates.length > 0 && (
+                              <Button 
+                                type="button"
+                                variant="outline" 
+                                size="icon" 
+                                className="h-10 w-10 shrink-0 text-destructive hover:bg-destructive/10"
+                                onClick={() => clearDatesForPlatform(name)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
                         </div>
                         {/* Amount – only for non-excluded platforms */}
                         {showAmount && (
                           <div className="space-y-1">
                             <label className="text-[11px] text-muted-foreground">Amount (per day ₹)</label>
-                            <Input type="number" placeholder="0.00" className="h-8 text-xs"
+                            <Input type="number" placeholder="0.00" className="h-10"
                               value={data.amount}
                               onChange={(e) => setPlatforms({ ...platforms, [name]: { ...data, amount: e.target.value } })} />
                           </div>
@@ -356,9 +418,33 @@ export const CreateTaskDialog = ({ isOpen, onOpenChange, onSuccess }: CreateTask
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-medium">Deadline</label>
-                <Input type="date" className="h-8 text-sm"
-                  value={formData.deadline}
-                  onChange={(e) => setFormData({ ...formData, deadline: e.target.value })} />
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full h-8 px-3 justify-start text-left font-normal bg-background border-input",
+                        !formData.deadline && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                      <span className="text-xs truncate">
+                        {formData.deadline ? fmtDate(formData.deadline) : "Select date"}
+                      </span>
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="end">
+                    <Calendar
+                      mode="single"
+                      selected={formData.deadline ? parseISO(formData.deadline) : undefined}
+                      onSelect={(date) => {
+                        if (date) setFormData({ ...formData, deadline: format(date, 'yyyy-MM-dd') });
+                      }}
+                      initialFocus
+                      disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))}
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
             </div>
           </form>
