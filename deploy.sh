@@ -1,40 +1,35 @@
 #!/bin/bash
-# Local deploy script for Royal 300 Staff Management
+# Royal 300 Staff Management - VPS Deployment Script
+# This script runs ON THE VPS
 
-echo "🚀 Starting deployment..."
+echo "🚀 Deploying Royal 300 Staff Management..."
 
-# Check if we are in the correct directory
-if [ ! -d ".git" ]; then
-    echo "❌ Error: Not in a git repository. Please run this from the project root."
-    exit 1
-fi
+# Navigate to project directory
+cd /var/www/royal300_staff_management || exit 1
 
-# 1. Check for untracked/modified changes
-if [[ -n $(git status -s) ]]; then
-    echo "📦 Staging changes..."
-    git add .
-    echo "💾 Committing changes..."
-    git commit -m "Overhaul Task Management: campaign-based forms and date-wise staff view"
-else
-    echo "✨ No changes to commit."
-fi
+# Pull latest changes
+echo "📥 Pulling latest code from GitHub..."
+git fetch origin main
+git reset --hard origin/main
 
-# 2. Push to GitHub
-echo "📤 Pushing to GitHub..."
-git push origin main
+# Install backend dependencies
+echo "📦 Installing backend dependencies..."
+cd server || exit 1
+npm install
 
-# 3. Deploy to VPS
-echo "🖥️  Triggering remote deployment on VPS..."
-# We use the domain as the host
-VPS_HOST="staff.royal300.com"
-SSH_USER="root"
+# Restart backend
+echo "🔄 Restarting backend..."
+pm2 restart royal300-backend || pm2 start index.js --name royal300-backend
 
-ssh $SSH_USER@$VPS_HOST "cd /var/www/royal300_staff_management && ./deploy.sh"
+# Build frontend
+echo "🏗️  Building frontend..."
+cd ..
+npm install
+npm run build
 
-if [ $? -eq 0 ]; then
-    echo "✅ Deployment complete!"
-    echo "🌐 Visit: https://staff.royal300.com"
-else
-    echo "❌ Deployment failed on VPS. Please check remote logs."
-    exit 1
-fi
+# Reload Nginx
+echo "🔄 Reloading Nginx..."
+sudo systemctl reload nginx
+
+echo "✅ Deployment complete!"
+echo "🌐 Visit: https://staff.royal300.com"
