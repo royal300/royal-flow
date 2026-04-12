@@ -26,7 +26,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface CreateTaskDialogProps {
   isOpen: boolean;
@@ -178,7 +177,7 @@ export const CreateTaskDialog = ({ isOpen, onOpenChange, onSuccess }: CreateTask
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 px-6 pb-6 shadow-inner min-h-0">
+        <div className="flex-1 overflow-y-auto px-6 pb-6 shadow-inner min-h-0">
           <form id="shared-task-form" onSubmit={handleSubmit} className="space-y-6 pt-2">
             {/* Client & Campaign Info */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -377,7 +376,7 @@ export const CreateTaskDialog = ({ isOpen, onOpenChange, onSuccess }: CreateTask
               </div>
             </div>
           </form>
-        </ScrollArea>
+        </div>
 
         <div className="p-6 border-t flex flex-wrap gap-3 justify-end bg-muted/10">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
