@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { Task, taskService, staffService } from '@/lib/storage';
 import { useToast } from '@/hooks/use-toast';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -57,8 +58,13 @@ const StaffTasksPage = () => {
   const loadTasks = async () => {
     if (session?.userId) {
       try {
-        const data = await taskService.getByStaffId(session.userId);
-        setTasks(data);
+        const data = await taskService.getAll();
+        // Filter tasks where this staff member is in assignedStaff or assignedTo
+        const myTasks = data.filter(t => 
+          t.assignedStaff?.includes(session.userId) || 
+          t.assignedTo === session.userId
+        );
+        setTasks(myTasks);
       } catch (error) {
         console.error("Failed to load tasks", error);
       }
@@ -130,7 +136,7 @@ const StaffTasksPage = () => {
       await taskService.create({
         title: formData.title,
         description: formData.description,
-        assignedTo: session.userId,
+        assignedStaff: [session.userId],
         createdBy: session.userId,
         createdByName: session.name,
         priority: formData.priority,
@@ -151,6 +157,88 @@ const StaffTasksPage = () => {
       toast({ title: 'Failed to create task', variant: 'destructive' });
     }
   };
+
+  const handlePlatformStatusToggle = async (taskId: string, platformName: string, currentStatus: string) => {
+    if (!session) return;
+    const newStatus = currentStatus === 'Completed' ? 'Pending' : 'Completed';
+    
+    try {
+      const task = tasks.find(t => t.id === taskId);
+      if (!task || !task.platforms) return;
+
+      const updatedPlatforms = task.platforms.map(p => 
+        p.name === platformName ? { ...p, status: newStatus as any } : p
+      );
+
+      // Check if all platforms are completed to auto-update main task status
+      const allCompleted = updatedPlatforms.every(p => p.status === 'Completed');
+      const updatedMainStatus = allCompleted ? 'Completed' : 'In Progress';
+
+      await taskService.update(taskId, { 
+        platforms: updatedPlatforms,
+        status: updatedMainStatus
+      });
+      
+      toast({ title: `${platformName} marked as ${newStatus}` });
+      loadTasks();
+    } catch (error) {
+      toast({ title: 'Failed to update platform status', variant: 'destructive' });
+    }
+  };
+
+  const flattenTasksByDate = () => {
+    const dailyItems: any[] = [];
+    
+    tasks.forEach(task => {
+      // Handle new structured tasks
+      if (task.platforms && task.platforms.length > 0) {
+        task.platforms.forEach(platform => {
+          const start = new Date(platform.startDate);
+          const end = new Date(platform.endDate);
+          
+          // Generate an entry for each day in range
+          for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+            const dateStr = d.toISOString().split('T')[0];
+            dailyItems.push({
+              id: `${task.id}-${platform.name}-${dateStr}`,
+              taskId: task.id,
+              clientName: task.clientName || 'Unknown Client',
+              campaignName: task.campaignName || 'General',
+              platformName: platform.name,
+              date: dateStr,
+              amount: platform.amount,
+              status: platform.status,
+              priority: task.priority
+            });
+          }
+        });
+      } else {
+        // Handle legacy/simple tasks
+        dailyItems.push({
+          id: task.id,
+          taskId: task.id,
+          clientName: 'N/A',
+          campaignName: task.title,
+          platformName: 'General Task',
+          date: task.deadline,
+          amount: 0,
+          status: task.status,
+          priority: task.priority,
+          isLegacy: true
+        });
+      }
+    });
+
+    // Sort by date (descending)
+    return dailyItems.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  };
+
+  const groupedDailyItems = flattenTasksByDate().reduce((groups: any, item) => {
+    const date = item.date;
+    if (!groups[date]) groups[date] = [];
+    groups[date].push(item);
+    return groups;
+  }, {});
 
   const handleDeleteTask = async (taskId: string) => {
     const task = tasks.find(t => t.id === taskId);
@@ -232,56 +320,72 @@ const StaffTasksPage = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Task List */}
-        <div className="space-y-3">
-          <h2 className="text-lg font-semibold">Task List</h2>
+        <div className="space-y-6">
+          <h2 className="text-lg font-semibold">Daily Assignments</h2>
 
-          {tasks.length === 0 ? (
+          {Object.keys(groupedDailyItems).length === 0 ? (
             <GlassCard>
               <CardContent className="py-12 text-center">
                 <CheckSquare className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
                 <h3 className="text-lg font-semibold mb-2">No tasks assigned</h3>
                 <p className="text-muted-foreground">
-                  You don't have any tasks yet. Check back later!
+                  You don't have any daily assignments yet.
                 </p>
               </CardContent>
             </GlassCard>
           ) : (
-            tasks.map((task) => (
-              <GlassCard
-                key={task.id}
-                className={`cursor-pointer transition-all ${selectedTask?.id === task.id ? 'ring-2 ring-primary' : 'hover:-translate-y-0.5'
-                  }`}
-                onClick={() => setSelectedTask(task)}
-              >
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between gap-2 mb-2">
-                    <h4 className="font-medium">{task.title}</h4>
-                    <Badge variant={getPriorityVariant(task.priority) as any}>
-                      {task.priority}
-                    </Badge>
-                  </div>
-
-                  <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
-                    {task.description}
-                  </p>
-
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <Calendar className="w-3 h-3" />
-                      <span className={isOverdue(task.deadline) && task.status !== 'Completed' ? 'text-destructive' : ''}>
-                        {new Date(task.deadline).toLocaleDateString()}
-                      </span>
-                      {isOverdue(task.deadline) && task.status !== 'Completed' && (
-                        <AlertTriangle className="w-3 h-3 text-destructive" />
-                      )}
-                    </div>
-                    <Badge variant={getStatusVariant(task.status) as any}>
-                      {task.status}
-                    </Badge>
-                  </div>
-                </CardContent>
-              </GlassCard>
+            Object.entries(groupedDailyItems).map(([date, items]: [string, any]) => (
+              <div key={date} className="space-y-3">
+                <div className="flex items-center gap-2 px-2">
+                  <Calendar className="w-4 h-4 text-primary" />
+                  <h3 className="font-bold text-sm">
+                    {new Date(date).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}
+                  </h3>
+                  {date === new Date().toISOString().split('T')[0] && (
+                    <Badge variant="royal" className="text-[10px] h-4">TODAY</Badge>
+                  )}
+                </div>
+                
+                <div className="space-y-2">
+                  {items.map((item: any) => (
+                    <GlassCard
+                      key={item.id}
+                      className={`transition-all ${selectedTask?.id === item.taskId ? 'ring-2 ring-primary' : 'hover:-translate-y-0.5'
+                        }`}
+                      onClick={() => setSelectedTask(tasks.find(t => t.id === item.taskId) || null)}
+                    >
+                      <CardContent className="p-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-3">
+                            <Checkbox 
+                              checked={item.status === 'Completed'}
+                              onCheckedChange={() => {
+                                if (item.isLegacy) {
+                                  handleStatusChange(item.taskId, item.status === 'Completed' ? 'Pending' : 'Completed');
+                                } else {
+                                  handlePlatformStatusToggle(item.taskId, item.platformName, item.status);
+                                }
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                            <div className="space-y-0.5">
+                              <h4 className={`font-medium text-sm ${item.status === 'Completed' ? 'line-through text-muted-foreground' : ''}`}>
+                                {item.clientName !== 'N/A' ? `${item.clientName}: ` : ''}{item.platformName}
+                              </h4>
+                              <p className="text-[11px] text-muted-foreground">
+                                {item.campaignName} {item.amount > 0 ? `• ₹${item.amount}/day` : ''}
+                              </p>
+                            </div>
+                          </div>
+                          <Badge variant={getPriorityVariant(item.priority) as any} className="text-[10px] h-4 px-1 shrink-0">
+                            {item.priority}
+                          </Badge>
+                        </div>
+                      </CardContent>
+                    </GlassCard>
+                  ))}
+                </div>
+              </div>
             ))
           )}
         </div>
@@ -320,6 +424,41 @@ const StaffTasksPage = () => {
 
               <CardContent className="space-y-4">
                 <p className="text-sm text-muted-foreground">{selectedTask.description}</p>
+
+                {selectedTask.clientName && (
+                  <div className="grid grid-cols-2 gap-4 p-3 border rounded-xl bg-muted/20 text-xs">
+                    <div className="space-y-1">
+                      <p className="text-[10px] uppercase font-bold text-muted-foreground">Client</p>
+                      <p className="font-medium">{selectedTask.clientName}</p>
+                      <p className="text-muted-foreground">{selectedTask.clientWap}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[10px] uppercase font-bold text-muted-foreground">Campaign</p>
+                      <p className="font-medium">{selectedTask.campaignName}</p>
+                    </div>
+                  </div>
+                )}
+
+                {selectedTask.platforms && selectedTask.platforms.length > 0 && (
+                  <div className="space-y-2">
+                    <h4 className="text-xs font-bold uppercase text-muted-foreground">Platforms</h4>
+                    <div className="grid grid-cols-1 gap-2">
+                      {selectedTask.platforms.map((p, idx) => (
+                        <div key={idx} className="flex items-center justify-between p-2 border rounded-lg bg-card text-xs">
+                          <div>
+                            <p className="font-semibold">{p.name}</p>
+                            <p className="text-muted-foreground">
+                              {p.startDate} to {p.endDate}
+                            </p>
+                          </div>
+                          <Badge variant={getStatusVariant(p.status) as any} className="text-[10px] h-4">
+                            {p.status}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 <div className="flex items-center gap-4 text-sm">
                   <div className="flex items-center gap-1">

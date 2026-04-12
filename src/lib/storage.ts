@@ -24,11 +24,25 @@ export interface StatusUpdate {
   updatedAt: string;
 }
 
+export interface PlatformData {
+  name: string;
+  startDate: string;
+  endDate: string;
+  amount: number;
+  status: 'Pending' | 'In Progress' | 'Completed';
+}
+
 export interface Task {
   id: string;
   title: string;
   description: string;
-  assignedTo: string;
+  clientName?: string;
+  clientWap?: string;
+  campaignName?: string;
+  platforms?: PlatformData[];
+  remarks?: string;
+  assignedStaff: string[]; // Multiple staff IDs
+  assignedTo?: string; // Kept for backward compatibility if needed, but we'll use assignedStaff
   createdBy: string;
   createdByName: string;
   priority: 'P0' | 'P1' | 'P2';

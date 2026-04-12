@@ -14,10 +14,20 @@ import {
   History,
   Clock,
   User,
-  ArrowRight
+  ArrowRight,
+  ChevronDown,
+  ChevronUp,
+  Share2,
+  Users
 } from 'lucide-react';
-import { Task, Staff, staffService, taskService } from '@/lib/storage';
+import { Task, Staff, staffService, taskService, PlatformData } from '@/lib/storage';
 import { useToast } from '@/hooks/use-toast';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import {
   Dialog,
   DialogContent,
@@ -45,10 +55,22 @@ const AdminTasksPage = () => {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    assignedTo: '',
+    clientName: '',
+    clientWap: '',
+    campaignName: '',
+    remarks: '',
+    assignedStaff: [] as string[],
     priority: 'P1' as 'P0' | 'P1' | 'P2',
     deadline: '',
     status: 'Pending' as 'Pending' | 'In Progress' | 'Completed',
+  });
+
+  const [platforms, setPlatforms] = useState<Record<string, any>>({
+    'Facebook/Instagram': { active: true, startDate: '', endDate: '', amount: '' },
+    'WhatsApp API': { active: true, startDate: '', endDate: '', amount: '' },
+    'Voice Calling': { active: true, startDate: '', endDate: '', amount: '' },
+    'YouTube': { active: false, startDate: '', endDate: '', amount: '', collapsed: true },
+    'Twitter': { active: false, startDate: '', endDate: '', amount: '', collapsed: true },
   });
   const { toast } = useToast();
 
@@ -102,31 +124,88 @@ const AdminTasksPage = () => {
     e.preventDefault();
 
     try {
+      const activePlatforms: PlatformData[] = Object.entries(platforms)
+        .filter(([_, data]) => data.startDate || data.endDate || data.amount)
+        .map(([name, data]) => ({
+          name,
+          startDate: data.startDate,
+          endDate: data.endDate,
+          amount: parseFloat(data.amount) || 0,
+          status: 'Pending'
+        }));
+
       await taskService.create({
-        title: formData.title,
-        description: formData.description,
-        assignedTo: formData.assignedTo,
+        title: formData.title || `${formData.clientName} - ${formData.campaignName}`,
+        description: formData.description || `Campaign for ${formData.clientName}`,
+        clientName: formData.clientName,
+        clientWap: formData.clientWap,
+        campaignName: formData.campaignName,
+        remarks: formData.remarks,
+        platforms: activePlatforms,
+        assignedStaff: formData.assignedStaff,
         createdBy: 'admin',
         createdByName: 'Administrator',
         priority: formData.priority,
-        deadline: formData.deadline,
+        deadline: formData.deadline || new Date().toISOString().split('T')[0],
         status: formData.status,
       });
 
-      toast({ title: 'Task created successfully' });
+      toast({ title: 'Task created and assigned successfully' });
       setIsDialogOpen(false);
-      setFormData({
-        title: '',
-        description: '',
-        assignedTo: '',
-        priority: 'P1',
-        deadline: '',
-        status: 'Pending',
-      });
+      resetForm();
       loadData();
     } catch (error) {
       toast({ title: 'Failed to create task', variant: 'destructive' });
     }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      title: '',
+      description: '',
+      clientName: '',
+      clientWap: '',
+      campaignName: '',
+      remarks: '',
+      assignedStaff: [],
+      priority: 'P1',
+      deadline: '',
+      status: 'Pending',
+    });
+    setPlatforms({
+      'Facebook/Instagram': { active: true, startDate: '', endDate: '', amount: '' },
+      'WhatsApp API': { active: true, startDate: '', endDate: '', amount: '' },
+      'Voice Calling': { active: true, startDate: '', endDate: '', amount: '' },
+      'YouTube': { active: false, startDate: '', endDate: '', amount: '', collapsed: true },
+      'Twitter': { active: false, startDate: '', endDate: '', amount: '', collapsed: true },
+    });
+  };
+
+  const handleSendToClient = () => {
+    if (!formData.clientWap) {
+      toast({ title: 'Please enter a Client WhatsApp number', variant: 'destructive' });
+      return;
+    }
+
+    let message = `*Campaign Details: ${formData.campaignName}*\n\n`;
+    message += `Client: ${formData.clientName}\n`;
+    message += `--------------------------\n`;
+    
+    Object.entries(platforms).forEach(([name, data]) => {
+      if (data.startDate || data.endDate || data.amount) {
+        message += `*${name}*\n`;
+        message += `Dates: ${data.startDate} to ${data.endDate}\n`;
+        message += `Amount: ₹${data.amount}/day\n\n`;
+      }
+    });
+
+    if (formData.remarks) {
+      message += `*Remarks:* ${formData.remarks}\n`;
+    }
+
+    const encodedMessage = encodeURIComponent(message);
+    const whatsappUrl = `https://wa.me/${formData.clientWap.replace(/\D/g, '')}?text=${encodedMessage}`;
+    window.open(whatsappUrl, '_blank');
   };
 
   const handleStatusChange = async (e: React.MouseEvent, taskId: string, newStatus: 'Pending' | 'In Progress' | 'Completed') => {
@@ -246,7 +325,12 @@ const AdminTasksPage = () => {
                           {new Date(task.deadline).toLocaleDateString()}
                         </div>
                         <span>•</span>
-                        <span>{getStaffName(task.assignedTo)}</span>
+                        <div className="flex items-center gap-1">
+                          <Users className="w-3 h-3" />
+                          {task.assignedStaff?.length > 0 
+                            ? `${task.assignedStaff.length} Staff` 
+                            : getStaffName(task.assignedTo || '')}
+                        </div>
                       </div>
 
                       <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
@@ -315,94 +399,205 @@ const AdminTasksPage = () => {
         ))}
       </div>
 
-      {/* Create Task Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Create New Task</DialogTitle>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col p-0">
+          <DialogHeader className="p-6 pb-2">
+            <DialogTitle>Create New Marketing Task</DialogTitle>
             <DialogDescription>
-              Assign a task to a team member with priority and deadline
+              Fill in campaign details and assign to staff members
             </DialogDescription>
           </DialogHeader>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Task Title</label>
-              <Input
-                required
-                placeholder="Enter task title"
-                value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              />
-            </div>
+          <ScrollArea className="flex-1 px-6 pb-6">
+            <form id="task-form" onSubmit={handleSubmit} className="space-y-6 pt-2">
+              {/* Client & Campaign Info */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Client Name</label>
+                  <Input
+                    required
+                    placeholder="Enter client name"
+                    value={formData.clientName}
+                    onChange={(e) => setFormData({ ...formData, clientName: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Client Wap Number</label>
+                  <Input
+                    required
+                    placeholder="WhatsApp number"
+                    value={formData.clientWap}
+                    onChange={(e) => setFormData({ ...formData, clientWap: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Campaign Name</label>
+                  <Input
+                    required
+                    placeholder="e.g. Summer Sale"
+                    value={formData.campaignName}
+                    onChange={(e) => setFormData({ ...formData, campaignName: e.target.value })}
+                  />
+                </div>
+              </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Description</label>
-              <Textarea
-                required
-                placeholder="Describe the task..."
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                rows={3}
-              />
-            </div>
+              {/* Platforms */}
+              <div className="space-y-4">
+                <h4 className="text-sm font-semibold border-b pb-1">Platforms & Schedule</h4>
+                
+                <div className="grid grid-cols-1 gap-4">
+                  {Object.entries(platforms).map(([name, data]) => (
+                    <div key={name} className="p-4 border rounded-xl bg-card/50 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <label className="text-sm font-bold flex items-center gap-2">
+                          {name}
+                        </label>
+                        {(name === 'YouTube' || name === 'Twitter') ? (
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            type="button"
+                            className="h-8 px-2 text-xs"
+                            onClick={() => setPlatforms({
+                              ...platforms,
+                              [name]: { ...data, active: !data.active }
+                            })}
+                          >
+                            {data.active ? 'Hide Inputs' : 'Show Inputs'}
+                            {data.active ? <ChevronUp className="ml-1 w-3 h-3" /> : <ChevronDown className="ml-1 w-3 h-3" />}
+                          </Button>
+                        ) : null}
+                      </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Assign To</label>
-                <Select
-                  value={formData.assignedTo}
-                  onValueChange={(value) => setFormData({ ...formData, assignedTo: value })}
-                  required
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select staff" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {staffList.map((staff) => (
-                      <SelectItem key={staff.id} value={staff.id}>{staff.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                      {((name !== 'YouTube' && name !== 'Twitter') || data.active) && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-1.5">
+                            <label className="text-xs font-medium text-muted-foreground">Select Date Duration</label>
+                            <div className="flex items-center gap-2">
+                              <Input 
+                                type="date" 
+                                className="h-9 text-xs" 
+                                value={data.startDate} 
+                                onChange={(e) => setPlatforms({
+                                  ...platforms,
+                                  [name]: { ...data, startDate: e.target.value }
+                                })}
+                              />
+                              <span className="text-muted-foreground">to</span>
+                              <Input 
+                                type="date" 
+                                className="h-9 text-xs" 
+                                value={data.endDate} 
+                                onChange={(e) => setPlatforms({
+                                  ...platforms,
+                                  [name]: { ...data, endDate: e.target.value }
+                                })}
+                              />
+                            </div>
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="text-xs font-medium text-muted-foreground">Amount (per day)</label>
+                            <Input 
+                              type="number" 
+                              placeholder="0.00" 
+                              className="h-9" 
+                              value={data.amount} 
+                              onChange={(e) => setPlatforms({
+                                ...platforms,
+                                [name]: { ...data, amount: e.target.value }
+                              })}
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium">Priority</label>
-                <Select
-                  value={formData.priority}
-                  onValueChange={(value: 'P0' | 'P1' | 'P2') => setFormData({ ...formData, priority: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="P0">P0 (High)</SelectItem>
-                    <SelectItem value="P1">P1 (Medium)</SelectItem>
-                    <SelectItem value="P2">P2 (Low)</SelectItem>
-                  </SelectContent>
-                </Select>
+                <label className="text-sm font-medium">Remarks</label>
+                <Textarea
+                  placeholder="Additional notes for staff..."
+                  value={formData.remarks}
+                  onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
+                  rows={2}
+                />
               </div>
-            </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Deadline</label>
-              <Input
-                type="date"
-                required
-                value={formData.deadline}
-                onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
-              />
-            </div>
+              {/* Assign Staff */}
+              <div className="space-y-3">
+                <label className="text-sm font-medium flex items-center gap-2">
+                  <Users className="w-4 h-4" />
+                  Assign Staff Members
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-4 border rounded-xl bg-muted/20">
+                  {staffList.map((staff) => (
+                    <div key={staff.id} className="flex items-center space-x-2">
+                      <Checkbox 
+                        id={`staff-${staff.id}`} 
+                        checked={formData.assignedStaff.includes(staff.id)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setFormData({ ...formData, assignedStaff: [...formData.assignedStaff, staff.id] });
+                          } else {
+                            setFormData({ ...formData, assignedStaff: formData.assignedStaff.filter(id => id !== staff.id) });
+                          }
+                        }}
+                      />
+                      <label 
+                        htmlFor={`staff-${staff.id}`}
+                        className="text-sm cursor-pointer select-none"
+                      >
+                        {staff.name}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              </div>
 
-            <DialogFooter className="pt-4">
-              <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" variant="royal">
-                Create Task
-              </Button>
-            </DialogFooter>
-          </form>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Priority</label>
+                  <Select
+                    value={formData.priority}
+                    onValueChange={(value: 'P0' | 'P1' | 'P2') => setFormData({ ...formData, priority: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="P0">P0 (High)</SelectItem>
+                      <SelectItem value="P1">P1 (Medium)</SelectItem>
+                      <SelectItem value="P2">P2 (Low)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Deadline (Admin Reference)</label>
+                  <Input
+                    type="date"
+                    value={formData.deadline}
+                    onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
+                  />
+                </div>
+              </div>
+            </form>
+          </ScrollArea>
+
+          <div className="p-6 border-t flex flex-wrap gap-3 justify-end">
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="secondary" onClick={handleSendToClient} className="gap-2">
+              <Share2 className="w-4 h-4" />
+              Send to Client
+            </Button>
+            <Button type="submit" form="task-form" variant="royal" className="gap-2">
+              <Plus className="w-4 h-4" />
+              Assign to Staff
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
 
@@ -410,33 +605,82 @@ const AdminTasksPage = () => {
       <Dialog open={!!selectedTask} onOpenChange={(open) => !open && setSelectedTask(null)}>
         <DialogContent className="sm:max-w-xl max-h-[85vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle className="flex items-start justify-between gap-4">
+            <DialogTitle className="flex flex-col gap-1">
               <span>{selectedTask?.title}</span>
-              <Badge variant={getPriorityVariant(selectedTask?.priority || 'P1') as any}>
-                {selectedTask?.priority}
-              </Badge>
+              <div className="flex items-center gap-2">
+                <Badge variant={getPriorityVariant(selectedTask?.priority || 'P1') as any}>
+                  {selectedTask?.priority}
+                </Badge>
+                <Badge variant={getStatusVariant(selectedTask?.status || 'Pending') as any}>
+                  {selectedTask?.status}
+                </Badge>
+              </div>
             </DialogTitle>
-            <DialogDescription className="flex items-center gap-2 mt-1">
-              <span className="flex items-center gap-1">
-                <User className="w-3 h-3" />
-                {selectedTask ? getStaffName(selectedTask.assignedTo) : ''}
-              </span>
-              <span>•</span>
-              <span className="flex items-center gap-1">
-                <Calendar className="w-3 h-3" />
-                Deadline: {selectedTask && new Date(selectedTask.deadline).toLocaleDateString()}
-              </span>
+            <DialogDescription className="space-y-1 mt-1">
+              <div className="flex items-center gap-2">
+                <Users className="w-3.5 h-3.5" />
+                <span className="text-xs font-medium">Assigned to: </span>
+                <div className="flex flex-wrap gap-1">
+                  {selectedTask?.assignedStaff?.map(id => (
+                    <Badge key={id} variant="secondary" className="text-[10px] h-4 px-1">
+                      {getStaffName(id)}
+                    </Badge>
+                  ))}
+                  {(!selectedTask?.assignedStaff || selectedTask.assignedStaff.length === 0) && (
+                    <span className="text-xs text-muted-foreground">{getStaffName(selectedTask?.assignedTo || '')}</span>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Calendar className="w-3.5 h-3.5" />
+                <span className="text-xs">Deadline: {selectedTask && new Date(selectedTask.deadline).toLocaleDateString()}</span>
+              </div>
             </DialogDescription>
           </DialogHeader>
 
           <ScrollArea className="flex-1 pr-4 -mr-4">
             <div className="space-y-6 py-4">
-              <div className="space-y-2">
-                <h4 className="text-sm font-medium">Description</h4>
-                <div className="p-3 bg-muted/30 rounded-lg text-sm whitespace-pre-wrap">
-                  {selectedTask?.description}
+              {selectedTask?.clientName && (
+                <div className="grid grid-cols-2 gap-4 p-4 border rounded-xl bg-muted/20">
+                  <div className="space-y-1">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Client</p>
+                    <p className="text-sm font-medium">{selectedTask.clientName}</p>
+                    <p className="text-xs text-muted-foreground">{selectedTask.clientWap}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Campaign</p>
+                    <p className="text-sm font-medium">{selectedTask.campaignName}</p>
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {selectedTask?.platforms && selectedTask.platforms.length > 0 && (
+                <div className="space-y-3">
+                  <h4 className="text-sm font-medium">Platforms & Status</h4>
+                  <div className="grid grid-cols-1 gap-2">
+                    {selectedTask.platforms.map((p, idx) => (
+                      <div key={idx} className="flex items-center justify-between p-3 border rounded-lg bg-card text-sm">
+                        <div className="space-y-1">
+                          <p className="font-semibold">{p.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {p.startDate} to {p.endDate} • ₹{p.amount}/day
+                          </p>
+                        </div>
+                        <Badge variant={getStatusVariant(p.status) as any}>{p.status}</Badge>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {selectedTask?.remarks && (
+                <div className="space-y-2">
+                  <h4 className="text-sm font-medium">Remarks</h4>
+                  <div className="p-3 bg-muted/30 rounded-lg text-sm whitespace-pre-wrap italic">
+                    {selectedTask.remarks}
+                  </div>
+                </div>
+              )}
 
               {/* Task Updates/Comments from Staff */}
               {selectedTask?.comments && selectedTask.comments.length > 0 && (
