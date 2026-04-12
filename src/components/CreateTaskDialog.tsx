@@ -178,7 +178,7 @@ export const CreateTaskDialog = ({ isOpen, onOpenChange, onSuccess }: CreateTask
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 px-6 pb-6 shadow-inner">
+        <ScrollArea className="flex-1 px-6 pb-6 shadow-inner min-h-0">
           <form id="shared-task-form" onSubmit={handleSubmit} className="space-y-6 pt-2">
             {/* Client & Campaign Info */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
