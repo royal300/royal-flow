@@ -90,9 +90,16 @@ const AdminDashboard = () => {
     : 0;
 
   return (
-    <div className="space-y-6 animate-fade-up">
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="space-y-5 animate-fade-up">
+      {/* Mobile: Add Task button at very top */}
+      <div className="flex sm:hidden justify-end">
+        <Button variant="royal" size="sm" onClick={() => setIsTaskDialogOpen(true)}>
+          <Plus className="w-4 h-4 mr-2" /> Add New Task
+        </Button>
+      </div>
+
+      {/* Stats Cards: 2-col on mobile, 4-col on lg */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <GlassCard className="hover:-translate-y-1">
           <CardContent className="p-5">
             <div className="flex items-start justify-between">

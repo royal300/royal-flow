@@ -130,10 +130,40 @@ const AdminTasksPage = () => {
     }
   };
 
+  // Sort tasks by earliest platform date (ascending) for display within each column
+  const sortByDate = (taskList: Task[]) =>
+    [...taskList].sort((a, b) => {
+      const aDate = a.platforms?.[0]?.startDate || a.deadline || '';
+      const bDate = b.platforms?.[0]?.startDate || b.deadline || '';
+      return new Date(aDate).getTime() - new Date(bDate).getTime();
+    });
+
   const groupedTasks = {
-    'Pending': filteredTasks.filter(t => t.status === 'Pending'),
-    'In Progress': filteredTasks.filter(t => t.status === 'In Progress'),
-    'Completed': filteredTasks.filter(t => t.status === 'Completed'),
+    'Pending': sortByDate(filteredTasks.filter(t => t.status === 'Pending')),
+    'In Progress': sortByDate(filteredTasks.filter(t => t.status === 'In Progress')),
+    'Completed': sortByDate(filteredTasks.filter(t => t.status === 'Completed')),
+  };
+
+  // Get platform progress for a task
+  const getProgress = (task: Task) => {
+    if (!task.platforms || task.platforms.length === 0) return null;
+    const total = task.platforms.length;
+    const done = task.platforms.filter(p => p.status === 'Completed').length;
+    return { done, total, pct: Math.round((done / total) * 100) };
+  };
+
+  // Group platforms by date for admin detail view (sorted ascending)
+  const getPlatformsByDate = (task: Task) => {
+    if (!task.platforms) return {};
+    const sorted = [...task.platforms].sort((a, b) =>
+      new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
+    );
+    return sorted.reduce((groups: Record<string, typeof sorted>, p) => {
+      const key = p.startDate;
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(p);
+      return groups;
+    }, {});
   };
 
   return (
@@ -209,6 +239,21 @@ const AdminTasksPage = () => {
                       <p className="text-xs text-muted-foreground line-clamp-2 mb-3">
                         {task.description}
                       </p>
+
+                      {/* Progress bar */}
+                      {getProgress(task) && (
+                        <div className="flex items-center gap-2 mb-3">
+                          <div className="flex-1 bg-muted rounded-full h-1.5">
+                            <div
+                              className="h-full rounded-full bg-primary transition-all"
+                              style={{ width: `${getProgress(task)!.pct}%` }}
+                            />
+                          </div>
+                          <span className="text-[11px] text-muted-foreground shrink-0">
+                            {getProgress(task)!.done}/{getProgress(task)!.total}
+                          </span>
+                        </div>
+                      )}
 
                       <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
                         <div className="flex items-center gap-1">
@@ -351,20 +396,31 @@ const AdminTasksPage = () => {
 
               {selectedTask?.platforms && selectedTask.platforms.length > 0 && (
                 <div className="space-y-3">
-                  <h4 className="text-sm font-medium">Platforms & Status</h4>
-                  <div className="grid grid-cols-1 gap-2">
-                    {selectedTask.platforms.map((p, idx) => (
-                      <div key={idx} className="flex items-center justify-between p-3 border rounded-lg bg-card text-sm">
-                        <div className="space-y-1">
-                          <p className="font-semibold">{p.name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {p.startDate} to {p.endDate} • ₹{p.amount}/day
-                          </p>
-                        </div>
-                        <Badge variant={getStatusVariant(p.status) as any}>{p.status}</Badge>
+                  <h4 className="text-sm font-medium">Platform Progress (Date-wise)</h4>
+                  {Object.entries(getPlatformsByDate(selectedTask)).map(([date, plats]) => (
+                    <div key={date} className="space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="w-3.5 h-3.5 text-primary" />
+                        <span className="text-xs font-bold">
+                          {new Date(date + 'T00:00:00').toLocaleDateString(undefined, {
+                            weekday: 'short', day: 'numeric', month: 'short'
+                          })}
+                        </span>
                       </div>
-                    ))}
-                  </div>
+                      {(plats as any[]).map((p: any, idx: number) => (
+                        <div key={idx} className="flex items-center justify-between p-2.5 border rounded-lg bg-card text-xs ml-4">
+                          <div className="flex items-center gap-2">
+                            <div className={`w-2 h-2 rounded-full ${p.status === 'Completed' ? 'bg-success' : p.status === 'In Progress' ? 'bg-primary' : 'bg-muted-foreground'}`} />
+                            <span className={`font-semibold ${p.status === 'Completed' ? 'line-through text-muted-foreground' : ''}`}>{p.name}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {p.amount > 0 && <span className="text-muted-foreground">₹{p.amount}/day</span>}
+                            <Badge variant={getStatusVariant(p.status) as any} className="h-4 text-[10px] px-1">{p.status}</Badge>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
                 </div>
               )}
 

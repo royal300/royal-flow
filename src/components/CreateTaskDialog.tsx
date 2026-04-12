@@ -8,9 +8,10 @@ import {
   ChevronDown,
   ChevronUp,
   Share2,
-  Users
+  Users,
+  X
 } from 'lucide-react';
-import { Task, Staff, staffService, taskService, PlatformData } from '@/lib/storage';
+import { Staff, staffService, taskService, PlatformData } from '@/lib/storage';
 import { useToast } from '@/hooks/use-toast';
 import {
   Dialog,
@@ -33,11 +34,12 @@ interface CreateTaskDialogProps {
   onSuccess: () => void;
 }
 
+// Platforms that DO NOT need amount
+const NO_AMOUNT_PLATFORMS = ['WhatsApp API', 'Voice Calling'];
+
 export const CreateTaskDialog = ({ isOpen, onOpenChange, onSuccess }: CreateTaskDialogProps) => {
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [formData, setFormData] = useState({
-    title: '',
-    description: '',
     clientName: '',
     clientWap: '',
     campaignName: '',
@@ -47,17 +49,17 @@ export const CreateTaskDialog = ({ isOpen, onOpenChange, onSuccess }: CreateTask
     assignedStaff: [] as string[],
     priority: 'P1' as 'P0' | 'P1' | 'P2',
     deadline: '',
-    status: 'Pending' as 'Pending' | 'In Progress' | 'Completed',
   });
 
-  const [platforms, setPlatforms] = useState<Record<string, any>>({
-    'Facebook/Instagram': { active: true, startDate: '', endDate: '', amount: '' },
-    'WhatsApp API': { active: true, startDate: '', endDate: '', amount: '' },
-    'Voice Calling': { active: true, startDate: '', endDate: '', amount: '' },
-    'YouTube': { active: false, startDate: '', endDate: '', amount: '', collapsed: true },
-    'Twitter': { active: false, startDate: '', endDate: '', amount: '', collapsed: true },
+  // Each platform: selectedDates = string[], amount = string, active (for YT/Twitter toggle)
+  const [platforms, setPlatforms] = useState<Record<string, { selectedDates: string[]; amount: string; active: boolean }>>({
+    'Facebook/Instagram': { selectedDates: [], amount: '', active: true },
+    'WhatsApp API':       { selectedDates: [], amount: '', active: true },
+    'Voice Calling':      { selectedDates: [], amount: '', active: true },
+    'YouTube':            { selectedDates: [], amount: '', active: false },
+    'Twitter':            { selectedDates: [], amount: '', active: false },
   });
-  
+
   const { toast } = useToast();
 
   useEffect(() => {
@@ -69,31 +71,40 @@ export const CreateTaskDialog = ({ isOpen, onOpenChange, onSuccess }: CreateTask
       const allStaff = await staffService.getAll();
       setStaffList(allStaff);
     } catch (error) {
-      console.error("Failed to load staff", error);
+      console.error('Failed to load staff', error);
     }
   };
 
   const resetForm = () => {
     setFormData({
-      title: '',
-      description: '',
-      clientName: '',
-      clientWap: '',
-      campaignName: '',
-      year: new Date().getFullYear().toString(),
-      location: '',
-      remarks: '',
-      assignedStaff: [],
-      priority: 'P1',
-      deadline: '',
-      status: 'Pending',
+      clientName: '', clientWap: '', campaignName: '',
+      year: new Date().getFullYear().toString(), location: '',
+      remarks: '', assignedStaff: [], priority: 'P1', deadline: '',
     });
     setPlatforms({
-      'Facebook/Instagram': { active: true, startDate: '', endDate: '', amount: '' },
-      'WhatsApp API': { active: true, startDate: '', endDate: '', amount: '' },
-      'Voice Calling': { active: true, startDate: '', endDate: '', amount: '' },
-      'YouTube': { active: false, startDate: '', endDate: '', amount: '', collapsed: true },
-      'Twitter': { active: false, startDate: '', endDate: '', amount: '', collapsed: true },
+      'Facebook/Instagram': { selectedDates: [], amount: '', active: true },
+      'WhatsApp API':       { selectedDates: [], amount: '', active: true },
+      'Voice Calling':      { selectedDates: [], amount: '', active: true },
+      'YouTube':            { selectedDates: [], amount: '', active: false },
+      'Twitter':            { selectedDates: [], amount: '', active: false },
+    });
+  };
+
+  const addDateToPlatform = (name: string, dateStr: string) => {
+    if (!dateStr) return;
+    const current = platforms[name].selectedDates;
+    if (current.includes(dateStr)) return; // Don't add duplicate
+    setPlatforms({
+      ...platforms,
+      [name]: { ...platforms[name], selectedDates: [...current, dateStr].sort() }
+    });
+  };
+
+  const removeDateFromPlatform = (name: string, dateStr: string) => {
+    const current = platforms[name].selectedDates;
+    setPlatforms({
+      ...platforms,
+      [name]: { ...platforms[name], selectedDates: current.filter(d => d !== dateStr) }
     });
   };
 
@@ -101,19 +112,25 @@ export const CreateTaskDialog = ({ isOpen, onOpenChange, onSuccess }: CreateTask
     e.preventDefault();
 
     try {
-      const activePlatforms: PlatformData[] = Object.entries(platforms)
-        .filter(([_, data]) => data.startDate || data.endDate || data.amount)
-        .map(([name, data]) => ({
-          name,
-          startDate: data.startDate,
-          endDate: data.endDate,
-          amount: parseFloat(data.amount) || 0,
-          status: 'Pending'
-        }));
+      // Build PlatformData: one entry per selected date per platform
+      const activePlatforms: PlatformData[] = [];
+      Object.entries(platforms).forEach(([name, data]) => {
+        if (data.selectedDates.length > 0) {
+          data.selectedDates.forEach(date => {
+            activePlatforms.push({
+              name,
+              startDate: date,
+              endDate: date,
+              amount: NO_AMOUNT_PLATFORMS.includes(name) ? 0 : (parseFloat(data.amount) || 0),
+              status: 'Pending'
+            });
+          });
+        }
+      });
 
       await taskService.create({
-        title: formData.title || `${formData.clientName} - ${formData.campaignName}`,
-        description: formData.description || `Campaign for ${formData.clientName}`,
+        title: `${formData.clientName} - ${formData.campaignName}`,
+        description: `Campaign for ${formData.clientName}`,
         clientName: formData.clientName,
         clientWap: formData.clientWap,
         campaignName: formData.campaignName,
@@ -126,7 +143,7 @@ export const CreateTaskDialog = ({ isOpen, onOpenChange, onSuccess }: CreateTask
         createdByName: 'Administrator',
         priority: formData.priority,
         deadline: formData.deadline || new Date().toISOString().split('T')[0],
-        status: formData.status,
+        status: 'Pending',
       });
 
       toast({ title: 'Task created and assigned successfully' });
@@ -144,23 +161,22 @@ export const CreateTaskDialog = ({ isOpen, onOpenChange, onSuccess }: CreateTask
       return;
     }
 
-    let message = `*Campaign Details: ${formData.campaignName}*\n\n`;
-    message += `Client: ${formData.clientName}\n`;
-    message += `Year: ${formData.year}\n`;
-    message += `Location: ${formData.location}\n`;
+    let message = `*Campaign: ${formData.campaignName}*\n`;
+    message += `Client: ${formData.clientName} | Year: ${formData.year}\n`;
+    if (formData.location) message += `Location: ${formData.location}\n`;
     message += `--------------------------\n`;
-    
+
     Object.entries(platforms).forEach(([name, data]) => {
-      if (data.startDate || data.endDate || data.amount) {
-        message += `*${name}*\n`;
-        message += `Dates: ${data.startDate} to ${data.endDate}\n`;
-        message += `Amount: ₹${data.amount}/day\n\n`;
+      if (data.selectedDates.length > 0) {
+        message += `*${name}*: ${data.selectedDates.join(', ')}`;
+        if (!NO_AMOUNT_PLATFORMS.includes(name) && data.amount) {
+          message += ` | ₹${data.amount}/day`;
+        }
+        message += `\n`;
       }
     });
 
-    if (formData.remarks) {
-      message += `*Remarks:* ${formData.remarks}\n`;
-    }
+    if (formData.remarks) message += `\n*Remarks:* ${formData.remarks}`;
 
     const encodedMessage = encodeURIComponent(message);
     const whatsappUrl = `https://wa.me/${formData.clientWap.replace(/\D/g, '')}?text=${encodedMessage}`;
@@ -169,54 +185,52 @@ export const CreateTaskDialog = ({ isOpen, onOpenChange, onSuccess }: CreateTask
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col p-0 overflow-hidden">
-        <DialogHeader className="p-6 pb-2">
-          <DialogTitle>Create New Marketing Task</DialogTitle>
-          <DialogDescription>
+      <DialogContent
+        className="sm:max-w-2xl flex flex-col p-0 overflow-hidden"
+        style={{ maxHeight: '90vh', touchAction: 'none' }}
+      >
+        <DialogHeader className="p-4 pb-2 shrink-0 border-b">
+          <DialogTitle className="text-base">Create New Marketing Task</DialogTitle>
+          <DialogDescription className="text-xs">
             Fill in campaign details and assign to staff members
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto px-6 pb-6 shadow-inner min-h-0">
-          <form id="shared-task-form" onSubmit={handleSubmit} className="space-y-6 pt-2">
-            {/* Client & Campaign Info */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Client Name</label>
-                <Input
-                  required
-                  placeholder="Enter client name"
+        {/* Scrollable content — touch-action pan-y ensures vertical-only scroll on mobile */}
+        <div
+          className="flex-1 overflow-y-auto px-4 py-3"
+          style={{ overscrollBehavior: 'contain', touchAction: 'pan-y' }}
+        >
+          <form id="shared-task-form" onSubmit={handleSubmit} className="space-y-4">
+
+            {/* Row 1: Client Name + Wap + Campaign */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="space-y-1">
+                <label className="text-xs font-medium">Client Name *</label>
+                <Input required placeholder="Client name" className="h-8 text-sm"
                   value={formData.clientName}
-                  onChange={(e) => setFormData({ ...formData, clientName: e.target.value })}
-                />
+                  onChange={(e) => setFormData({ ...formData, clientName: e.target.value })} />
               </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Client Wap Number</label>
-                <Input
-                  required
-                  placeholder="WhatsApp number"
+              <div className="space-y-1">
+                <label className="text-xs font-medium">WhatsApp Number *</label>
+                <Input required placeholder="e.g. 919876543210" className="h-8 text-sm"
                   value={formData.clientWap}
-                  onChange={(e) => setFormData({ ...formData, clientWap: e.target.value })}
-                />
+                  onChange={(e) => setFormData({ ...formData, clientWap: e.target.value })} />
               </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Campaign Name</label>
-                <Input
-                  required
-                  placeholder="e.g. Summer Sale"
+              <div className="space-y-1">
+                <label className="text-xs font-medium">Campaign Name *</label>
+                <Input required placeholder="e.g. Summer Sale" className="h-8 text-sm"
                   value={formData.campaignName}
-                  onChange={(e) => setFormData({ ...formData, campaignName: e.target.value })}
-                />
+                  onChange={(e) => setFormData({ ...formData, campaignName: e.target.value })} />
               </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Year</label>
-                <Select 
-                  value={formData.year} 
-                  onValueChange={(value) => setFormData({ ...formData, year: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select year" />
-                  </SelectTrigger>
+            </div>
+
+            {/* Row 2: Year + Location */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="space-y-1">
+                <label className="text-xs font-medium">Year</label>
+                <Select value={formData.year} onValueChange={(v) => setFormData({ ...formData, year: v })}>
+                  <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {[2024, 2025, 2026, 2027].map(y => (
                       <SelectItem key={y} value={y.toString()}>{y}</SelectItem>
@@ -224,171 +238,131 @@ export const CreateTaskDialog = ({ isOpen, onOpenChange, onSuccess }: CreateTask
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2 flex-1 md:col-span-2 lg:col-span-2">
-                <label className="text-sm font-medium">Location</label>
-                <Input
-                  placeholder="e.g. Kolkata, Mumbai, Bangalore"
+              <div className="space-y-1 col-span-1 sm:col-span-3">
+                <label className="text-xs font-medium">Location</label>
+                <Input placeholder="e.g. Kolkata, Mumbai" className="h-8 text-sm"
                   value={formData.location}
-                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                />
+                  onChange={(e) => setFormData({ ...formData, location: e.target.value })} />
               </div>
             </div>
 
             {/* Platforms */}
-            <div className="space-y-4">
-              <h4 className="text-sm font-semibold border-b pb-1">Platforms & Schedule</h4>
-              
-              <div className="grid grid-cols-1 gap-4">
-                {Object.entries(platforms).map(([name, data]) => (
-                  <div key={name} className="p-4 border rounded-xl bg-card/50 space-y-3">
+            <div className="space-y-2">
+              <h4 className="text-xs font-semibold uppercase text-muted-foreground border-b pb-1">Platforms & Schedule</h4>
+              {Object.entries(platforms).map(([name, data]) => {
+                const isOptional = name === 'YouTube' || name === 'Twitter';
+                const showAmount = !NO_AMOUNT_PLATFORMS.includes(name);
+                return (
+                  <div key={name} className="border rounded-lg p-3 bg-card/50 space-y-2">
                     <div className="flex items-center justify-between">
-                      <label className="text-sm font-bold flex items-center gap-2">
-                        {name}
-                      </label>
-                      {(name === 'YouTube' || name === 'Twitter') ? (
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          type="button"
-                          className="h-8 px-2 text-xs"
-                          onClick={() => setPlatforms({
-                            ...platforms,
-                            [name]: { ...data, active: !data.active }
-                          })}
-                        >
-                          {data.active ? 'Hide Inputs' : 'Show Inputs'}
-                          {data.active ? <ChevronUp className="ml-1 w-3 h-3" /> : <ChevronDown className="ml-1 w-3 h-3" />}
+                      <span className="text-sm font-semibold">{name}</span>
+                      {isOptional && (
+                        <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-xs"
+                          onClick={() => setPlatforms({ ...platforms, [name]: { ...data, active: !data.active } })}>
+                          {data.active ? <><ChevronUp className="w-3 h-3 mr-1" />Hide</> : <><ChevronDown className="w-3 h-3 mr-1" />Show</>}
                         </Button>
-                      ) : null}
+                      )}
                     </div>
 
-                    {((name !== 'YouTube' && name !== 'Twitter') || data.active) && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-1.5">
-                          <label className="text-xs font-medium text-muted-foreground">Select Date Duration</label>
-                          <div className="flex items-center gap-2">
-                            <Input 
-                              type="date" 
-                              className="h-9 text-xs" 
-                              value={data.startDate} 
-                              onChange={(e) => setPlatforms({
-                                ...platforms,
-                                [name]: { ...data, startDate: e.target.value }
-                              })}
-                            />
-                            <span className="text-muted-foreground">to</span>
-                            <Input 
-                              type="date" 
-                              className="h-9 text-xs" 
-                              value={data.endDate} 
-                              onChange={(e) => setPlatforms({
-                                ...platforms,
-                                [name]: { ...data, endDate: e.target.value }
-                              })}
-                            />
-                          </div>
-                        </div>
-                        <div className="space-y-1.5">
-                          <label className="text-xs font-medium text-muted-foreground">Amount (per day)</label>
-                          <Input 
-                            type="number" 
-                            placeholder="0.00" 
-                            className="h-9" 
-                            value={data.amount} 
-                            onChange={(e) => setPlatforms({
-                              ...platforms,
-                              [name]: { ...data, amount: e.target.value }
-                            })}
+                    {(!isOptional || data.active) && (
+                      <div className={`grid gap-3 ${showAmount ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'}`}>
+                        {/* Date picker */}
+                        <div className="space-y-1">
+                          <label className="text-[11px] text-muted-foreground">Add Dates</label>
+                          <Input type="date" className="h-8 text-xs"
+                            onChange={(e) => { addDateToPlatform(name, e.target.value); e.target.value = ''; }}
                           />
+                          {data.selectedDates.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {data.selectedDates.map(d => (
+                                <span key={d}
+                                  className="inline-flex items-center gap-1 bg-primary/10 text-primary text-[11px] px-2 py-0.5 rounded-full">
+                                  {new Date(d + 'T00:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
+                                  <button type="button" onClick={() => removeDateFromPlatform(name, d)}
+                                    className="hover:text-destructive">
+                                    <X className="w-2.5 h-2.5" />
+                                  </button>
+                                </span>
+                              ))}
+                            </div>
+                          )}
                         </div>
+                        {/* Amount – only for non-excluded platforms */}
+                        {showAmount && (
+                          <div className="space-y-1">
+                            <label className="text-[11px] text-muted-foreground">Amount (per day ₹)</label>
+                            <Input type="number" placeholder="0.00" className="h-8 text-xs"
+                              value={data.amount}
+                              onChange={(e) => setPlatforms({ ...platforms, [name]: { ...data, amount: e.target.value } })} />
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
-                ))}
-              </div>
+                );
+              })}
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Remarks</label>
-              <Textarea
-                placeholder="Additional notes for staff..."
+            {/* Remarks */}
+            <div className="space-y-1">
+              <label className="text-xs font-medium">Remarks</label>
+              <Textarea placeholder="Additional notes..." rows={2} className="text-sm resize-none"
                 value={formData.remarks}
-                onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
-                rows={2}
-              />
+                onChange={(e) => setFormData({ ...formData, remarks: e.target.value })} />
             </div>
 
             {/* Assign Staff */}
-            <div className="space-y-3">
-              <label className="text-sm font-medium flex items-center gap-2">
-                <Users className="w-4 h-4" />
-                Assign Staff Members
+            <div className="space-y-2">
+              <label className="text-xs font-medium flex items-center gap-1">
+                <Users className="w-3.5 h-3.5" /> Assign Staff
               </label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-4 border rounded-xl bg-muted/20">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 p-3 border rounded-lg bg-muted/20">
                 {staffList.map((staff) => (
                   <div key={staff.id} className="flex items-center space-x-2">
-                    <Checkbox 
-                      id={`shared-staff-${staff.id}`} 
+                    <Checkbox id={`csd-staff-${staff.id}`}
                       checked={formData.assignedStaff.includes(staff.id)}
                       onCheckedChange={(checked) => {
-                        if (checked) {
-                          setFormData({ ...formData, assignedStaff: [...formData.assignedStaff, staff.id] });
-                        } else {
-                          setFormData({ ...formData, assignedStaff: formData.assignedStaff.filter(id => id !== staff.id) });
-                        }
-                      }}
-                    />
-                    <label 
-                      htmlFor={`shared-staff-${staff.id}`}
-                      className="text-sm cursor-pointer select-none"
-                    >
-                      {staff.name}
-                    </label>
+                        if (checked) setFormData({ ...formData, assignedStaff: [...formData.assignedStaff, staff.id] });
+                        else setFormData({ ...formData, assignedStaff: formData.assignedStaff.filter(id => id !== staff.id) });
+                      }} />
+                    <label htmlFor={`csd-staff-${staff.id}`} className="text-xs cursor-pointer select-none">{staff.name}</label>
                   </div>
                 ))}
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Priority</label>
-                <Select
-                  value={formData.priority}
-                  onValueChange={(value: 'P0' | 'P1' | 'P2') => setFormData({ ...formData, priority: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
+            {/* Priority + Deadline */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-xs font-medium">Priority</label>
+                <Select value={formData.priority}
+                  onValueChange={(v: 'P0' | 'P1' | 'P2') => setFormData({ ...formData, priority: v })}>
+                  <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="P0">P0 (High)</SelectItem>
-                    <SelectItem value="P1">P1 (Medium)</SelectItem>
-                    <SelectItem value="P2">P2 (Low)</SelectItem>
+                    <SelectItem value="P0">P0 – High</SelectItem>
+                    <SelectItem value="P1">P1 – Medium</SelectItem>
+                    <SelectItem value="P2">P2 – Low</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Deadline (Admin Reference)</label>
-                <Input
-                  type="date"
+              <div className="space-y-1">
+                <label className="text-xs font-medium">Deadline</label>
+                <Input type="date" className="h-8 text-sm"
                   value={formData.deadline}
-                  onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
-                />
+                  onChange={(e) => setFormData({ ...formData, deadline: e.target.value })} />
               </div>
             </div>
           </form>
         </div>
 
-        <div className="p-6 border-t flex flex-wrap gap-3 justify-end bg-muted/10">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
+        {/* Footer */}
+        <div className="p-4 border-t shrink-0 flex flex-wrap gap-2 justify-end bg-muted/10">
+          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button variant="secondary" size="sm" onClick={handleSendToClient} className="gap-1">
+            <Share2 className="w-3.5 h-3.5" /> Send to Client
           </Button>
-          <Button variant="secondary" onClick={handleSendToClient} className="gap-2">
-            <Share2 className="w-4 h-4" />
-            Send to Client
-          </Button>
-          <Button type="submit" form="shared-task-form" variant="royal" className="gap-2">
-            <Plus className="w-4 h-4" />
-            Assign to Staff
+          <Button type="submit" form="shared-task-form" variant="royal" size="sm" className="gap-1">
+            <Plus className="w-3.5 h-3.5" /> Assign to Staff
           </Button>
         </div>
       </DialogContent>

@@ -14,9 +14,12 @@ import {
   AlertTriangle,
   CheckCircle2,
   Plus,
-  Trash2
+  Trash2,
+  ChevronRight,
+  ChevronDown,
+  ArrowLeft
 } from 'lucide-react';
-import { Task, taskService, staffService } from '@/lib/storage';
+import { Task, taskService } from '@/lib/storage';
 import { useToast } from '@/hooks/use-toast';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -38,7 +41,8 @@ import {
 const StaffTasksPage = () => {
   const { session } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  // Expanded campaign: null = list view, taskId = detail view
+  const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const [comment, setComment] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [formData, setFormData] = useState({
@@ -50,24 +54,20 @@ const StaffTasksPage = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    if (session?.userId) {
-      loadTasks();
-    }
+    if (session?.userId) loadTasks();
   }, [session]);
 
   const loadTasks = async () => {
-    if (session?.userId) {
-      try {
-        const data = await taskService.getAll();
-        // Filter tasks where this staff member is in assignedStaff or assignedTo
-        const myTasks = data.filter(t => 
-          t.assignedStaff?.includes(session.userId) || 
-          t.assignedTo === session.userId
-        );
-        setTasks(myTasks);
-      } catch (error) {
-        console.error("Failed to load tasks", error);
-      }
+    if (!session?.userId) return;
+    try {
+      const data = await taskService.getAll();
+      const myTasks = data.filter(t =>
+        t.assignedStaff?.includes(session.userId) ||
+        t.assignedTo === session.userId
+      );
+      setTasks(myTasks);
+    } catch (error) {
+      console.error('Failed to load tasks', error);
     }
   };
 
@@ -89,40 +89,46 @@ const StaffTasksPage = () => {
     }
   };
 
-  const handleStatusChange = async (taskId: string, newStatus: 'Pending' | 'In Progress' | 'Completed') => {
-    if (!session) return;
+  // Toggle a SPECIFIC platform entry (by platform name + date) in isolation
+  const handlePlatformToggle = async (taskId: string, platformName: string, dateKey: string, currentStatus: string) => {
+    const newStatus = currentStatus === 'Completed' ? 'Pending' : 'Completed';
     try {
-      await taskService.updateStatus(taskId, newStatus, session.userId, session.name);
-      toast({ title: `Task marked as ${newStatus}` });
+      const task = tasks.find(t => t.id === taskId);
+      if (!task || !task.platforms) return;
+
+      const updatedPlatforms = task.platforms.map(p =>
+        // Match by BOTH name AND date so we only touch this exact entry
+        (p.name === platformName && p.startDate === dateKey)
+          ? { ...p, status: newStatus as any }
+          : p
+      );
+
+      const allCompleted = updatedPlatforms.every(p => p.status === 'Completed');
+      const anyInProgress = updatedPlatforms.some(p => p.status !== 'Pending');
+      const mainStatus = allCompleted ? 'Completed' : anyInProgress ? 'In Progress' : 'Pending';
+
+      await taskService.update(taskId, { platforms: updatedPlatforms, status: mainStatus });
+      toast({ title: `Marked as ${newStatus}`, duration: 1500 });
       loadTasks();
-      if (selectedTask?.id === taskId) {
-        const updatedTask = await taskService.getById(taskId);
-        if (updatedTask) setSelectedTask(updatedTask);
-      }
     } catch (error) {
-      toast({ title: 'Failed to update status', variant: 'destructive' });
+      toast({ title: 'Failed to update', variant: 'destructive' });
     }
   };
 
   const handleAddComment = async () => {
-    if (!selectedTask || !comment.trim() || !session) return;
+    const task = tasks.find(t => t.id === expandedTaskId);
+    if (!task || !comment.trim() || !session) return;
 
     try {
-      await taskService.addComment(selectedTask.id, {
-        taskId: selectedTask.id,
+      await taskService.addComment(task.id, {
+        taskId: task.id,
         authorId: session.userId,
         authorName: session.name,
         content: comment.trim(),
       });
-
       toast({ title: 'Comment added' });
       setComment('');
       loadTasks();
-
-      const updatedTask = await taskService.getById(selectedTask.id);
-      if (updatedTask) {
-        setSelectedTask(updatedTask);
-      }
     } catch (error) {
       toast({ title: 'Failed to add comment', variant: 'destructive' });
     }
@@ -146,130 +152,31 @@ const StaffTasksPage = () => {
 
       toast({ title: 'Task created successfully' });
       setIsDialogOpen(false);
-      setFormData({
-        title: '',
-        description: '',
-        priority: 'P1',
-        deadline: '',
-      });
+      setFormData({ title: '', description: '', priority: 'P1', deadline: '' });
       loadTasks();
     } catch (error) {
       toast({ title: 'Failed to create task', variant: 'destructive' });
     }
   };
 
-  const handlePlatformStatusToggle = async (taskId: string, platformName: string, currentStatus: string) => {
-    if (!session) return;
-    const newStatus = currentStatus === 'Completed' ? 'Pending' : 'Completed';
-    
-    try {
-      const task = tasks.find(t => t.id === taskId);
-      if (!task || !task.platforms) return;
-
-      const updatedPlatforms = task.platforms.map(p => 
-        p.name === platformName ? { ...p, status: newStatus as any } : p
-      );
-
-      // Check if all platforms are completed to auto-update main task status
-      const allCompleted = updatedPlatforms.every(p => p.status === 'Completed');
-      const updatedMainStatus = allCompleted ? 'Completed' : 'In Progress';
-
-      await taskService.update(taskId, { 
-        platforms: updatedPlatforms,
-        status: updatedMainStatus
-      });
-      
-      toast({ title: `${platformName} marked as ${newStatus}` });
-      loadTasks();
-    } catch (error) {
-      toast({ title: 'Failed to update platform status', variant: 'destructive' });
-    }
-  };
-
-  const flattenTasksByDate = () => {
-    const dailyItems: any[] = [];
-    
-    tasks.forEach(task => {
-      // Handle new structured tasks
-      if (task.platforms && task.platforms.length > 0) {
-        task.platforms.forEach(platform => {
-          const start = new Date(platform.startDate);
-          const end = new Date(platform.endDate);
-          
-          // Generate an entry for each day in range
-          for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-            const dateStr = d.toISOString().split('T')[0];
-            dailyItems.push({
-              id: `${task.id}-${platform.name}-${dateStr}`,
-              taskId: task.id,
-              clientName: task.clientName || 'Unknown Client',
-              campaignName: task.campaignName || 'General',
-              platformName: platform.name,
-              date: dateStr,
-              amount: platform.amount,
-              status: platform.status,
-              priority: task.priority,
-              year: task.year,
-              location: task.location
-            });
-          }
-        });
-      } else {
-        // Handle legacy/simple tasks
-        dailyItems.push({
-          id: task.id,
-          taskId: task.id,
-          clientName: 'N/A',
-          campaignName: task.title,
-          platformName: 'General Task',
-          date: task.deadline,
-          amount: 0,
-          status: task.status,
-          priority: task.priority,
-          isLegacy: true
-        });
-      }
-    });
-
-    // Sort by date (descending)
-    return dailyItems.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  };
-
-  const groupedDailyItems = flattenTasksByDate().reduce((groups: any, item) => {
-    const date = item.date;
-    if (!groups[date]) groups[date] = [];
-    groups[date].push(item);
-    return groups;
-  }, {});
-
   const handleDeleteTask = async (taskId: string) => {
     const task = tasks.find(t => t.id === taskId);
     if (!task || !session) return;
 
-    // Check if staff created this task
     if (task.createdBy !== session.userId) {
-      toast({
-        title: 'Permission denied',
-        description: 'You can only delete tasks you created',
-        variant: 'destructive'
-      });
+      toast({ title: 'Permission denied', description: 'You can only delete your own tasks', variant: 'destructive' });
       return;
     }
-
     if (!confirm('Are you sure you want to delete this task?')) return;
 
     try {
       await taskService.delete(taskId);
-      toast({ title: 'Task deleted successfully' });
-      if (selectedTask?.id === taskId) setSelectedTask(null);
+      toast({ title: 'Task deleted' });
+      if (expandedTaskId === taskId) setExpandedTaskId(null);
       loadTasks();
     } catch (error) {
-      toast({ title: 'Failed to delete task', variant: 'destructive' });
+      toast({ title: 'Failed to delete', variant: 'destructive' });
     }
-  };
-
-  const isOverdue = (deadline: string) => {
-    return new Date(deadline) < new Date() && deadline;
   };
 
   const stats = {
@@ -279,156 +186,203 @@ const StaffTasksPage = () => {
     completed: tasks.filter(t => t.status === 'Completed').length,
   };
 
+  // Build daily date-sorted entries PER TASK for the detail view
+  const getTaskDailyItems = (task: Task) => {
+    if (!task.platforms || task.platforms.length === 0) return [];
+    const items = task.platforms.map(p => ({
+      platformName: p.name,
+      date: p.startDate,
+      amount: p.amount,
+      status: p.status,
+    }));
+    // Sort ascending by date
+    return items.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  };
+
+  // Group daily items by date for the detail view
+  const groupByDate = (items: ReturnType<typeof getTaskDailyItems>) => {
+    return items.reduce((groups: Record<string, typeof items>, item) => {
+      if (!groups[item.date]) groups[item.date] = [];
+      groups[item.date].push(item);
+      return groups;
+    }, {});
+  };
+
+  const selectedTask = expandedTaskId ? tasks.find(t => t.id === expandedTaskId) : null;
+  const dailyItems = selectedTask ? getTaskDailyItems(selectedTask) : [];
+  const groupedByDate = groupByDate(dailyItems);
+
+  // Calculate progress for a task
+  const getTaskProgress = (task: Task) => {
+    if (!task.platforms || task.platforms.length === 0) return null;
+    const total = task.platforms.length;
+    const done = task.platforms.filter(p => p.status === 'Completed').length;
+    return { done, total, pct: Math.round((done / total) * 100) };
+  };
+
   return (
-    <div className="space-y-6 animate-fade-up">
+    <div className="space-y-5 animate-fade-up">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-2xl font-bold">My Tasks</h2>
-          <p className="text-muted-foreground">View and manage your assigned tasks</p>
+          <p className="text-muted-foreground text-sm">View and manage your assigned tasks</p>
         </div>
-        <Button variant="royal" onClick={() => setIsDialogOpen(true)}>
-          <Plus className="w-4 h-4 mr-2" />
-          Create Task
+        <Button variant="royal" size="sm" onClick={() => setIsDialogOpen(true)}>
+          <Plus className="w-4 h-4 mr-2" /> Create Task
         </Button>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <GlassCard>
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold">{stats.total}</p>
-            <p className="text-xs text-muted-foreground">Total Tasks</p>
-          </CardContent>
-        </GlassCard>
-        <GlassCard>
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-warning">{stats.pending}</p>
-            <p className="text-xs text-muted-foreground">Pending</p>
-          </CardContent>
-        </GlassCard>
-        <GlassCard>
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-primary">{stats.inProgress}</p>
-            <p className="text-xs text-muted-foreground">In Progress</p>
-          </CardContent>
-        </GlassCard>
-        <GlassCard>
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-success">{stats.completed}</p>
-            <p className="text-xs text-muted-foreground">Completed</p>
-          </CardContent>
-        </GlassCard>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[
+          { label: 'Total', value: stats.total, color: '' },
+          { label: 'Pending', value: stats.pending, color: 'text-warning' },
+          { label: 'In Progress', value: stats.inProgress, color: 'text-primary' },
+          { label: 'Completed', value: stats.completed, color: 'text-success' },
+        ].map(s => (
+          <GlassCard key={s.label}>
+            <CardContent className="p-3 text-center">
+              <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
+              <p className="text-xs text-muted-foreground">{s.label}</p>
+            </CardContent>
+          </GlassCard>
+        ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="space-y-6">
-          <h2 className="text-lg font-semibold">Daily Assignments</h2>
-
-          {Object.keys(groupedDailyItems).length === 0 ? (
+      {/* Campaign Card List OR Detail View */}
+      {!selectedTask ? (
+        /* ── LIST: one card per campaign ── */
+        <div className="space-y-3">
+          <h3 className="text-base font-semibold">Campaigns</h3>
+          {tasks.length === 0 ? (
             <GlassCard>
               <CardContent className="py-12 text-center">
                 <CheckSquare className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No tasks assigned</h3>
-                <p className="text-muted-foreground">
-                  You don't have any daily assignments yet.
-                </p>
+                <h3 className="text-lg font-semibold mb-1">No tasks assigned</h3>
+                <p className="text-muted-foreground text-sm">You don't have any campaigns yet.</p>
               </CardContent>
             </GlassCard>
           ) : (
-            Object.entries(groupedDailyItems).map(([date, items]: [string, any]) => (
-              <div key={date} className="space-y-3">
-                <div className="flex items-center gap-2 px-2">
-                  <Calendar className="w-4 h-4 text-primary" />
-                  <h3 className="font-bold text-sm">
-                    {new Date(date).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}
-                  </h3>
-                  {date === new Date().toISOString().split('T')[0] && (
-                    <Badge variant="royal" className="text-[10px] h-4">TODAY</Badge>
-                  )}
-                </div>
-                
-                <div className="space-y-2">
-                  {items.map((item: any) => (
-                    <GlassCard
-                      key={item.id}
-                      className={`transition-all ${selectedTask?.id === item.taskId ? 'ring-2 ring-primary' : 'hover:-translate-y-0.5'
-                        }`}
-                      onClick={() => setSelectedTask(tasks.find(t => t.id === item.taskId) || null)}
-                    >
-                      <CardContent className="p-3">
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-3">
-                            <Checkbox 
-                              checked={item.status === 'Completed'}
-                              onCheckedChange={() => {
-                                if (item.isLegacy) {
-                                  handleStatusChange(item.taskId, item.status === 'Completed' ? 'Pending' : 'Completed');
-                                } else {
-                                  handlePlatformStatusToggle(item.taskId, item.platformName, item.status);
-                                }
-                              }}
-                              onClick={(e) => e.stopPropagation()}
-                            />
-                            <div className="space-y-0.5">
-                              <h4 className={`font-medium text-sm ${item.status === 'Completed' ? 'line-through text-muted-foreground' : ''}`}>
-                                {item.clientName !== 'N/A' ? `${item.clientName}: ` : ''}{item.platformName}
-                              </h4>
-                              <p className="text-[11px] text-muted-foreground">
-                                {item.campaignName} {item.year ? `(${item.year})` : ''} {item.location ? `• ${item.location}` : ''} {item.amount > 0 ? `• ₹${item.amount}/day` : ''}
-                              </p>
+            tasks.map(task => {
+              const progress = getTaskProgress(task);
+              return (
+                <GlassCard
+                  key={task.id}
+                  className="cursor-pointer hover:-translate-y-0.5 transition-all"
+                  onClick={() => setExpandedTaskId(task.id)}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-semibold text-sm truncate">
+                            {task.clientName || task.title}
+                          </h4>
+                          <Badge variant={getPriorityVariant(task.priority) as any} className="text-[10px] h-4 px-1 shrink-0">
+                            {task.priority}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {task.campaignName} {task.year ? `(${task.year})` : ''} {task.location ? `• ${task.location}` : ''}
+                        </p>
+                        {progress && (
+                          <div className="mt-2 flex items-center gap-2">
+                            <div className="flex-1 bg-muted rounded-full h-1.5">
+                              <div
+                                className="h-full rounded-full bg-primary transition-all"
+                                style={{ width: `${progress.pct}%` }}
+                              />
                             </div>
+                            <span className="text-[11px] text-muted-foreground shrink-0">
+                              {progress.done}/{progress.total}
+                            </span>
                           </div>
-                          <Badge variant={getPriorityVariant(item.priority) as any} className="text-[10px] h-4 px-1 shrink-0">
-                            {item.priority}
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant={getStatusVariant(task.status) as any} className="text-[10px] h-5 shrink-0">
+                          {task.status}
+                        </Badge>
+                        <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </GlassCard>
+              );
+            })
+          )}
+        </div>
+      ) : (
+        /* ── DETAIL: date-wise task checkboxes ── */
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="sm" className="gap-1 px-2" onClick={() => setExpandedTaskId(null)}>
+              <ArrowLeft className="w-4 h-4" /> Back
+            </Button>
+            <div>
+              <h3 className="font-semibold">{selectedTask.clientName || selectedTask.title}</h3>
+              <p className="text-xs text-muted-foreground">
+                {selectedTask.campaignName} {selectedTask.year ? `(${selectedTask.year})` : ''} {selectedTask.location ? `• ${selectedTask.location}` : ''}
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            {/* Date-wise Checkboxes */}
+            <div className="space-y-3">
+              <h4 className="text-sm font-semibold">Date-wise Tasks</h4>
+              {Object.entries(groupedByDate).map(([date, items]) => (
+                <div key={date} className="space-y-2">
+                  <div className="flex items-center gap-2 px-1">
+                    <Calendar className="w-3.5 h-3.5 text-primary" />
+                    <span className="text-xs font-bold">
+                      {new Date(date + 'T00:00:00').toLocaleDateString(undefined, {
+                        weekday: 'short', day: 'numeric', month: 'short'
+                      })}
+                    </span>
+                    {date === new Date().toISOString().split('T')[0] && (
+                      <Badge variant="royal" className="text-[9px] h-4 px-1.5">TODAY</Badge>
+                    )}
+                  </div>
+                  {items.map(item => (
+                    <GlassCard key={`${item.platformName}-${item.date}`}>
+                      <CardContent className="p-3">
+                        <div className="flex items-center gap-3">
+                          <Checkbox
+                            id={`cb-${selectedTask.id}-${item.platformName}-${item.date}`}
+                            checked={item.status === 'Completed'}
+                            onCheckedChange={() =>
+                              handlePlatformToggle(selectedTask.id, item.platformName, item.date, item.status)
+                            }
+                          />
+                          <div className="flex-1">
+                            <p className={`text-sm font-medium ${item.status === 'Completed' ? 'line-through text-muted-foreground' : ''}`}>
+                              {item.platformName}
+                            </p>
+                            {item.amount > 0 && (
+                              <p className="text-[11px] text-muted-foreground">₹{item.amount}/day</p>
+                            )}
+                          </div>
+                          <Badge variant={getStatusVariant(item.status) as any} className="text-[10px] h-4 px-1 shrink-0">
+                            {item.status}
                           </Badge>
                         </div>
                       </CardContent>
                     </GlassCard>
                   ))}
                 </div>
-              </div>
-            ))
-          )}
-        </div>
+              ))}
+              {dailyItems.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-4">No platform tasks configured.</p>
+              )}
+            </div>
 
-        {/* Task Details */}
-        <div className="space-y-3">
-          <h2 className="text-lg font-semibold">Task Details</h2>
-
-          {!selectedTask ? (
-            <GlassCard>
-              <CardContent className="py-12 text-center">
-                <MessageSquare className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">Select a task</h3>
-                <p className="text-muted-foreground">
-                  Click on a task to view details and add updates
-                </p>
-              </CardContent>
-            </GlassCard>
-          ) : (
-            <GlassCard>
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <CardTitle className="text-lg">{selectedTask.title}</CardTitle>
-                    <div className="flex items-center gap-2 mt-2">
-                      <Badge variant={getPriorityVariant(selectedTask.priority) as any}>
-                        {selectedTask.priority}
-                      </Badge>
-                      <Badge variant={getStatusVariant(selectedTask.status) as any}>
-                        {selectedTask.status}
-                      </Badge>
-                    </div>
-                  </div>
-                </div>
-              </CardHeader>
-
-              <CardContent className="space-y-4">
-                <p className="text-sm text-muted-foreground">{selectedTask.description}</p>
-
-                {selectedTask.clientName && (
-                  <div className="grid grid-cols-2 gap-4 p-3 border rounded-xl bg-muted/20 text-xs">
+            {/* Details + Comments */}
+            <div className="space-y-3">
+              {selectedTask.clientName && (
+                <GlassCard>
+                  <CardContent className="p-4 grid grid-cols-2 gap-4 text-xs">
                     <div className="space-y-1">
                       <p className="text-[10px] uppercase font-bold text-muted-foreground">Client</p>
                       <p className="font-medium">{selectedTask.clientName}</p>
@@ -439,167 +393,95 @@ const StaffTasksPage = () => {
                       <p className="font-medium">{selectedTask.campaignName} {selectedTask.year && `(${selectedTask.year})`}</p>
                       {selectedTask.location && <p className="text-muted-foreground">{selectedTask.location}</p>}
                     </div>
-                  </div>
-                )}
+                    {selectedTask.remarks && (
+                      <div className="col-span-2 pt-1 border-t">
+                        <p className="text-[10px] uppercase font-bold text-muted-foreground mb-1">Remarks</p>
+                        <p>{selectedTask.remarks}</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </GlassCard>
+              )}
 
-                {selectedTask.platforms && selectedTask.platforms.length > 0 && (
-                  <div className="space-y-2">
-                    <h4 className="text-xs font-bold uppercase text-muted-foreground">Platforms</h4>
-                    <div className="grid grid-cols-1 gap-2">
-                      {selectedTask.platforms.map((p, idx) => (
-                        <div key={idx} className="flex items-center justify-between p-2 border rounded-lg bg-card text-xs">
-                          <div>
-                            <p className="font-semibold">{p.name}</p>
-                            <p className="text-muted-foreground">
-                              {p.startDate} to {p.endDate}
-                            </p>
-                          </div>
-                          <Badge variant={getStatusVariant(p.status) as any} className="text-[10px] h-4">
-                            {p.status}
-                          </Badge>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+              {/* Delete (if own task) */}
+              {session && selectedTask.createdBy === session.userId && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => handleDeleteTask(selectedTask.id)}
+                >
+                  <Trash2 className="w-4 h-4 mr-2" /> Delete Task
+                </Button>
+              )}
 
-                <div className="flex items-center gap-4 text-sm">
-                  <div className="flex items-center gap-1">
-                    <Calendar className="w-4 h-4 text-muted-foreground" />
-                    <span>Due: {new Date(selectedTask.deadline).toLocaleDateString()}</span>
-                  </div>
-                </div>
-
-                {/* Status Actions */}
-                <div className="flex flex-wrap gap-2">
-                  {selectedTask.status !== 'In Progress' && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleStatusChange(selectedTask.id, 'In Progress')}
-                    >
-                      <Clock className="w-4 h-4 mr-1" />
-                      Start Working
-                    </Button>
-                  )}
-                  {selectedTask.status !== 'Completed' && (
-                    <Button
-                      variant="success"
-                      size="sm"
-                      onClick={() => handleStatusChange(selectedTask.id, 'Completed')}
-                    >
-                      <CheckCircle2 className="w-4 h-4 mr-1" />
-                      Mark Complete
-                    </Button>
-                  )}
-                  {/* Delete button - only for tasks created by this staff member */}
-                  {session && selectedTask.createdBy === session.userId && (
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => handleDeleteTask(selectedTask.id)}
-                      className="ml-auto"
-                    >
-                      <Trash2 className="w-4 h-4 mr-1" />
-                      Delete
-                    </Button>
-                  )}
-                </div>
-
-                {/* Comments */}
-                <div className="pt-4 border-t border-border">
-                  <h4 className="font-medium mb-3 flex items-center gap-2">
-                    <MessageSquare className="w-4 h-4" />
-                    Updates ({selectedTask.comments.length})
+              {/* Comments */}
+              <GlassCard>
+                <CardContent className="p-4 space-y-3">
+                  <h4 className="font-medium text-sm flex items-center gap-2">
+                    <MessageSquare className="w-4 h-4" /> Updates ({selectedTask.comments?.length || 0})
                   </h4>
-
-                  <div className="space-y-3 max-h-48 overflow-y-auto mb-4">
-                    {selectedTask.comments.length === 0 ? (
-                      <p className="text-sm text-muted-foreground text-center py-2">
-                        No updates yet. Add your first update below.
-                      </p>
+                  <div className="space-y-2 max-h-40 overflow-y-auto">
+                    {selectedTask.comments?.length === 0 ? (
+                      <p className="text-xs text-muted-foreground text-center py-2">No updates yet.</p>
                     ) : (
-                      selectedTask.comments.map((c) => (
-                        <div key={c.id} className="p-3 rounded-lg bg-muted/50">
+                      selectedTask.comments?.map(c => (
+                        <div key={c.id} className="p-2 rounded-lg bg-muted/50 text-xs">
                           <div className="flex items-center justify-between mb-1">
-                            <span className="text-sm font-medium">{c.authorName}</span>
-                            <span className="text-xs text-muted-foreground">
-                              {new Date(c.createdAt).toLocaleString()}
-                            </span>
+                            <span className="font-medium">{c.authorName}</span>
+                            <span className="text-muted-foreground">{new Date(c.createdAt).toLocaleDateString()}</span>
                           </div>
-                          <p className="text-sm">{c.content}</p>
+                          <p>{c.content}</p>
                         </div>
                       ))
                     )}
                   </div>
-
-                  {/* Add Comment */}
                   <div className="flex gap-2">
                     <Textarea
                       placeholder="Add an update..."
                       value={comment}
                       onChange={(e) => setComment(e.target.value)}
                       rows={2}
-                      className="flex-1"
+                      className="flex-1 text-sm resize-none"
                     />
-                    <Button
-                      variant="royal"
-                      size="icon"
-                      onClick={handleAddComment}
-                      disabled={!comment.trim()}
-                    >
+                    <Button variant="royal" size="icon" onClick={handleAddComment} disabled={!comment.trim()}>
                       <Send className="w-4 h-4" />
                     </Button>
                   </div>
-                </div>
-              </CardContent>
-            </GlassCard>
-          )}
+                </CardContent>
+              </GlassCard>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Create Task Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Create New Task</DialogTitle>
-            <DialogDescription>
-              Create a task for yourself with priority and deadline
-            </DialogDescription>
+            <DialogDescription>Create a task for yourself</DialogDescription>
           </DialogHeader>
-
           <form onSubmit={handleCreateTask} className="space-y-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">Task Title</label>
-              <Input
-                required
-                placeholder="Enter task title"
+              <Input required placeholder="Enter task title"
                 value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              />
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })} />
             </div>
-
             <div className="space-y-2">
               <label className="text-sm font-medium">Description</label>
-              <Textarea
-                required
-                placeholder="Describe the task..."
+              <Textarea required placeholder="Describe the task..."
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                rows={3}
-              />
+                rows={3} />
             </div>
-
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Priority</label>
-                <Select
-                  value={formData.priority}
-                  onValueChange={(value: 'P0' | 'P1' | 'P2') => setFormData({ ...formData, priority: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
+                <Select value={formData.priority}
+                  onValueChange={(v: 'P0' | 'P1' | 'P2') => setFormData({ ...formData, priority: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="P0">P0 (High)</SelectItem>
                     <SelectItem value="P1">P1 (Medium)</SelectItem>
@@ -607,25 +489,15 @@ const StaffTasksPage = () => {
                   </SelectContent>
                 </Select>
               </div>
-
               <div className="space-y-2">
                 <label className="text-sm font-medium">Deadline</label>
-                <Input
-                  type="date"
-                  required
-                  value={formData.deadline}
-                  onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
-                />
+                <Input type="date" required value={formData.deadline}
+                  onChange={(e) => setFormData({ ...formData, deadline: e.target.value })} />
               </div>
             </div>
-
-            <DialogFooter className="pt-4">
-              <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" variant="royal">
-                Create Task
-              </Button>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
+              <Button type="submit" variant="royal">Create Task</Button>
             </DialogFooter>
           </form>
         </DialogContent>
