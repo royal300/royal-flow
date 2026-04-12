@@ -4,6 +4,27 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─── iOS Safari: prevent auto-zoom on input focus ─── */
+/* iOS zooms in when an input's font-size < 16px. Force 16px everywhere. */
+input,
+textarea,
+select {
+  font-size: 16px !important;
+}
+
+/* Smooth momentum scrolling on iOS */
+* {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Safe-area padding for notch devices */
+body {
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  /* keep bottom for nav bars / home indicator */
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
 @layer base {
   :root {
     --background: 216 33% 97%;

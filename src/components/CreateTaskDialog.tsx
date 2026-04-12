@@ -195,8 +195,8 @@ export const CreateTaskDialog = ({ isOpen, onOpenChange, onSuccess }: CreateTask
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent
-        className="sm:max-w-2xl flex flex-col p-0 overflow-hidden"
-        style={{ maxHeight: '90vh', touchAction: 'none' }}
+        className="w-[calc(100vw-24px)] max-w-2xl flex flex-col p-0 overflow-hidden"
+        style={{ maxHeight: '90svh', touchAction: 'none' }}
       >
         <DialogHeader className="p-4 pb-2 shrink-0 border-b">
           <DialogTitle className="text-base">Create New Marketing Task</DialogTitle>
@@ -208,7 +208,7 @@ export const CreateTaskDialog = ({ isOpen, onOpenChange, onSuccess }: CreateTask
         {/* Scrollable content — touch-action pan-y ensures vertical-only scroll on mobile */}
         <div
           className="flex-1 overflow-y-auto px-4 py-3"
-          style={{ overscrollBehavior: 'contain', touchAction: 'pan-y' }}
+          style={{ overscrollBehavior: 'contain', touchAction: 'pan-y', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}
         >
           <form id="shared-task-form" onSubmit={handleSubmit} className="space-y-4">
 
