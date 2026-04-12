@@ -10,10 +10,13 @@ import {
   ArrowUpRight,
   AlertTriangle,
   CheckCircle2,
-  Timer
+  Timer,
+  Plus
 } from 'lucide-react';
 import { staffService, taskService, attendanceService, Task, Staff } from '@/lib/storage';
 import { Link } from 'react-router-dom';
+import { CreateTaskDialog } from '@/components/CreateTaskDialog';
+import { useToast } from '@/hooks/use-toast';
 
 const AdminDashboard = () => {
   const [stats, setStats] = useState({
@@ -27,32 +30,35 @@ const AdminDashboard = () => {
   });
   const [recentTasks, setRecentTasks] = useState<Task[]>([]);
   const [staffList, setStaffList] = useState<Staff[]>([]);
+  const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
+  const { toast } = useToast();
+
+  const loadDashboardData = async () => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const [staff, tasks, todayAttendance] = await Promise.all([
+        staffService.getAll(),
+        taskService.getAll(),
+        attendanceService.getByDate(today)
+      ]);
+
+      setStaffList(staff);
+      setRecentTasks(tasks.slice(-5).reverse());
+      setStats({
+        totalStaff: staff.length,
+        totalTasks: tasks.length,
+        completedTasks: tasks.filter(t => t.status === 'Completed').length,
+        pendingTasks: tasks.filter(t => t.status === 'Pending').length,
+        inProgressTasks: tasks.filter(t => t.status === 'In Progress').length,
+        presentToday: todayAttendance.filter(a => a.status === 'present').length,
+        lateToday: todayAttendance.filter(a => a.status === 'late').length,
+      });
+    } catch (error) {
+      console.error('Failed to load dashboard data', error);
+    }
+  };
 
   useEffect(() => {
-    const loadDashboardData = async () => {
-      try {
-        const today = new Date().toISOString().split('T')[0];
-        const [staff, tasks, todayAttendance] = await Promise.all([
-          staffService.getAll(),
-          taskService.getAll(),
-          attendanceService.getByDate(today)
-        ]);
-
-        setStaffList(staff);
-        setRecentTasks(tasks.slice(-5).reverse());
-        setStats({
-          totalStaff: staff.length,
-          totalTasks: tasks.length,
-          completedTasks: tasks.filter(t => t.status === 'Completed').length,
-          pendingTasks: tasks.filter(t => t.status === 'Pending').length,
-          inProgressTasks: tasks.filter(t => t.status === 'In Progress').length,
-          presentToday: todayAttendance.filter(a => a.status === 'present').length,
-          lateToday: todayAttendance.filter(a => a.status === 'late').length,
-        });
-      } catch (error) {
-        console.error('Failed to load dashboard data', error);
-      }
-    };
     loadDashboardData();
   }, []);
 
@@ -181,10 +187,14 @@ const AdminDashboard = () => {
                 Add New Staff
               </Link>
             </Button>
+            <Button variant="royal" className="w-full justify-start" onClick={() => setIsTaskDialogOpen(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              Add New Task
+            </Button>
             <Button variant="outline" className="w-full justify-start" asChild>
               <Link to="/admin/tasks">
                 <CheckSquare className="w-4 h-4 mr-2" />
-                Create Task
+                Manage Tasks
               </Link>
             </Button>
             <Button variant="outline" className="w-full justify-start" asChild>
@@ -264,6 +274,12 @@ const AdminDashboard = () => {
           </CardContent>
         </GlassCard>
       </div>
+
+      <CreateTaskDialog 
+        isOpen={isTaskDialogOpen} 
+        onOpenChange={setIsTaskDialogOpen} 
+        onSuccess={loadDashboardData}
+      />
     </div>
   );
 };
