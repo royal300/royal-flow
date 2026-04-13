@@ -298,7 +298,8 @@ export const CreateTaskDialog = ({ isOpen, onOpenChange, onSuccess }: CreateTask
         data.selectedDates.forEach(date => {
           const dt = data.dateTimes[date] || { hr: '11', min: '00', ampm: 'AM' };
           const timeStr = `${dt.hr}:${dt.min} ${dt.ampm}`;
-          message += `Date : ${fmtDate(date)} | Time : ${timeStr}\n`;
+          const isWapOrVoice = NO_AMOUNT_PLATFORMS.includes(name);
+          message += `Date : ${fmtDate(date)}${isWapOrVoice ? ` | Time : ${timeStr}` : ''}\n`;
         });
 
         if (!NO_AMOUNT_PLATFORMS.includes(name) && data.amount) {
