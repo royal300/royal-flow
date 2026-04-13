@@ -62,13 +62,20 @@ export const CreateTaskDialog = ({ isOpen, onOpenChange, onSuccess }: CreateTask
     deadline: '',
   });
 
-  // Each platform: selectedDates = string[], amount = string, active (for YT/Twitter toggle), times = string[]
-  const [platforms, setPlatforms] = useState<Record<string, { selectedDates: string[]; amount: string; active: boolean; times: string[] }>>({
-    'Facebook/Instagram': { selectedDates: [], amount: '', active: true, times: [] },
-    'WhatsApp API':       { selectedDates: [], amount: '', active: true, times: [] },
-    'Voice Calling':      { selectedDates: [], amount: '', active: true, times: [] },
-    'YouTube':            { selectedDates: [], amount: '', active: false, times: [] },
-    'Twitter':            { selectedDates: [], amount: '', active: false, times: [] },
+  // Each platform: selectedDates = string[], amount = string, active (for YT/Twitter toggle), 
+  // dateTimes = date string -> { hr, min, ampm }, allSameTime = boolean
+  const [platforms, setPlatforms] = useState<Record<string, { 
+    selectedDates: string[]; 
+    amount: string; 
+    active: boolean; 
+    dateTimes: Record<string, { hr: string; min: string; ampm: string }>;
+    allSameTime: boolean;
+  }>>({
+    'Facebook/Instagram': { selectedDates: [], amount: '', active: true, dateTimes: {}, allSameTime: true },
+    'WhatsApp API':       { selectedDates: [], amount: '', active: true, dateTimes: {}, allSameTime: true },
+    'Voice Calling':      { selectedDates: [], amount: '', active: true, dateTimes: {}, allSameTime: true },
+    'YouTube':            { selectedDates: [], amount: '', active: false, dateTimes: {}, allSameTime: true },
+    'Twitter':            { selectedDates: [], amount: '', active: false, dateTimes: {}, allSameTime: true },
   });
 
   const { toast } = useToast();
@@ -93,36 +100,94 @@ export const CreateTaskDialog = ({ isOpen, onOpenChange, onSuccess }: CreateTask
       remarks: '', assignedStaff: [], priority: 'P1', deadline: '',
     });
     setPlatforms({
-      'Facebook/Instagram': { selectedDates: [], amount: '', active: true, times: [] },
-      'WhatsApp API':       { selectedDates: [], amount: '', active: true, times: [] },
-      'Voice Calling':      { selectedDates: [], amount: '', active: true, times: [] },
-      'YouTube':            { selectedDates: [], amount: '', active: false, times: [] },
-      'Twitter':            { selectedDates: [], amount: '', active: false, times: [] },
+      'Facebook/Instagram': { selectedDates: [], amount: '', active: true, dateTimes: {}, allSameTime: true },
+      'WhatsApp API':       { selectedDates: [], amount: '', active: true, dateTimes: {}, allSameTime: true },
+      'Voice Calling':      { selectedDates: [], amount: '', active: true, dateTimes: {}, allSameTime: true },
+      'YouTube':            { selectedDates: [], amount: '', active: false, dateTimes: {}, allSameTime: true },
+      'Twitter':            { selectedDates: [], amount: '', active: false, dateTimes: {}, allSameTime: true },
+    });
+  };
+
+  const updateDateTime = (platformName: string, date: string, field: 'hr' | 'min' | 'ampm', value: string) => {
+    const p = platforms[platformName];
+    const newDateTimes = { ...p.dateTimes };
+    
+    // Initialize if doesn't exist
+    if (!newDateTimes[date]) {
+      newDateTimes[date] = { hr: '11', min: '00', ampm: 'AM' };
+    }
+    
+    newDateTimes[date] = { ...newDateTimes[date], [field]: value };
+    
+    // Sync if All Same Time is checked
+    if (p.allSameTime) {
+      p.selectedDates.forEach(d => {
+        newDateTimes[d] = { ...newDateTimes[date] };
+      });
+    }
+    
+    setPlatforms({
+      ...platforms,
+      [platformName]: { ...p, dateTimes: newDateTimes }
+    });
+  };
+
+  const toggleAllSameTime = (platformName: string, checked: boolean) => {
+    const p = platforms[platformName];
+    const newDateTimes = { ...p.dateTimes };
+    
+    if (checked && p.selectedDates.length > 0) {
+      const firstDate = p.selectedDates[0];
+      const masterTime = newDateTimes[firstDate] || { hr: '11', min: '00', ampm: 'AM' };
+      p.selectedDates.forEach(d => {
+        newDateTimes[d] = { ...masterTime };
+      });
+    }
+    
+    setPlatforms({
+      ...platforms,
+      [platformName]: { ...p, allSameTime: checked, dateTimes: newDateTimes }
     });
   };
 
   const addDateToPlatform = (name: string, dateStr: string) => {
     if (!dateStr) return;
-    const current = platforms[name].selectedDates;
-    if (current.includes(dateStr)) return; // Don't add duplicate
+    const p = platforms[name];
+    const current = p.selectedDates;
+    if (current.includes(dateStr)) return;
+    
+    const newSelectedDates = [...current, dateStr].sort();
+    const newDateTimes = { ...p.dateTimes };
+    
+    // Default time for new date
+    const defaultTime = p.allSameTime && current.length > 0 
+      ? (newDateTimes[current[0]] || { hr: '11', min: '00', ampm: 'AM' })
+      : { hr: '11', min: '00', ampm: 'AM' };
+      
+    newDateTimes[dateStr] = { ...defaultTime };
+    
     setPlatforms({
       ...platforms,
-      [name]: { ...platforms[name], selectedDates: [...current, dateStr].sort() }
+      [name]: { ...p, selectedDates: newSelectedDates, dateTimes: newDateTimes }
     });
   };
 
   const removeDateFromPlatform = (name: string, dateStr: string) => {
-    const current = platforms[name].selectedDates;
+    const p = platforms[name];
+    const current = p.selectedDates;
+    const newDateTimes = { ...p.dateTimes };
+    delete newDateTimes[dateStr];
+
     setPlatforms({
       ...platforms,
-      [name]: { ...platforms[name], selectedDates: current.filter(d => d !== dateStr) }
+      [name]: { ...p, selectedDates: current.filter(d => d !== dateStr), dateTimes: newDateTimes }
     });
   };
 
   const clearDatesForPlatform = (name: string) => {
     setPlatforms({
       ...platforms,
-      [name]: { ...platforms[name], selectedDates: [] }
+      [name]: { ...platforms[name], selectedDates: [], dateTimes: {} }
     });
   };
 
@@ -135,12 +200,15 @@ export const CreateTaskDialog = ({ isOpen, onOpenChange, onSuccess }: CreateTask
       Object.entries(platforms).forEach(([name, data]) => {
         if (data.selectedDates.length > 0) {
           data.selectedDates.forEach(date => {
+            const dt = data.dateTimes[date] || { hr: '11', min: '00', ampm: 'AM' };
+            const timeStr = `${dt.hr}:${dt.min} ${dt.ampm}`;
+            
             activePlatforms.push({
               name,
               startDate: date,
               endDate: date,
               amount: NO_AMOUNT_PLATFORMS.includes(name) ? 0 : (parseFloat(data.amount) || 0),
-              times: data.times,
+              times: [timeStr],
               status: 'Pending'
             });
           });
@@ -211,10 +279,13 @@ export const CreateTaskDialog = ({ isOpen, onOpenChange, onSuccess }: CreateTask
         // Short alias: Facebook/Instagram → Fb/Insta
         const alias = name === 'Facebook/Instagram' ? 'Fb/Insta' : name;
         message += `*${alias}*\n`;
-        message += `Date : ${data.selectedDates.map(fmtDate).join(', ')}\n`;
-        if (data.times && data.times.length > 0) {
-          message += `Time : ${data.times.join(', ')}\n`;
-        }
+        
+        data.selectedDates.forEach(date => {
+          const dt = data.dateTimes[date] || { hr: '11', min: '00', ampm: 'AM' };
+          const timeStr = `${dt.hr}:${dt.min} ${dt.ampm}`;
+          message += `Date : ${fmtDate(date)} | Time : ${timeStr}\n`;
+        });
+
         if (!NO_AMOUNT_PLATFORMS.includes(name) && data.amount) {
           message += `Amount : ₹${data.amount}/day\n`;
         }
@@ -373,37 +444,53 @@ export const CreateTaskDialog = ({ isOpen, onOpenChange, onSuccess }: CreateTask
                           </div>
                         )}
 
-                        {/* Multiple Time input for WhatsApp/Voice */}
-                        {NO_AMOUNT_PLATFORMS.includes(name) && (
-                          <div className="space-y-1">
-                            <label className="text-[11px] text-muted-foreground">Select Times</label>
-                            <div className="flex flex-wrap gap-1.5 p-2 bg-background border rounded-md min-h-10 items-center">
-                              {data.times.map((t, tidx) => (
-                                <Badge key={tidx} variant="secondary" className="flex items-center gap-1 h-6 pr-1">
-                                  {t}
-                                  <button type="button" 
-                                    onClick={() => setPlatforms({
-                                      ...platforms,
-                                      [name]: { ...data, times: data.times.filter((_, i) => i !== tidx) }
-                                    })}
-                                    className="hover:text-destructive transition-colors">
-                                    <X className="w-3 h-3" />
-                                  </button>
-                                </Badge>
-                              ))}
-                              <Input 
-                                type="time" 
-                                className="h-6 w-24 border-none bg-transparent p-0 text-xs focus-visible:ring-0" 
-                                onChange={(e) => {
-                                  if (e.target.value) {
-                                    setPlatforms({
-                                      ...platforms,
-                                      [name]: { ...data, times: [...data.times, e.target.value].sort() }
-                                    });
-                                    e.target.value = '';
-                                  }
-                                }}
-                              />
+                        {/* Multiple Time inputs – only for WhatsApp/Voice */}
+                        {NO_AMOUNT_PLATFORMS.includes(name) && data.selectedDates.length > 0 && (
+                          <div className="space-y-2 col-span-full border-t pt-2 mt-1">
+                            <div className="flex items-center justify-between">
+                              <label className="text-[11px] font-semibold text-muted-foreground uppercase">Schedule Times</label>
+                              <div className="flex items-center gap-2">
+                                <Checkbox 
+                                  id={`sync-time-${name}`} 
+                                  checked={data.allSameTime} 
+                                  onCheckedChange={(checked) => toggleAllSameTime(name, checked === true)} 
+                                />
+                                <label htmlFor={`sync-time-${name}`} className="text-[10px] cursor-pointer">All Same Time</label>
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              {data.selectedDates.map((date) => {
+                                const dt = data.dateTimes[date] || { hr: '11', min: '00', ampm: 'AM' };
+                                return (
+                                  <div key={date} className="flex items-center gap-2 p-2 rounded bg-muted/30 border border-border/50">
+                                    <span className="text-[10px] font-bold w-12 shrink-0">{fmtDateCondensed(date)}</span>
+                                    <div className="flex items-center gap-1 flex-1 justify-end">
+                                      <Input 
+                                        type="text" 
+                                        className="h-7 w-8 text-center p-0 text-xs" 
+                                        value={dt.hr}
+                                        onChange={(e) => updateDateTime(name, date, 'hr', e.target.value.slice(0, 2))}
+                                      />
+                                      <span className="text-xs">:</span>
+                                      <Input 
+                                        type="text" 
+                                        className="h-7 w-8 text-center p-0 text-xs" 
+                                        value={dt.min}
+                                        onChange={(e) => updateDateTime(name, date, 'min', e.target.value.slice(0, 2))}
+                                      />
+                                      <Button 
+                                        type="button"
+                                        variant="outline" 
+                                        size="sm" 
+                                        className="h-7 px-2 text-[10px] min-w-[36px]"
+                                        onClick={() => updateDateTime(name, date, 'ampm', dt.ampm === 'AM' ? 'PM' : 'AM')}
+                                      >
+                                        {dt.ampm}
+                                      </Button>
+                                    </div>
+                                  </div>
+                                );
+                              })}
                             </div>
                           </div>
                         )}
