@@ -205,8 +205,8 @@ const AdminTasksPage = () => {
         </Select>
       </div>
 
-      {/* Kanban Board */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      {/* Kanban Board - 4 cols for wider screens if we add more, or just grid layout */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 max-w-[1600px] mx-auto">
         {Object.entries(groupedTasks).map(([status, statusTasks]) => (
           <div key={status} className="space-y-3">
             <div className="flex items-center justify-between px-2">
@@ -225,10 +225,10 @@ const AdminTasksPage = () => {
                 statusTasks.map((task) => (
                   <GlassCard
                     key={task.id}
-                    className="hover:-translate-y-0.5 cursor-pointer transition-transform"
+                    className="hover:-translate-y-0.5 cursor-pointer transition-transform aspect-square flex flex-col"
                     onClick={() => setSelectedTask(task)}
                   >
-                    <CardContent className="p-4">
+                    <CardContent className="p-4 flex-1 flex flex-col overflow-hidden">
                       <div className="flex items-start justify-between gap-2 mb-2">
                         <h4 className="font-medium text-sm leading-tight">{task.title}</h4>
                         <Badge variant={getPriorityVariant(task.priority) as any} className="shrink-0 text-xs">
@@ -260,16 +260,14 @@ const AdminTasksPage = () => {
                           <Calendar className="w-3 h-3" />
                           {new Date(task.deadline).toLocaleDateString()}
                         </div>
-                        <span>•</span>
-                        <div className="flex items-center gap-1">
-                          <Users className="w-3 h-3" />
-                          {task.assignedStaff?.length > 0 
-                            ? `${task.assignedStaff.length} Staff` 
-                            : getStaffName(task.assignedTo || '')}
-                        </div>
+                        {task.createdAt && (
+                          <div className="flex items-center gap-1 text-[10px] text-muted-foreground ml-auto">
+                            <Clock className="w-2.5 h-2.5" />
+                            {new Date(task.createdAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                          </div>
+                        )}
                       </div>
-
-                      <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                      <div className="flex items-center gap-1 mt-auto" onClick={e => e.stopPropagation()}>
                         {status !== 'Pending' && (
                           <Button
                             variant="ghost"
@@ -415,6 +413,13 @@ const AdminTasksPage = () => {
                           </div>
                           <div className="flex items-center gap-2">
                             {p.amount > 0 && <span className="text-muted-foreground">₹{p.amount}/day</span>}
+                            {p.times && p.times.length > 0 && (
+                              <div className="flex flex-wrap gap-1">
+                                {p.times.map((t: string, ti: number) => (
+                                  <Badge key={ti} variant="outline" className="text-[9px] h-3 px-1">{t}</Badge>
+                                ))}
+                              </div>
+                            )}
                             <Badge variant={getStatusVariant(p.status) as any} className="h-4 text-[10px] px-1">{p.status}</Badge>
                           </div>
                         </div>

@@ -191,6 +191,7 @@ const StaffTasksPage = () => {
       platformName: p.name,
       date: p.startDate,
       amount: p.amount,
+      times: p.times,
       status: p.status,
       platformIndex: idx,  // ← unique key for toggle isolation
     }));
@@ -263,53 +264,69 @@ const StaffTasksPage = () => {
               </CardContent>
             </GlassCard>
           ) : (
-            tasks.map(task => {
-              const progress = getTaskProgress(task);
-              return (
-                <GlassCard
-                  key={task.id}
-                  className="cursor-pointer hover:-translate-y-0.5 transition-all bg-primary text-primary-foreground border-primary/50"
-                  onClick={() => setExpandedTaskId(task.id)}
-                >
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <h4 className="font-semibold text-sm truncate text-white">
-                            {task.clientName || task.title}
-                          </h4>
-                          <Badge variant={getPriorityVariant(task.priority) as any} className="text-[10px] h-4 px-1 shrink-0">
-                            {task.priority}
-                          </Badge>
-                        </div>
-                        <p className="text-xs text-primary-foreground/80 mt-0.5">
-                          {task.campaignName} {task.year ? `(${task.year})` : ''} {task.location ? `• ${task.location}` : ''}
-                        </p>
-                        {progress && (
-                          <div className="mt-2 flex items-center gap-2">
-                            <div className="flex-1 bg-white/30 rounded-full h-1.5">
-                              <div
-                                className="h-full rounded-full bg-white transition-all"
-                                style={{ width: `${progress.pct}%` }}
-                              />
-                            </div>
-                            <span className="text-[11px] text-white/80 shrink-0">
-                              {progress.done}/{progress.total}
-                            </span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-[1600px]">
+              {tasks.map(task => {
+                const progress = getTaskProgress(task);
+                return (
+                  <GlassCard
+                    key={task.id}
+                    className="cursor-pointer hover:-translate-y-0.5 transition-all bg-primary text-primary-foreground border-primary/50 aspect-square flex flex-col"
+                    onClick={() => setExpandedTaskId(task.id)}
+                  >
+                    <CardContent className="p-4 flex-1 flex flex-col overflow-hidden">
+                      <div className="flex flex-col flex-1 gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-2">
+                            <h4 className="font-semibold text-sm line-clamp-2 text-white">
+                              {task.clientName || task.title}
+                            </h4>
+                            <Badge variant={getPriorityVariant(task.priority) as any} className="text-[10px] h-4 px-1 shrink-0">
+                              {task.priority}
+                            </Badge>
                           </div>
-                        )}
+                          <p className="text-xs text-primary-foreground/80 mt-1 line-clamp-1">
+                            {task.campaignName}
+                          </p>
+                          <p className="text-[10px] text-primary-foreground/60 mt-0.5">
+                            {task.year || ''} {task.location ? `• ${task.location}` : ''}
+                          </p>
+                        </div>
+                        
+                        <div className="mt-auto space-y-2">
+                          {progress && (
+                            <div className="flex items-center gap-2">
+                              <div className="flex-1 bg-white/30 rounded-full h-1.5">
+                                <div
+                                  className="h-full rounded-full bg-white transition-all"
+                                  style={{ width: `${progress.pct}%` }}
+                                />
+                              </div>
+                              <span className="text-[10px] text-white/80 shrink-0">
+                                {progress.done}/{progress.total}
+                              </span>
+                            </div>
+                          )}
+                          
+                          <div className="flex items-center justify-between gap-2 mt-1">
+                            <div className="flex flex-col">
+                              {task.createdAt && (
+                                <div className="flex items-center gap-1 text-[9px] text-white/60">
+                                  <Clock className="w-2.5 h-2.5" />
+                                  {new Date(task.createdAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                                </div>
+                              )}
+                            </div>
+                            <Badge variant={getStatusVariant(task.status) as any} className="text-[9px] h-4 shrink-0 px-1.5">
+                              {task.status}
+                            </Badge>
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant={getStatusVariant(task.status) as any} className="text-[10px] h-5 shrink-0">
-                          {task.status}
-                        </Badge>
-                        <ChevronRight className="w-4 h-4 text-white/70 shrink-0" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </GlassCard>
-              );
-            })
+                    </CardContent>
+                  </GlassCard>
+                );
+              })}
+            </div>
           )}
         </div>
       ) : (
@@ -361,6 +378,13 @@ const StaffTasksPage = () => {
                             </p>
                             {item.amount > 0 && (
                               <p className="text-[11px] text-muted-foreground">₹{item.amount}/day</p>
+                            )}
+                            {item.times && item.times.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {item.times.map((t, ti) => (
+                                  <Badge key={ti} variant="outline" className="text-[9px] h-3.5 px-1">{t}</Badge>
+                                ))}
+                              </div>
                             )}
                           </div>
                           <Badge variant={getStatusVariant(item.status) as any} className="text-[10px] h-4 px-1 shrink-0">

@@ -29,6 +29,7 @@ export interface PlatformData {
   startDate: string;
   endDate: string;
   amount: number;
+  times?: string[];
   status: 'Pending' | 'In Progress' | 'Completed';
 }
 

@@ -28,6 +28,7 @@ const taskSchema = new mongoose.Schema({
     startDate: String,
     endDate: String,
     amount: Number,
+    times: [String],
     status: { type: String, default: 'Pending' }
   }],
   remarks: String,

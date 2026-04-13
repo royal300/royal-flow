@@ -61,13 +61,13 @@ export const CreateTaskDialog = ({ isOpen, onOpenChange, onSuccess }: CreateTask
     deadline: '',
   });
 
-  // Each platform: selectedDates = string[], amount = string, active (for YT/Twitter toggle)
-  const [platforms, setPlatforms] = useState<Record<string, { selectedDates: string[]; amount: string; active: boolean }>>({
-    'Facebook/Instagram': { selectedDates: [], amount: '', active: true },
-    'WhatsApp API':       { selectedDates: [], amount: '', active: true },
-    'Voice Calling':      { selectedDates: [], amount: '', active: true },
-    'YouTube':            { selectedDates: [], amount: '', active: false },
-    'Twitter':            { selectedDates: [], amount: '', active: false },
+  // Each platform: selectedDates = string[], amount = string, active (for YT/Twitter toggle), times = string[]
+  const [platforms, setPlatforms] = useState<Record<string, { selectedDates: string[]; amount: string; active: boolean; times: string[] }>>({
+    'Facebook/Instagram': { selectedDates: [], amount: '', active: true, times: [] },
+    'WhatsApp API':       { selectedDates: [], amount: '', active: true, times: [] },
+    'Voice Calling':      { selectedDates: [], amount: '', active: true, times: [] },
+    'YouTube':            { selectedDates: [], amount: '', active: false, times: [] },
+    'Twitter':            { selectedDates: [], amount: '', active: false, times: [] },
   });
 
   const { toast } = useToast();
@@ -92,11 +92,11 @@ export const CreateTaskDialog = ({ isOpen, onOpenChange, onSuccess }: CreateTask
       remarks: '', assignedStaff: [], priority: 'P1', deadline: '',
     });
     setPlatforms({
-      'Facebook/Instagram': { selectedDates: [], amount: '', active: true },
-      'WhatsApp API':       { selectedDates: [], amount: '', active: true },
-      'Voice Calling':      { selectedDates: [], amount: '', active: true },
-      'YouTube':            { selectedDates: [], amount: '', active: false },
-      'Twitter':            { selectedDates: [], amount: '', active: false },
+      'Facebook/Instagram': { selectedDates: [], amount: '', active: true, times: [] },
+      'WhatsApp API':       { selectedDates: [], amount: '', active: true, times: [] },
+      'Voice Calling':      { selectedDates: [], amount: '', active: true, times: [] },
+      'YouTube':            { selectedDates: [], amount: '', active: false, times: [] },
+      'Twitter':            { selectedDates: [], amount: '', active: false, times: [] },
     });
   };
 
@@ -139,6 +139,7 @@ export const CreateTaskDialog = ({ isOpen, onOpenChange, onSuccess }: CreateTask
               startDate: date,
               endDate: date,
               amount: NO_AMOUNT_PLATFORMS.includes(name) ? 0 : (parseFloat(data.amount) || 0),
+              times: data.times,
               status: 'Pending'
             });
           });
@@ -210,6 +211,9 @@ export const CreateTaskDialog = ({ isOpen, onOpenChange, onSuccess }: CreateTask
         const alias = name === 'Facebook/Instagram' ? 'Fb/Insta' : name;
         message += `*${alias}*\n`;
         message += `Date : ${data.selectedDates.map(fmtDate).join(', ')}\n`;
+        if (data.times && data.times.length > 0) {
+          message += `Time : ${data.times.join(', ')}\n`;
+        }
         if (!NO_AMOUNT_PLATFORMS.includes(name) && data.amount) {
           message += `Amount : ₹${data.amount}/day\n`;
         }
@@ -365,6 +369,41 @@ export const CreateTaskDialog = ({ isOpen, onOpenChange, onSuccess }: CreateTask
                             <Input type="number" placeholder="0.00" className="h-10"
                               value={data.amount}
                               onChange={(e) => setPlatforms({ ...platforms, [name]: { ...data, amount: e.target.value } })} />
+                          </div>
+                        )}
+
+                        {/* Multiple Time input for WhatsApp/Voice */}
+                        {NO_AMOUNT_PLATFORMS.includes(name) && (
+                          <div className="space-y-1">
+                            <label className="text-[11px] text-muted-foreground">Select Times</label>
+                            <div className="flex flex-wrap gap-1.5 p-2 bg-background border rounded-md min-h-10 items-center">
+                              {data.times.map((t, tidx) => (
+                                <Badge key={tidx} variant="secondary" className="flex items-center gap-1 h-6 pr-1">
+                                  {t}
+                                  <button type="button" 
+                                    onClick={() => setPlatforms({
+                                      ...platforms,
+                                      [name]: { ...data, times: data.times.filter((_, i) => i !== tidx) }
+                                    })}
+                                    className="hover:text-destructive transition-colors">
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </Badge>
+                              ))}
+                              <Input 
+                                type="time" 
+                                className="h-6 w-24 border-none bg-transparent p-0 text-xs focus-visible:ring-0" 
+                                onChange={(e) => {
+                                  if (e.target.value) {
+                                    setPlatforms({
+                                      ...platforms,
+                                      [name]: { ...data, times: [...data.times, e.target.value].sort() }
+                                    });
+                                    e.target.value = '';
+                                  }
+                                }}
+                              />
+                            </div>
                           </div>
                         )}
                       </div>

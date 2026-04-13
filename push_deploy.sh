@@ -9,7 +9,7 @@ if [[ -n $(git status -s) ]]; then
     echo "📦 Staging changes..."
     git add .
     echo "💾 Committing changes..."
-    git commit -m "Deployment update: campaign overhaul & build fix"
+    git commit -m "Enhance task form with multiple times and UI improvements (square cards, 4-column layout)"
 else
     echo "✨ No new local changes to commit."
 fi
