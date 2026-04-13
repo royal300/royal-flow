@@ -24,10 +24,6 @@ const LoginPage = () => {
     const success = await login(email, password, role);
 
     if (success) {
-      toast({
-        title: 'Welcome back!',
-        description: `Logged in as ${role === 'admin' ? 'Administrator' : 'Staff'}`,
-      });
       navigate(role === 'admin' ? '/admin' : '/staff');
     } else {
       toast({

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -49,6 +49,7 @@ interface CreateTaskDialogProps {
 const NO_AMOUNT_PLATFORMS = ['WhatsApp API', 'Voice Calling'];
 
 export const CreateTaskDialog = ({ isOpen, onOpenChange, onSuccess }: CreateTaskDialogProps) => {
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [formData, setFormData] = useState({
     clientName: '',
@@ -79,6 +80,20 @@ export const CreateTaskDialog = ({ isOpen, onOpenChange, onSuccess }: CreateTask
   });
 
   const { toast } = useToast();
+
+  const autoScroll = (amount: number = 80) => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollBy({ top: amount, behavior: 'smooth' });
+    }
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      setTimeout(() => {
+        if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0;
+      }, 100);
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     loadStaff();
@@ -315,6 +330,7 @@ export const CreateTaskDialog = ({ isOpen, onOpenChange, onSuccess }: CreateTask
 
         {/* Scrollable content — touch-action pan-y ensures vertical-only scroll on mobile */}
         <div
+          ref={scrollContainerRef}
           className="flex-1 overflow-y-auto px-4 py-3"
           style={{ overscrollBehavior: 'contain', touchAction: 'pan-y', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}
         >
@@ -338,6 +354,7 @@ export const CreateTaskDialog = ({ isOpen, onOpenChange, onSuccess }: CreateTask
                 <label className="text-xs font-medium">Campaign Name *</label>
                 <Input required placeholder="e.g. Summer Sale" className="h-8 text-sm"
                   value={formData.campaignName}
+                  onBlur={() => formData.campaignName && autoScroll(50)}
                   onChange={(e) => setFormData({ ...formData, campaignName: e.target.value })} />
               </div>
             </div>
@@ -346,7 +363,7 @@ export const CreateTaskDialog = ({ isOpen, onOpenChange, onSuccess }: CreateTask
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div className="space-y-1">
                 <label className="text-xs font-medium">Year</label>
-                <Select value={formData.year} onValueChange={(v) => setFormData({ ...formData, year: v })}>
+                <Select value={formData.year} onValueChange={(v) => { setFormData({ ...formData, year: v }); autoScroll(30); }}>
                   <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {[2024, 2025, 2026, 2027].map(y => (
@@ -359,6 +376,7 @@ export const CreateTaskDialog = ({ isOpen, onOpenChange, onSuccess }: CreateTask
                 <label className="text-xs font-medium">Location</label>
                 <Input placeholder="e.g. Kolkata, Mumbai" className="h-8 text-sm"
                   value={formData.location}
+                  onBlur={() => formData.location && autoScroll(50)}
                   onChange={(e) => setFormData({ ...formData, location: e.target.value })} />
               </div>
             </div>
@@ -375,7 +393,10 @@ export const CreateTaskDialog = ({ isOpen, onOpenChange, onSuccess }: CreateTask
                       <span className="text-sm font-semibold">{name}</span>
                       {isOptional && (
                         <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-xs"
-                          onClick={() => setPlatforms({ ...platforms, [name]: { ...data, active: !data.active } })}>
+                          onClick={() => {
+                            setPlatforms({ ...platforms, [name]: { ...data, active: !data.active } });
+                            if (!data.active) autoScroll(100);
+                          }}>
                           {data.active ? <><ChevronUp className="w-3 h-3 mr-1" />Hide</> : <><ChevronDown className="w-3 h-3 mr-1" />Show</>}
                         </Button>
                       )}
@@ -414,6 +435,7 @@ export const CreateTaskDialog = ({ isOpen, onOpenChange, onSuccess }: CreateTask
                                       ...platforms,
                                       [name]: { ...platforms[name], selectedDates: dateStrings }
                                     });
+                                    if (dateStrings.length > 0) autoScroll(60);
                                   }}
                                   initialFocus
                                   disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))}
@@ -462,19 +484,19 @@ export const CreateTaskDialog = ({ isOpen, onOpenChange, onSuccess }: CreateTask
                               {data.selectedDates.map((date) => {
                                 const dt = data.dateTimes[date] || { hr: '11', min: '00', ampm: 'AM' };
                                 return (
-                                  <div key={date} className="flex items-center gap-2 p-2 rounded bg-muted/30 border border-border/50">
-                                    <span className="text-[10px] font-bold w-12 shrink-0">{fmtDateCondensed(date)}</span>
+                                  <div key={date} className="flex items-center gap-2 p-2.5 rounded bg-muted/30 border border-border/50">
+                                    <span className="text-[13px] font-bold w-12 shrink-0">{fmtDateCondensed(date)}</span>
                                     <div className="flex items-center gap-1 flex-1 justify-end">
                                       <Input 
                                         type="text" 
-                                        className="h-7 w-8 text-center p-0 text-xs" 
+                                        className="h-8 w-10 text-center p-0 text-sm font-medium" 
                                         value={dt.hr}
                                         onChange={(e) => updateDateTime(name, date, 'hr', e.target.value.slice(0, 2))}
                                       />
-                                      <span className="text-xs">:</span>
+                                      <span className="text-sm font-bold">:</span>
                                       <Input 
                                         type="text" 
-                                        className="h-7 w-8 text-center p-0 text-xs" 
+                                        className="h-8 w-10 text-center p-0 text-sm font-medium" 
                                         value={dt.min}
                                         onChange={(e) => updateDateTime(name, date, 'min', e.target.value.slice(0, 2))}
                                       />
@@ -482,7 +504,7 @@ export const CreateTaskDialog = ({ isOpen, onOpenChange, onSuccess }: CreateTask
                                         type="button"
                                         variant="outline" 
                                         size="sm" 
-                                        className="h-7 px-2 text-[10px] min-w-[36px]"
+                                        className="h-8 px-2 text-xs font-bold min-w-[42px]"
                                         onClick={() => updateDateTime(name, date, 'ampm', dt.ampm === 'AM' ? 'PM' : 'AM')}
                                       >
                                         {dt.ampm}
