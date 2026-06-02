@@ -12,7 +12,8 @@ import {
   Users,
   X,
   Calendar as CalendarIcon,
-  Trash2
+  Trash2,
+  Contact
 } from 'lucide-react';
 import { Staff, staffService, taskService, PlatformData } from '@/lib/storage';
 import { useToast } from '@/hooks/use-toast';
@@ -50,6 +51,7 @@ const NO_AMOUNT_PLATFORMS = ['WhatsApp API', 'Voice Calling'];
 
 export const CreateTaskDialog = ({ isOpen, onOpenChange, onSuccess }: CreateTaskDialogProps) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [isContactSupported, setIsContactSupported] = useState(false);
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [formData, setFormData] = useState({
     clientName: '',
@@ -88,12 +90,36 @@ export const CreateTaskDialog = ({ isOpen, onOpenChange, onSuccess }: CreateTask
   };
 
   useEffect(() => {
+    setIsContactSupported('contacts' in navigator && 'ContactsManager' in window);
     if (isOpen) {
       setTimeout(() => {
         if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0;
       }, 100);
     }
   }, [isOpen]);
+
+  const handleOpenContactPicker = async () => {
+    try {
+      const props = ['name', 'tel'];
+      const opts = { multiple: false };
+      // @ts-ignore
+      const contacts = await navigator.contacts.select(props, opts);
+      if (contacts && contacts.length > 0) {
+        const contact = contacts[0];
+        const name = contact.name?.[0] || '';
+        const tel = contact.tel?.[0]?.replace(/[^0-9+]/g, '') || '';
+        
+        setFormData(prev => ({
+          ...prev,
+          clientName: name || prev.clientName,
+          clientWap: tel || prev.clientWap
+        }));
+        toast({ title: 'Contact selected successfully' });
+      }
+    } catch (err) {
+      console.error('Contact picker error:', err);
+    }
+  };
 
   useEffect(() => {
     loadStaff();
@@ -309,7 +335,7 @@ export const CreateTaskDialog = ({ isOpen, onOpenChange, onSuccess }: CreateTask
       }
     });
 
-    if (formData.remarks) message += `*Remarks:* ${formData.remarks}\n`;
+    if (formData.remarks) message += `*Remarks:*\n${formData.remarks}\n`;
 
     const encodedMessage = encodeURIComponent(message);
     const whatsappUrl = `https://wa.me/${formData.clientWap.replace(/\D/g, '')}?text=${encodedMessage}`;
@@ -340,7 +366,20 @@ export const CreateTaskDialog = ({ isOpen, onOpenChange, onSuccess }: CreateTask
             {/* Row 1: Client Name + Wap + Campaign */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="space-y-1">
-                <label className="text-xs font-medium">Client Name *</label>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-medium">Client Name *</label>
+                  {isContactSupported && (
+                    <Button 
+                      type="button" 
+                      variant="ghost" 
+                      size="sm" 
+                      className="h-5 px-1.5 text-[10px] text-primary hover:bg-primary/10"
+                      onClick={handleOpenContactPicker}
+                    >
+                      <Contact className="w-3 h-3 mr-1" /> Pick Contact
+                    </Button>
+                  )}
+                </div>
                 <Input required placeholder="Client name" className="h-8 text-sm"
                   value={formData.clientName}
                   onChange={(e) => setFormData({ ...formData, clientName: e.target.value })} />
