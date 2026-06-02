@@ -69,11 +69,7 @@ const App = () => {
               {/* Public Attendance Route - Protected by Location */}
               <Route
                 path="/attendance"
-                element={
-                  <LocationProtectedRoute>
-                    <AttendancePage />
-                  </LocationProtectedRoute>
-                }
+                element={<AttendancePage />}
               />
 
               {/* Admin Routes */}
