@@ -482,9 +482,18 @@ app.delete('/api/income/:id', async (req, res) => {
     try {
         await Income.deleteOne({ id: req.params.id });
         res.json({ success: true });
-    } catch (error) {
-        console.error('Error deleting income:', error);
-        res.status(500).json({ error: 'Failed to delete income record' });
+    } catch (e) {
+        res.status(500).json({ error: 'Failed' });
+    }
+});
+
+app.put('/api/income/:id', async (req, res) => {
+    try {
+        const data = { ...req.body, updatedAt: new Date().toISOString() };
+        const updated = await Income.findOneAndUpdate({ id: req.params.id }, data, { new: true });
+        res.json(updated);
+    } catch (e) {
+        res.status(500).json({ error: 'Failed' });
     }
 });
 
@@ -518,9 +527,18 @@ app.delete('/api/expense/:id', async (req, res) => {
     try {
         await Expense.deleteOne({ id: req.params.id });
         res.json({ success: true });
-    } catch (error) {
-        console.error('Error deleting expense:', error);
-        res.status(500).json({ error: 'Failed to delete expense record' });
+    } catch (e) {
+        res.status(500).json({ error: 'Failed' });
+    }
+});
+
+app.put('/api/expense/:id', async (req, res) => {
+    try {
+        const data = { ...req.body, updatedAt: new Date().toISOString() };
+        const updated = await Expense.findOneAndUpdate({ id: req.params.id }, data, { new: true });
+        res.json(updated);
+    } catch (e) {
+        res.status(500).json({ error: 'Failed' });
     }
 });
 

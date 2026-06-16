@@ -99,6 +99,7 @@ export interface Income {
   amount: number;
   month: string;
   year: string;
+  invoiceNumber?: string;
   remarks?: string;
   createdAt: string;
 }
@@ -398,19 +399,25 @@ export const accountService = {
     return api.post<Income>('/income', income);
   },
   async deleteIncome(id: string): Promise<void> {
-    return api.delete(`/income/${id}`);
+    return await api.delete(`/income/${id}`);
+  },
+  updateIncome: async (id: string, data: Partial<Income>) => {
+    return await api.put<Income>(`/income/${id}`, data);
   },
 
-  // Expense
-  async getExpenses(): Promise<Expense[]> {
+  // Expense Methods
+  getExpenses: async (): Promise<Expense[]> => {
     return api.get<Expense[]>('/expense');
   },
   async createExpense(expense: Omit<Expense, 'id' | 'createdAt'>): Promise<Expense> {
-    return api.post<Expense>('/expense', expense);
+    return await api.post<Expense>('/expense', expense);
   },
-  async deleteExpense(id: string): Promise<void> {
-    return api.delete(`/expense/${id}`);
+  deleteExpense: async (id: string) => {
+    return await api.delete(`/expense/${id}`);
   },
+  updateExpense: async (id: string, data: Partial<Expense>) => {
+    return await api.put<Expense>(`/expense/${id}`, data);
+  }
 };
 
 

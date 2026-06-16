@@ -6,9 +6,10 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { accountService, settingsService, Income, Expense } from '@/lib/storage';
-import { Trash2, Download } from 'lucide-react';
+import { Trash2, Download, Pencil } from 'lucide-react';
 
 const AdminAccountsPage = () => {
   const { toast } = useToast();
@@ -30,13 +31,17 @@ const AdminAccountsPage = () => {
   const [expenses, setExpenses] = useState<Expense[]>([]);
 
   // Income Form State
-  const [incomeForm, setIncomeForm] = useState({ date: '', clientName: '', paymentMethod: '', bank: '', amount: '', remarks: '' });
+  const [incomeForm, setIncomeForm] = useState({ date: '', clientName: '', paymentMethod: '', bank: '', amount: '', remarks: '', invoiceNumber: '' });
   
   // Expense Form State
   const [expenseForm, setExpenseForm] = useState({ date: '', category: '', amount: '', remarks: '' });
 
+  // Edit Modals State
+  const [editingIncome, setEditingIncome] = useState<Income | null>(null);
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+
   // Filters
-  const [incomeFilters, setIncomeFilters] = useState({ clientName: 'All', paymentMethod: 'All', bank: 'All', month: 'All', year: 'All' });
+  const [incomeFilters, setIncomeFilters] = useState({ clientName: 'All', paymentMethod: 'All', bank: 'All', month: 'All', year: 'All', invoiceNumber: '' });
   const [expenseFilters, setExpenseFilters] = useState({ category: 'All', month: 'All', year: 'All' });
 
   const loadData = async () => {
@@ -115,10 +120,11 @@ const AdminAccountsPage = () => {
         amount: Number(incomeForm.amount),
         month,
         year,
-        remarks: incomeForm.remarks
+        remarks: incomeForm.remarks,
+        invoiceNumber: incomeForm.invoiceNumber
       });
       toast({ title: 'Income added successfully' });
-      setIncomeForm({ date: '', clientName: '', paymentMethod: '', bank: '', amount: '', remarks: '' });
+      setIncomeForm({ date: '', clientName: '', paymentMethod: '', bank: '', amount: '', remarks: '', invoiceNumber: '' });
       loadData();
     } catch (err) {
       toast({ title: 'Failed to add income', variant: 'destructive' });
@@ -172,13 +178,40 @@ const AdminAccountsPage = () => {
     }
   };
 
-  // Filter Data
+  const handleUpdateIncome = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingIncome) return;
+    try {
+      await accountService.updateIncome(editingIncome.id, editingIncome);
+      toast({ title: 'Income updated successfully' });
+      setEditingIncome(null);
+      loadData();
+    } catch (err) {
+      toast({ title: 'Failed to update', variant: 'destructive' });
+    }
+  };
+
+  const handleUpdateExpense = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingExpense) return;
+    try {
+      await accountService.updateExpense(editingExpense.id, editingExpense);
+      toast({ title: 'Expense updated successfully' });
+      setEditingExpense(null);
+      loadData();
+    } catch (err) {
+      toast({ title: 'Failed to update', variant: 'destructive' });
+    }
+  };
+
   const filteredIncomes = incomes.filter(inc => {
+    const matchInvoice = !incomeFilters.invoiceNumber || (inc.invoiceNumber && inc.invoiceNumber.toLowerCase().includes(incomeFilters.invoiceNumber.toLowerCase()));
     return (incomeFilters.clientName === 'All' || inc.clientName === incomeFilters.clientName) &&
            (incomeFilters.paymentMethod === 'All' || inc.paymentMethod === incomeFilters.paymentMethod) &&
            (incomeFilters.bank === 'All' || inc.bank === incomeFilters.bank) &&
            (incomeFilters.month === 'All' || inc.month === incomeFilters.month) &&
-           (incomeFilters.year === 'All' || inc.year === incomeFilters.year);
+           (incomeFilters.year === 'All' || inc.year === incomeFilters.year) &&
+           matchInvoice;
   });
 
   const filteredExpenses = expenses.filter(exp => {
@@ -240,10 +273,10 @@ const AdminAccountsPage = () => {
               <CardTitle>Add Income</CardTitle>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleAddIncome} className="grid grid-cols-1 md:grid-cols-7 gap-4 items-end">
+              <form onSubmit={handleAddIncome} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                 <div className="space-y-2">
                   <Label>Date</Label>
-                  <Input type="date" value={incomeForm.date} onChange={e => setIncomeForm({ ...incomeForm, date: e.target.value })} required />
+                  <Input type="date" className="[&::-webkit-calendar-picker-indicator]:block" value={incomeForm.date} onChange={e => setIncomeForm({ ...incomeForm, date: e.target.value })} required />
                 </div>
                 <div className="space-y-2">
                   <Label>Client Name</Label>
@@ -280,7 +313,13 @@ const AdminAccountsPage = () => {
                   <Label>Remarks</Label>
                   <Input value={incomeForm.remarks} onChange={e => setIncomeForm({ ...incomeForm, remarks: e.target.value })} placeholder="Optional" />
                 </div>
-                <Button type="submit" variant="royal" className="w-full">Add Income</Button>
+                <div className="space-y-2">
+                  <Label>Invoice / Proforma No.</Label>
+                  <Input value={incomeForm.invoiceNumber} onChange={e => setIncomeForm({ ...incomeForm, invoiceNumber: e.target.value })} placeholder="Optional" />
+                </div>
+                <div className="md:col-span-1">
+                  <Button type="submit" variant="royal" className="w-full">Add Income</Button>
+                </div>
               </form>
             </CardContent>
           </GlassCard>
@@ -294,7 +333,8 @@ const AdminAccountsPage = () => {
             </CardHeader>
             <CardContent>
               <div className="flex flex-col md:flex-row gap-4 justify-between mb-4">
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-4 flex-1">
+                <div className="grid grid-cols-2 md:grid-cols-6 gap-4 flex-1">
+                  <Input placeholder="Filter Invoice No." value={incomeFilters.invoiceNumber} onChange={e => setIncomeFilters({ ...incomeFilters, invoiceNumber: e.target.value })} />
                   <Select value={incomeFilters.clientName} onValueChange={v => setIncomeFilters({ ...incomeFilters, clientName: v })}>
                     <SelectTrigger><SelectValue placeholder="Filter Client" /></SelectTrigger>
                     <SelectContent>
@@ -347,9 +387,10 @@ const AdminAccountsPage = () => {
                       <TableHead>Deposited Bank</TableHead>
                       <TableHead>Month</TableHead>
                       <TableHead>Year</TableHead>
+                      <TableHead>Invoice No.</TableHead>
                       <TableHead>Remarks</TableHead>
                       <TableHead className="text-right">Amount</TableHead>
-                      <TableHead className="w-[50px]"></TableHead>
+                      <TableHead className="w-[80px]"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -361,9 +402,13 @@ const AdminAccountsPage = () => {
                         <TableCell>{inc.bank}</TableCell>
                         <TableCell>{inc.month}</TableCell>
                         <TableCell>{inc.year}</TableCell>
+                        <TableCell>{inc.invoiceNumber || '-'}</TableCell>
                         <TableCell className="max-w-[150px] truncate" title={inc.remarks}>{inc.remarks || '-'}</TableCell>
                         <TableCell className="text-right font-medium">₹{inc.amount.toLocaleString()}</TableCell>
-                        <TableCell>
+                        <TableCell className="flex gap-1 justify-end">
+                          <Button variant="ghost" size="icon" onClick={() => setEditingIncome(inc)} className="text-blue-500 hover:text-blue-700">
+                            <Pencil className="h-4 w-4" />
+                          </Button>
                           <Button variant="ghost" size="icon" onClick={() => handleDeleteIncome(inc.id)} className="text-red-500 hover:text-red-700">
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -372,7 +417,7 @@ const AdminAccountsPage = () => {
                     ))}
                     {filteredIncomes.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={9} className="text-center py-4 text-muted-foreground">No income records found</TableCell>
+                        <TableCell colSpan={10} className="text-center py-4 text-muted-foreground">No income records found</TableCell>
                       </TableRow>
                     )}
                   </TableBody>
@@ -392,7 +437,7 @@ const AdminAccountsPage = () => {
               <form onSubmit={handleAddExpense} className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
                 <div className="space-y-2">
                   <Label>Date</Label>
-                  <Input type="date" value={expenseForm.date} onChange={e => setExpenseForm({ ...expenseForm, date: e.target.value })} required />
+                  <Input type="date" className="[&::-webkit-calendar-picker-indicator]:block" value={expenseForm.date} onChange={e => setExpenseForm({ ...expenseForm, date: e.target.value })} required />
                 </div>
                 <div className="space-y-2">
                   <Label>Category</Label>
@@ -464,7 +509,7 @@ const AdminAccountsPage = () => {
                       <TableHead>Year</TableHead>
                       <TableHead>Remarks</TableHead>
                       <TableHead className="text-right">Amount</TableHead>
-                      <TableHead className="w-[50px]"></TableHead>
+                      <TableHead className="w-[80px]"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -476,7 +521,10 @@ const AdminAccountsPage = () => {
                         <TableCell>{exp.year}</TableCell>
                         <TableCell className="max-w-[150px] truncate" title={exp.remarks}>{exp.remarks || '-'}</TableCell>
                         <TableCell className="text-right font-medium">₹{exp.amount.toLocaleString()}</TableCell>
-                        <TableCell>
+                        <TableCell className="flex gap-1 justify-end">
+                          <Button variant="ghost" size="icon" onClick={() => setEditingExpense(exp)} className="text-blue-500 hover:text-blue-700">
+                            <Pencil className="h-4 w-4" />
+                          </Button>
                           <Button variant="ghost" size="icon" onClick={() => handleDeleteExpense(exp.id)} className="text-red-500 hover:text-red-700">
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -582,6 +630,108 @@ const AdminAccountsPage = () => {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* EDIT INCOME DIALOG */}
+      <Dialog open={!!editingIncome} onOpenChange={(open) => !open && setEditingIncome(null)}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Edit Income</DialogTitle>
+          </DialogHeader>
+          {editingIncome && (
+            <form onSubmit={handleUpdateIncome} className="space-y-4 mt-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Date</Label>
+                  <Input type="date" className="[&::-webkit-calendar-picker-indicator]:block" value={editingIncome.date} onChange={e => setEditingIncome({ ...editingIncome, date: e.target.value })} required />
+                </div>
+                <div className="space-y-2">
+                  <Label>Client Name</Label>
+                  <Select value={editingIncome.clientName} onValueChange={v => setEditingIncome({ ...editingIncome, clientName: v })}>
+                    <SelectTrigger><SelectValue placeholder="Select Client" /></SelectTrigger>
+                    <SelectContent>
+                      {clients.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Payment Mode</Label>
+                  <Select value={editingIncome.paymentMethod} onValueChange={v => setEditingIncome({ ...editingIncome, paymentMethod: v })}>
+                    <SelectTrigger><SelectValue placeholder="Select Mode" /></SelectTrigger>
+                    <SelectContent>
+                      {paymentMethods.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Deposited Bank</Label>
+                  <Select value={editingIncome.bank} onValueChange={v => setEditingIncome({ ...editingIncome, bank: v })}>
+                    <SelectTrigger><SelectValue placeholder="Select Bank" /></SelectTrigger>
+                    <SelectContent>
+                      {banks.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Amount</Label>
+                  <Input type="number" step="0.01" value={editingIncome.amount} onChange={e => setEditingIncome({ ...editingIncome, amount: Number(e.target.value) })} required />
+                </div>
+                <div className="space-y-2">
+                  <Label>Invoice/Proforma No.</Label>
+                  <Input value={editingIncome.invoiceNumber || ''} onChange={e => setEditingIncome({ ...editingIncome, invoiceNumber: e.target.value })} />
+                </div>
+                <div className="space-y-2 col-span-2">
+                  <Label>Remarks</Label>
+                  <Input value={editingIncome.remarks || ''} onChange={e => setEditingIncome({ ...editingIncome, remarks: e.target.value })} />
+                </div>
+              </div>
+              <div className="flex justify-end pt-4">
+                <Button type="button" variant="ghost" onClick={() => setEditingIncome(null)} className="mr-2">Cancel</Button>
+                <Button type="submit">Save Changes</Button>
+              </div>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* EDIT EXPENSE DIALOG */}
+      <Dialog open={!!editingExpense} onOpenChange={(open) => !open && setEditingExpense(null)}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Edit Expense</DialogTitle>
+          </DialogHeader>
+          {editingExpense && (
+            <form onSubmit={handleUpdateExpense} className="space-y-4 mt-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Date</Label>
+                  <Input type="date" className="[&::-webkit-calendar-picker-indicator]:block" value={editingExpense.date} onChange={e => setEditingExpense({ ...editingExpense, date: e.target.value })} required />
+                </div>
+                <div className="space-y-2">
+                  <Label>Category</Label>
+                  <Select value={editingExpense.category} onValueChange={v => setEditingExpense({ ...editingExpense, category: v })}>
+                    <SelectTrigger><SelectValue placeholder="Select Category" /></SelectTrigger>
+                    <SelectContent>
+                      {categories.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Amount</Label>
+                  <Input type="number" step="0.01" value={editingExpense.amount} onChange={e => setEditingExpense({ ...editingExpense, amount: Number(e.target.value) })} required />
+                </div>
+                <div className="space-y-2">
+                  <Label>Remarks</Label>
+                  <Input value={editingExpense.remarks || ''} onChange={e => setEditingExpense({ ...editingExpense, remarks: e.target.value })} />
+                </div>
+              </div>
+              <div className="flex justify-end pt-4">
+                <Button type="button" variant="ghost" onClick={() => setEditingExpense(null)} className="mr-2">Cancel</Button>
+                <Button type="submit" variant="destructive">Save Changes</Button>
+              </div>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
