@@ -338,6 +338,46 @@ const AdminAccountsPage = () => {
               </div>
 
               <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-primary/10 hover:bg-primary/10">
+                      <TableHead>Date</TableHead>
+                      <TableHead>Client Name</TableHead>
+                      <TableHead>Mode of Payment</TableHead>
+                      <TableHead>Deposited Bank</TableHead>
+                      <TableHead>Month</TableHead>
+                      <TableHead>Year</TableHead>
+                      <TableHead>Remarks</TableHead>
+                      <TableHead className="text-right">Amount</TableHead>
+                      <TableHead className="w-[50px]"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredIncomes.map((inc) => (
+                      <TableRow key={inc.id}>
+                        <TableCell>{inc.date}</TableCell>
+                        <TableCell className="font-medium">{inc.clientName}</TableCell>
+                        <TableCell>{inc.paymentMethod}</TableCell>
+                        <TableCell>{inc.bank}</TableCell>
+                        <TableCell>{inc.month}</TableCell>
+                        <TableCell>{inc.year}</TableCell>
+                        <TableCell className="max-w-[150px] truncate" title={inc.remarks}>{inc.remarks || '-'}</TableCell>
+                        <TableCell className="text-right font-medium">₹{inc.amount.toLocaleString()}</TableCell>
+                        <TableCell>
+                          <Button variant="ghost" size="icon" onClick={() => handleDeleteIncome(inc.id)} className="text-red-500 hover:text-red-700">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {filteredIncomes.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={9} className="text-center py-4 text-muted-foreground">No income records found</TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
             </CardContent>
           </GlassCard>
         </TabsContent>
@@ -415,6 +455,42 @@ const AdminAccountsPage = () => {
               </div>
 
               <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-destructive/10 hover:bg-destructive/10">
+                      <TableHead>Date</TableHead>
+                      <TableHead>Category</TableHead>
+                      <TableHead>Month</TableHead>
+                      <TableHead>Year</TableHead>
+                      <TableHead>Remarks</TableHead>
+                      <TableHead className="text-right">Amount</TableHead>
+                      <TableHead className="w-[50px]"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredExpenses.map((exp) => (
+                      <TableRow key={exp.id}>
+                        <TableCell>{exp.date}</TableCell>
+                        <TableCell className="font-medium">{exp.category}</TableCell>
+                        <TableCell>{exp.month}</TableCell>
+                        <TableCell>{exp.year}</TableCell>
+                        <TableCell className="max-w-[150px] truncate" title={exp.remarks}>{exp.remarks || '-'}</TableCell>
+                        <TableCell className="text-right font-medium">₹{exp.amount.toLocaleString()}</TableCell>
+                        <TableCell>
+                          <Button variant="ghost" size="icon" onClick={() => handleDeleteExpense(exp.id)} className="text-red-500 hover:text-red-700">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {filteredExpenses.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center py-4 text-muted-foreground">No expense records found</TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
             </CardContent>
           </GlassCard>
         </TabsContent>
