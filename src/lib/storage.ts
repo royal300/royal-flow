@@ -115,6 +115,19 @@ export interface Expense {
   createdAt: string;
 }
 
+export interface BankDeposit {
+  id: string;
+  date: string;
+  type: 'Cash' | 'Cheque';
+  amount: number;
+  chequeNo?: string;
+  bankName?: string;
+  month: string;
+  year: string;
+  remarks?: string;
+  createdAt: string;
+}
+
 export interface Session {
   userId: string;
   role: 'admin' | 'staff';
@@ -417,6 +430,20 @@ export const accountService = {
   },
   updateExpense: async (id: string, data: Partial<Expense>) => {
     return await api.put<Expense>(`/expense/${id}`, data);
+  },
+
+  // Bank Deposit Methods
+  getBankDeposits: async (): Promise<BankDeposit[]> => {
+    return api.get<BankDeposit[]>('/bank-deposit');
+  },
+  createBankDeposit: async (deposit: Omit<BankDeposit, 'id' | 'createdAt'>): Promise<BankDeposit> => {
+    return await api.post<BankDeposit>('/bank-deposit', deposit);
+  },
+  deleteBankDeposit: async (id: string) => {
+    return await api.delete(`/bank-deposit/${id}`);
+  },
+  updateBankDeposit: async (id: string, data: Partial<BankDeposit>) => {
+    return await api.put<BankDeposit>(`/bank-deposit/${id}`, data);
   }
 };
 

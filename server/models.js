@@ -105,11 +105,26 @@ const expenseSchema = new mongoose.Schema({
   createdAt: String
 });
 
+const bankDepositSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true },
+  date: String,
+  type: String, // 'Cash' or 'Cheque'
+  amount: Number,
+  chequeNo: String,
+  bankName: String,
+  month: String,
+  year: String,
+  remarks: String,
+  createdAt: String,
+  updatedAt: String
+});
+
 module.exports = {
   Staff: mongoose.model('Staff', staffSchema),
   Task: mongoose.model('Task', taskSchema),
   Attendance: mongoose.model('Attendance', attendanceSchema),
   DailyReport: mongoose.model('DailyReport', dailyReportSchema),
   Income: mongoose.model('Income', incomeSchema),
-  Expense: mongoose.model('Expense', expenseSchema)
+  Expense: mongoose.model('Expense', expenseSchema),
+  BankDeposit: mongoose.model('BankDeposit', bankDepositSchema)
 };

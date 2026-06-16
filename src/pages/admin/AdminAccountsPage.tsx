@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { accountService, settingsService, Income, Expense } from '@/lib/storage';
+import { accountService, settingsService, Income, Expense, BankDeposit } from '@/lib/storage';
 import { Trash2, Download, Pencil } from 'lucide-react';
 
 const AdminAccountsPage = () => {
@@ -29,6 +29,7 @@ const AdminAccountsPage = () => {
   // Data State
   const [incomes, setIncomes] = useState<Income[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [bankDeposits, setBankDeposits] = useState<BankDeposit[]>([]);
 
   // Income Form State
   const [incomeForm, setIncomeForm] = useState({ date: '', clientName: '', paymentMethod: '', bank: '', amount: '', remarks: '', invoiceNumber: '' });
@@ -36,35 +37,43 @@ const AdminAccountsPage = () => {
   // Expense Form State
   const [expenseForm, setExpenseForm] = useState({ date: '', category: '', amount: '', remarks: '' });
 
+  // Bank Deposit Form State
+  const [bankDepositForm, setBankDepositForm] = useState({ date: '', type: 'Cash', amount: '', chequeNo: '', bankName: '', remarks: '' });
+
   // Edit Modals State
   const [editingIncome, setEditingIncome] = useState<Income | null>(null);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+  const [editingBankDeposit, setEditingBankDeposit] = useState<BankDeposit | null>(null);
 
   // Filters
   const [incomeFilters, setIncomeFilters] = useState({ clientName: 'All', paymentMethod: 'All', bank: 'All', month: 'All', year: 'All', invoiceNumber: '' });
   const [expenseFilters, setExpenseFilters] = useState({ category: 'All', month: 'All', year: 'All' });
+  const [bankDepositFilters, setBankDepositFilters] = useState({ type: 'All', month: 'All', year: 'All' });
+  const [overviewFilters, setOverviewFilters] = useState({ month: 'All', year: 'All' });
 
   const loadData = async () => {
     try {
       const [
         clientsData, methodsData, banksData, categoriesData,
-        incomesData, expensesData
+        incomesData, expensesData, bankDepositsData
       ] = await Promise.all([
         settingsService.get('accountClients'),
         settingsService.get('accountPaymentMethods'),
         settingsService.get('accountBanks'),
         settingsService.get('accountCategories'),
         accountService.getIncomes(),
-        accountService.getExpenses()
+        accountService.getExpenses(),
+        accountService.getBankDeposits()
       ]);
 
-      setClients(clientsData.value || []);
-      setPaymentMethods(methodsData.value || []);
-      setBanks(banksData.value || []);
-      setCategories(categoriesData.value || []);
+      setClients(clientsData?.value || []);
+      setPaymentMethods(methodsData?.value || []);
+      setBanks(banksData?.value || []);
+      setCategories(categoriesData?.value || []);
       
-      setIncomes(incomesData);
-      setExpenses(expensesData);
+      setIncomes(incomesData || []);
+      setExpenses(expensesData || []);
+      setBankDeposits(bankDepositsData || []);
     } catch (error) {
       console.error('Failed to load accounts data', error);
       toast({ title: 'Error', description: 'Failed to load data', variant: 'destructive' });
@@ -158,6 +167,31 @@ const AdminAccountsPage = () => {
     }
   };
 
+  const handleAddBankDeposit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const dateObj = new Date(bankDepositForm.date);
+    const month = dateObj.toLocaleString('default', { month: 'long' });
+    const year = dateObj.getFullYear().toString();
+
+    try {
+      await accountService.createBankDeposit({
+        date: bankDepositForm.date,
+        type: bankDepositForm.type as 'Cash' | 'Cheque',
+        amount: Number(bankDepositForm.amount),
+        chequeNo: bankDepositForm.type === 'Cheque' ? bankDepositForm.chequeNo : undefined,
+        bankName: bankDepositForm.type === 'Cheque' ? bankDepositForm.bankName : undefined,
+        month,
+        year,
+        remarks: bankDepositForm.remarks
+      });
+      toast({ title: 'Bank Deposit added successfully' });
+      setBankDepositForm({ date: '', type: 'Cash', amount: '', chequeNo: '', bankName: '', remarks: '' });
+      loadData();
+    } catch (err) {
+      toast({ title: 'Failed to add bank deposit', variant: 'destructive' });
+    }
+  };
+
   const handleDeleteIncome = async (id: string) => {
     try {
       await accountService.deleteIncome(id);
@@ -171,6 +205,16 @@ const AdminAccountsPage = () => {
   const handleDeleteExpense = async (id: string) => {
     try {
       await accountService.deleteExpense(id);
+      toast({ title: 'Deleted successfully' });
+      loadData();
+    } catch (err) {
+      toast({ title: 'Error deleting', variant: 'destructive' });
+    }
+  };
+
+  const handleDeleteBankDeposit = async (id: string) => {
+    try {
+      await accountService.deleteBankDeposit(id);
       toast({ title: 'Deleted successfully' });
       loadData();
     } catch (err) {
@@ -204,6 +248,19 @@ const AdminAccountsPage = () => {
     }
   };
 
+  const handleUpdateBankDeposit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingBankDeposit) return;
+    try {
+      await accountService.updateBankDeposit(editingBankDeposit.id, editingBankDeposit);
+      toast({ title: 'Bank Deposit updated successfully' });
+      setEditingBankDeposit(null);
+      loadData();
+    } catch (err) {
+      toast({ title: 'Failed to update', variant: 'destructive' });
+    }
+  };
+
   const filteredIncomes = incomes.filter(inc => {
     const matchInvoice = !incomeFilters.invoiceNumber || (inc.invoiceNumber && inc.invoiceNumber.toLowerCase().includes(incomeFilters.invoiceNumber.toLowerCase()));
     return (incomeFilters.clientName === 'All' || inc.clientName === incomeFilters.clientName) &&
@@ -220,8 +277,33 @@ const AdminAccountsPage = () => {
            (expenseFilters.year === 'All' || exp.year === expenseFilters.year);
   });
 
+  const filteredBankDeposits = bankDeposits.filter(dep => {
+    return (bankDepositFilters.type === 'All' || dep.type === bankDepositFilters.type) &&
+           (bankDepositFilters.month === 'All' || dep.month === bankDepositFilters.month) &&
+           (bankDepositFilters.year === 'All' || dep.year === bankDepositFilters.year);
+  });
+
+  // Overview Totals
+  const overviewIncomes = incomes.filter(inc => 
+    (overviewFilters.month === 'All' || inc.month === overviewFilters.month) &&
+    (overviewFilters.year === 'All' || inc.year === overviewFilters.year)
+  );
+  const overviewExpenses = expenses.filter(exp => 
+    (overviewFilters.month === 'All' || exp.month === overviewFilters.month) &&
+    (overviewFilters.year === 'All' || exp.year === overviewFilters.year)
+  );
+  const overviewDeposits = bankDeposits.filter(dep => 
+    (overviewFilters.month === 'All' || dep.month === overviewFilters.month) &&
+    (overviewFilters.year === 'All' || dep.year === overviewFilters.year)
+  );
+
+  const totalOverviewIncome = overviewIncomes.reduce((sum, item) => sum + item.amount, 0);
+  const totalOverviewExpense = overviewExpenses.reduce((sum, item) => sum + item.amount, 0);
+  const totalOverviewDeposit = overviewDeposits.reduce((sum, item) => sum + item.amount, 0);
+
   const totalIncome = filteredIncomes.reduce((acc, curr) => acc + curr.amount, 0);
   const totalExpense = filteredExpenses.reduce((acc, curr) => acc + curr.amount, 0);
+  const totalBankDeposit = filteredBankDeposits.reduce((acc, curr) => acc + curr.amount, 0);
 
   // CSV Export
   const downloadCSV = (data: any[], filename: string) => {
@@ -260,11 +342,54 @@ const AdminAccountsPage = () => {
       </div>
 
       <Tabs defaultValue="income" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 max-w-md">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-5 max-w-3xl mb-4 h-auto">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="income">Income</TabsTrigger>
           <TabsTrigger value="expense">Expense</TabsTrigger>
+          <TabsTrigger value="bank-deposit">Bank Deposit</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
+
+        {/* OVERVIEW TAB */}
+        <TabsContent value="overview" className="space-y-4">
+          <GlassCard>
+            <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between pb-2">
+              <CardTitle className="text-2xl font-bold">Total Overview</CardTitle>
+              <div className="flex gap-2 mt-2 md:mt-0">
+                <Select value={overviewFilters.month} onValueChange={v => setOverviewFilters({ ...overviewFilters, month: v })}>
+                  <SelectTrigger className="w-[120px]"><SelectValue placeholder="Month" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="All">All Months</SelectItem>
+                    {getUniqueValues([...incomes, ...expenses, ...bankDeposits], 'month').map((m: any) => m && <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <Select value={overviewFilters.year} onValueChange={v => setOverviewFilters({ ...overviewFilters, year: v })}>
+                  <SelectTrigger className="w-[120px]"><SelectValue placeholder="Year" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="All">All Years</SelectItem>
+                    {getUniqueValues([...incomes, ...expenses, ...bankDeposits], 'year').map((y: any) => y && <SelectItem key={y} value={y}>{y}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
+                <div className="bg-green-100 dark:bg-green-900/30 p-6 rounded-xl border border-green-200 dark:border-green-800 flex flex-col items-center justify-center">
+                  <span className="text-green-800 dark:text-green-400 text-sm font-semibold uppercase tracking-wider mb-2">Total Income</span>
+                  <span className="text-4xl font-bold text-green-900 dark:text-green-300">₹{totalOverviewIncome.toLocaleString()}</span>
+                </div>
+                <div className="bg-red-100 dark:bg-red-900/30 p-6 rounded-xl border border-red-200 dark:border-red-800 flex flex-col items-center justify-center">
+                  <span className="text-red-800 dark:text-red-400 text-sm font-semibold uppercase tracking-wider mb-2">Total Expense</span>
+                  <span className="text-4xl font-bold text-red-900 dark:text-red-300">₹{totalOverviewExpense.toLocaleString()}</span>
+                </div>
+                <div className="bg-blue-100 dark:bg-blue-900/30 p-6 rounded-xl border border-blue-200 dark:border-blue-800 flex flex-col items-center justify-center">
+                  <span className="text-blue-800 dark:text-blue-400 text-sm font-semibold uppercase tracking-wider mb-2">Total Bank Deposit</span>
+                  <span className="text-4xl font-bold text-blue-900 dark:text-blue-300">₹{totalOverviewDeposit.toLocaleString()}</span>
+                </div>
+              </div>
+            </CardContent>
+          </GlassCard>
+        </TabsContent>
 
         {/* INCOME TAB */}
         <TabsContent value="income" className="space-y-4 mt-4">
@@ -380,7 +505,7 @@ const AdminAccountsPage = () => {
               <div className="rounded-md border">
                 <Table>
                   <TableHeader>
-                    <TableRow className="bg-primary/10 hover:bg-primary/10">
+                    <TableRow className="bg-green-800 hover:bg-green-700 text-white">
                       <TableHead>Date</TableHead>
                       <TableHead>Client Name</TableHead>
                       <TableHead>Mode of Payment</TableHead>
@@ -534,6 +659,133 @@ const AdminAccountsPage = () => {
                     {filteredExpenses.length === 0 && (
                       <TableRow>
                         <TableCell colSpan={7} className="text-center py-4 text-muted-foreground">No expense records found</TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </GlassCard>
+        </TabsContent>
+
+        {/* BANK DEPOSIT TAB */}
+        <TabsContent value="bank-deposit" className="space-y-4 mt-4">
+          <GlassCard>
+            <CardHeader><CardTitle>Add Bank Deposit</CardTitle></CardHeader>
+            <CardContent>
+              <form onSubmit={handleAddBankDeposit} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                <div className="space-y-2">
+                  <Label>Date</Label>
+                  <Input type="date" className="[&::-webkit-calendar-picker-indicator]:block" value={bankDepositForm.date} onChange={e => setBankDepositForm({ ...bankDepositForm, date: e.target.value })} required />
+                </div>
+                <div className="space-y-2">
+                  <Label>Type</Label>
+                  <Select value={bankDepositForm.type} onValueChange={v => setBankDepositForm({ ...bankDepositForm, type: v })}>
+                    <SelectTrigger><SelectValue placeholder="Select Type" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Cash">Cash</SelectItem>
+                      <SelectItem value="Cheque">Cheque</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Amount</Label>
+                  <Input type="number" step="0.01" value={bankDepositForm.amount} onChange={e => setBankDepositForm({ ...bankDepositForm, amount: e.target.value })} required placeholder="0.00" />
+                </div>
+                {bankDepositForm.type === 'Cheque' && (
+                  <>
+                    <div className="space-y-2">
+                      <Label>Cheque No.</Label>
+                      <Input value={bankDepositForm.chequeNo} onChange={e => setBankDepositForm({ ...bankDepositForm, chequeNo: e.target.value })} required placeholder="Alphanumeric" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Bank Name</Label>
+                      <Input value={bankDepositForm.bankName} onChange={e => setBankDepositForm({ ...bankDepositForm, bankName: e.target.value })} required placeholder="Bank Name" />
+                    </div>
+                  </>
+                )}
+                <div className="space-y-2">
+                  <Label>Remarks</Label>
+                  <Input value={bankDepositForm.remarks} onChange={e => setBankDepositForm({ ...bankDepositForm, remarks: e.target.value })} placeholder="Optional" />
+                </div>
+                <div className="md:col-span-1">
+                  <Button type="submit" variant="royal" className="w-full">Add Deposit</Button>
+                </div>
+              </form>
+            </CardContent>
+          </GlassCard>
+
+          <GlassCard>
+            <CardHeader><CardTitle>Bank Deposits History</CardTitle></CardHeader>
+            <CardContent>
+              <div className="flex flex-col md:flex-row gap-4 justify-between mb-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 flex-1">
+                  <Select value={bankDepositFilters.type} onValueChange={v => setBankDepositFilters({ ...bankDepositFilters, type: v })}>
+                    <SelectTrigger><SelectValue placeholder="Filter Type" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="All">All Types</SelectItem>
+                      <SelectItem value="Cash">Cash</SelectItem>
+                      <SelectItem value="Cheque">Cheque</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={bankDepositFilters.month} onValueChange={v => setBankDepositFilters({ ...bankDepositFilters, month: v })}>
+                    <SelectTrigger><SelectValue placeholder="Filter Month" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="All">All Months</SelectItem>
+                      {getUniqueValues(bankDeposits, 'month').map(m => m && <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Select value={bankDepositFilters.year} onValueChange={v => setBankDepositFilters({ ...bankDepositFilters, year: v })}>
+                    <SelectTrigger><SelectValue placeholder="Filter Year" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="All">All Years</SelectItem>
+                      {getUniqueValues(bankDeposits, 'year').map(y => y && <SelectItem key={y} value={y}>{y}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="bg-blue-100/50 text-blue-800 px-4 py-2 rounded-lg border border-blue-200 flex items-center gap-3 shrink-0">
+                  <span className="font-semibold text-sm">Total Deposit:</span>
+                  <span className="text-xl font-bold">₹{totalBankDeposit.toLocaleString()}</span>
+                </div>
+              </div>
+
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-blue-50 hover:bg-blue-50">
+                      <TableHead>Date</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Cheque Details</TableHead>
+                      <TableHead>Month</TableHead>
+                      <TableHead>Year</TableHead>
+                      <TableHead>Remarks</TableHead>
+                      <TableHead className="text-right">Amount</TableHead>
+                      <TableHead className="w-[80px]"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredBankDeposits.map((dep) => (
+                      <TableRow key={dep.id}>
+                        <TableCell>{dep.date}</TableCell>
+                        <TableCell className="font-medium">{dep.type}</TableCell>
+                        <TableCell>{dep.type === 'Cheque' ? `${dep.chequeNo} (${dep.bankName})` : '-'}</TableCell>
+                        <TableCell>{dep.month}</TableCell>
+                        <TableCell>{dep.year}</TableCell>
+                        <TableCell className="max-w-[150px] truncate" title={dep.remarks}>{dep.remarks || '-'}</TableCell>
+                        <TableCell className="text-right font-medium text-blue-700">₹{dep.amount.toLocaleString()}</TableCell>
+                        <TableCell className="flex gap-1 justify-end">
+                          <Button variant="ghost" size="icon" onClick={() => setEditingBankDeposit(dep)} className="text-blue-500 hover:text-blue-700">
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => handleDeleteBankDeposit(dep.id)} className="text-red-500 hover:text-red-700">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {filteredBankDeposits.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center py-4 text-muted-foreground">No bank deposit records found</TableCell>
                       </TableRow>
                     )}
                   </TableBody>
@@ -727,6 +979,59 @@ const AdminAccountsPage = () => {
               <div className="flex justify-end pt-4">
                 <Button type="button" variant="ghost" onClick={() => setEditingExpense(null)} className="mr-2">Cancel</Button>
                 <Button type="submit" variant="destructive">Save Changes</Button>
+              </div>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* EDIT BANK DEPOSIT DIALOG */}
+      <Dialog open={!!editingBankDeposit} onOpenChange={(open) => !open && setEditingBankDeposit(null)}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Edit Bank Deposit</DialogTitle>
+          </DialogHeader>
+          {editingBankDeposit && (
+            <form onSubmit={handleUpdateBankDeposit} className="space-y-4 mt-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Date</Label>
+                  <Input type="date" className="[&::-webkit-calendar-picker-indicator]:block" value={editingBankDeposit.date} onChange={e => setEditingBankDeposit({ ...editingBankDeposit, date: e.target.value })} required />
+                </div>
+                <div className="space-y-2">
+                  <Label>Type</Label>
+                  <Select value={editingBankDeposit.type} onValueChange={v => setEditingBankDeposit({ ...editingBankDeposit, type: v as 'Cash' | 'Cheque' })}>
+                    <SelectTrigger><SelectValue placeholder="Select Type" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Cash">Cash</SelectItem>
+                      <SelectItem value="Cheque">Cheque</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Amount</Label>
+                  <Input type="number" step="0.01" value={editingBankDeposit.amount} onChange={e => setEditingBankDeposit({ ...editingBankDeposit, amount: Number(e.target.value) })} required />
+                </div>
+                <div className="space-y-2">
+                  <Label>Remarks</Label>
+                  <Input value={editingBankDeposit.remarks || ''} onChange={e => setEditingBankDeposit({ ...editingBankDeposit, remarks: e.target.value })} />
+                </div>
+                {editingBankDeposit.type === 'Cheque' && (
+                  <>
+                    <div className="space-y-2">
+                      <Label>Cheque No.</Label>
+                      <Input value={editingBankDeposit.chequeNo || ''} onChange={e => setEditingBankDeposit({ ...editingBankDeposit, chequeNo: e.target.value })} required />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Bank Name</Label>
+                      <Input value={editingBankDeposit.bankName || ''} onChange={e => setEditingBankDeposit({ ...editingBankDeposit, bankName: e.target.value })} required />
+                    </div>
+                  </>
+                )}
+              </div>
+              <div className="flex justify-end pt-4">
+                <Button type="button" variant="ghost" onClick={() => setEditingBankDeposit(null)} className="mr-2">Cancel</Button>
+                <Button type="submit" className="bg-blue-600 hover:bg-blue-700">Save Changes</Button>
               </div>
             </form>
           )}

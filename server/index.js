@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
-const { Staff, Task, Attendance, DailyReport, Income, Expense } = require('./models');
+const { Staff, Task, Attendance, DailyReport, Income, Expense, BankDeposit } = require('./models');
 const Settings = require('./settings');
 const { validateLocation } = require('./utils/locationValidator');
 const crypto = require('crypto');
@@ -536,6 +536,51 @@ app.put('/api/expense/:id', async (req, res) => {
     try {
         const data = { ...req.body, updatedAt: new Date().toISOString() };
         const updated = await Expense.findOneAndUpdate({ id: req.params.id }, data, { new: true });
+        res.json(updated);
+    } catch (e) {
+        res.status(500).json({ error: 'Failed' });
+    }
+});
+
+// --- Bank Deposit Endpoints ---
+app.get('/api/bank-deposit', async (req, res) => {
+    try {
+        const deposits = await BankDeposit.find();
+        res.json(deposits);
+    } catch (error) {
+        console.error('Error fetching bank deposits:', error);
+        res.status(500).json({ error: 'Failed to fetch bank deposits' });
+    }
+});
+
+app.post('/api/bank-deposit', async (req, res) => {
+    try {
+        const newDeposit = new BankDeposit({
+            ...req.body,
+            id: Date.now().toString(),
+            createdAt: new Date().toISOString()
+        });
+        await newDeposit.save();
+        res.json(newDeposit);
+    } catch (error) {
+        console.error('Error adding bank deposit:', error);
+        res.status(500).json({ error: 'Failed to add bank deposit record' });
+    }
+});
+
+app.delete('/api/bank-deposit/:id', async (req, res) => {
+    try {
+        await BankDeposit.deleteOne({ id: req.params.id });
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: 'Failed' });
+    }
+});
+
+app.put('/api/bank-deposit/:id', async (req, res) => {
+    try {
+        const data = { ...req.body, updatedAt: new Date().toISOString() };
+        const updated = await BankDeposit.findOneAndUpdate({ id: req.params.id }, data, { new: true });
         res.json(updated);
     } catch (e) {
         res.status(500).json({ error: 'Failed' });
