@@ -30,10 +30,10 @@ const AdminAccountsPage = () => {
   const [expenses, setExpenses] = useState<Expense[]>([]);
 
   // Income Form State
-  const [incomeForm, setIncomeForm] = useState({ date: '', clientName: '', paymentMethod: '', bank: '', amount: '' });
+  const [incomeForm, setIncomeForm] = useState({ date: '', clientName: '', paymentMethod: '', bank: '', amount: '', remarks: '' });
   
   // Expense Form State
-  const [expenseForm, setExpenseForm] = useState({ date: '', category: '', amount: '' });
+  const [expenseForm, setExpenseForm] = useState({ date: '', category: '', amount: '', remarks: '' });
 
   // Filters
   const [incomeFilters, setIncomeFilters] = useState({ clientName: 'All', paymentMethod: 'All', bank: 'All', month: 'All', year: 'All' });
@@ -114,10 +114,11 @@ const AdminAccountsPage = () => {
         bank: incomeForm.bank,
         amount: Number(incomeForm.amount),
         month,
-        year
+        year,
+        remarks: incomeForm.remarks
       });
       toast({ title: 'Income added successfully' });
-      setIncomeForm({ date: '', clientName: '', paymentMethod: '', bank: '', amount: '' });
+      setIncomeForm({ date: '', clientName: '', paymentMethod: '', bank: '', amount: '', remarks: '' });
       loadData();
     } catch (err) {
       toast({ title: 'Failed to add income', variant: 'destructive' });
@@ -140,10 +141,11 @@ const AdminAccountsPage = () => {
         category: expenseForm.category,
         amount: Number(expenseForm.amount),
         month,
-        year
+        year,
+        remarks: expenseForm.remarks
       });
       toast({ title: 'Expense added successfully' });
-      setExpenseForm({ date: '', category: '', amount: '' });
+      setExpenseForm({ date: '', category: '', amount: '', remarks: '' });
       loadData();
     } catch (err) {
       toast({ title: 'Failed to add expense', variant: 'destructive' });
@@ -238,7 +240,7 @@ const AdminAccountsPage = () => {
               <CardTitle>Add Income</CardTitle>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleAddIncome} className="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
+              <form onSubmit={handleAddIncome} className="grid grid-cols-1 md:grid-cols-7 gap-4 items-end">
                 <div className="space-y-2">
                   <Label>Date</Label>
                   <Input type="date" value={incomeForm.date} onChange={e => setIncomeForm({ ...incomeForm, date: e.target.value })} required />
@@ -273,6 +275,10 @@ const AdminAccountsPage = () => {
                 <div className="space-y-2">
                   <Label>Amount</Label>
                   <Input type="number" step="0.01" value={incomeForm.amount} onChange={e => setIncomeForm({ ...incomeForm, amount: e.target.value })} required placeholder="0.00" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Remarks</Label>
+                  <Input value={incomeForm.remarks} onChange={e => setIncomeForm({ ...incomeForm, remarks: e.target.value })} placeholder="Optional" />
                 </div>
                 <Button type="submit" variant="royal" className="w-full">Add Income</Button>
               </form>
@@ -328,13 +334,14 @@ const AdminAccountsPage = () => {
               <div className="rounded-md border">
                 <Table>
                   <TableHeader>
-                    <TableRow>
+                    <TableRow className="bg-primary/10 hover:bg-primary/10">
                       <TableHead>Date</TableHead>
                       <TableHead>Client Name</TableHead>
                       <TableHead>Mode of Payment</TableHead>
                       <TableHead>Deposited Bank</TableHead>
                       <TableHead>Month</TableHead>
                       <TableHead>Year</TableHead>
+                      <TableHead>Remarks</TableHead>
                       <TableHead className="text-right">Amount</TableHead>
                       <TableHead className="w-[50px]"></TableHead>
                     </TableRow>
@@ -348,6 +355,7 @@ const AdminAccountsPage = () => {
                         <TableCell>{inc.bank}</TableCell>
                         <TableCell>{inc.month}</TableCell>
                         <TableCell>{inc.year}</TableCell>
+                        <TableCell className="max-w-[150px] truncate" title={inc.remarks}>{inc.remarks || '-'}</TableCell>
                         <TableCell className="text-right font-medium">₹{inc.amount.toLocaleString()}</TableCell>
                         <TableCell>
                           <Button variant="ghost" size="icon" onClick={() => handleDeleteIncome(inc.id)} className="text-red-500 hover:text-red-700">
@@ -358,7 +366,7 @@ const AdminAccountsPage = () => {
                     ))}
                     {filteredIncomes.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={8} className="text-center py-4 text-muted-foreground">No income records found</TableCell>
+                        <TableCell colSpan={9} className="text-center py-4 text-muted-foreground">No income records found</TableCell>
                       </TableRow>
                     )}
                   </TableBody>
@@ -381,7 +389,7 @@ const AdminAccountsPage = () => {
               <CardTitle>Add Expense</CardTitle>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleAddExpense} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+              <form onSubmit={handleAddExpense} className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
                 <div className="space-y-2">
                   <Label>Date</Label>
                   <Input type="date" value={expenseForm.date} onChange={e => setExpenseForm({ ...expenseForm, date: e.target.value })} required />
@@ -398,6 +406,10 @@ const AdminAccountsPage = () => {
                 <div className="space-y-2">
                   <Label>Amount</Label>
                   <Input type="number" step="0.01" value={expenseForm.amount} onChange={e => setExpenseForm({ ...expenseForm, amount: e.target.value })} required placeholder="0.00" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Remarks</Label>
+                  <Input value={expenseForm.remarks} onChange={e => setExpenseForm({ ...expenseForm, remarks: e.target.value })} placeholder="Optional" />
                 </div>
                 <Button type="submit" variant="destructive" className="w-full">Add Expense</Button>
               </form>
@@ -439,11 +451,12 @@ const AdminAccountsPage = () => {
               <div className="rounded-md border">
                 <Table>
                   <TableHeader>
-                    <TableRow>
+                    <TableRow className="bg-destructive/10 hover:bg-destructive/10">
                       <TableHead>Date</TableHead>
                       <TableHead>Category</TableHead>
                       <TableHead>Month</TableHead>
                       <TableHead>Year</TableHead>
+                      <TableHead>Remarks</TableHead>
                       <TableHead className="text-right">Amount</TableHead>
                       <TableHead className="w-[50px]"></TableHead>
                     </TableRow>
@@ -455,6 +468,7 @@ const AdminAccountsPage = () => {
                         <TableCell className="font-medium">{exp.category}</TableCell>
                         <TableCell>{exp.month}</TableCell>
                         <TableCell>{exp.year}</TableCell>
+                        <TableCell className="max-w-[150px] truncate" title={exp.remarks}>{exp.remarks || '-'}</TableCell>
                         <TableCell className="text-right font-medium">₹{exp.amount.toLocaleString()}</TableCell>
                         <TableCell>
                           <Button variant="ghost" size="icon" onClick={() => handleDeleteExpense(exp.id)} className="text-red-500 hover:text-red-700">
@@ -465,7 +479,7 @@ const AdminAccountsPage = () => {
                     ))}
                     {filteredExpenses.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center py-4 text-muted-foreground">No expense records found</TableCell>
+                        <TableCell colSpan={7} className="text-center py-4 text-muted-foreground">No expense records found</TableCell>
                       </TableRow>
                     )}
                   </TableBody>

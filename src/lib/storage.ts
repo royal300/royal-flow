@@ -99,6 +99,7 @@ export interface Income {
   amount: number;
   month: string;
   year: string;
+  remarks?: string;
   createdAt: string;
 }
 
@@ -109,6 +110,7 @@ export interface Expense {
   amount: number;
   month: string;
   year: string;
+  remarks?: string;
   createdAt: string;
 }
 

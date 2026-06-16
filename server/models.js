@@ -89,6 +89,7 @@ const incomeSchema = new mongoose.Schema({
   amount: Number,
   month: String,
   year: String,
+  remarks: String,
   createdAt: String
 });
 
@@ -99,6 +100,7 @@ const expenseSchema = new mongoose.Schema({
   amount: Number,
   month: String,
   year: String,
+  remarks: String,
   createdAt: String
 });
 

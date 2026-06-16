@@ -1,0 +1,13 @@
+#!/usr/bin/expect -f
+set timeout -1
+spawn ssh root@staff.royal300.com "cd /var/www/royal300_staff_management && chmod +x deploy.sh && ./deploy.sh"
+expect {
+    "yes/no" {
+        send "yes\r"
+        exp_continue
+    }
+    "assword:" {
+        send "Royal300@2026\r"
+    }
+}
+expect eof
