@@ -506,16 +506,16 @@ const AdminAccountsPage = () => {
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-green-800 hover:bg-green-700 text-white">
-                      <TableHead>Date</TableHead>
-                      <TableHead>Client Name</TableHead>
-                      <TableHead>Mode of Payment</TableHead>
-                      <TableHead>Deposited Bank</TableHead>
-                      <TableHead>Month</TableHead>
-                      <TableHead>Year</TableHead>
-                      <TableHead>Invoice No.</TableHead>
-                      <TableHead>Remarks</TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
-                      <TableHead className="w-[80px]"></TableHead>
+                      <TableHead className="text-white">Date</TableHead>
+                      <TableHead className="text-white">Client Name</TableHead>
+                      <TableHead className="text-white">Mode of Payment</TableHead>
+                      <TableHead className="text-white">Deposited Bank</TableHead>
+                      <TableHead className="text-white">Month</TableHead>
+                      <TableHead className="text-white">Year</TableHead>
+                      <TableHead className="text-white">Invoice No.</TableHead>
+                      <TableHead className="text-white">Remarks</TableHead>
+                      <TableHead className="text-right text-white">Amount</TableHead>
+                      <TableHead className="w-[80px] text-white"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
