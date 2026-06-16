@@ -20,6 +20,7 @@ import AdminStaffPage from "@/pages/admin/AdminStaffPage";
 import AdminTasksPage from "@/pages/admin/AdminTasksPage";
 import AdminAttendancePage from "@/pages/admin/AdminAttendancePage";
 import AdminReportsPage from "@/pages/admin/AdminReportsPage";
+import AdminAccountsPage from "@/pages/admin/AdminAccountsPage";
 
 // Staff Pages
 import StaffLayout from "@/layouts/StaffLayout";
@@ -119,6 +120,16 @@ const App = () => {
                   <ProtectedRoute allowedRole="admin">
                     <AdminLayout>
                       <AdminReportsPage />
+                    </AdminLayout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/accounts"
+                element={
+                  <ProtectedRoute allowedRole="admin">
+                    <AdminLayout>
+                      <AdminAccountsPage />
                     </AdminLayout>
                   </ProtectedRoute>
                 }

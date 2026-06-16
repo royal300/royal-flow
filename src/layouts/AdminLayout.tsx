@@ -11,7 +11,8 @@ import {
   BarChart3,
   LogOut,
   Menu,
-  X
+  X,
+  Wallet
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -25,6 +26,7 @@ const navItems = [
   { icon: CheckSquare, label: 'Tasks', path: '/admin/tasks' },
   { icon: Calendar, label: 'Attendance', path: '/admin/attendance' },
   { icon: BarChart3, label: 'Reports', path: '/admin/reports' },
+  { icon: Wallet, label: 'Accounts', path: '/admin/accounts' },
 ];
 
 const AdminLayout = ({ children }: AdminLayoutProps) => {

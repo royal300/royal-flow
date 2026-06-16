@@ -90,6 +90,28 @@ export interface DailyReport {
   updatedAt: string;
 }
 
+export interface Income {
+  id: string;
+  date: string;
+  clientName: string;
+  paymentMethod: string;
+  bank: string;
+  amount: number;
+  month: string;
+  year: string;
+  createdAt: string;
+}
+
+export interface Expense {
+  id: string;
+  date: string;
+  category: string;
+  amount: number;
+  month: string;
+  year: string;
+  createdAt: string;
+}
+
 export interface Session {
   userId: string;
   role: 'admin' | 'staff';
@@ -361,6 +383,31 @@ export const settingsService = {
 
   async update(key: string, value: any): Promise<{ key: string; value: any }> {
     return api.put(`/settings/${key}`, { value });
+  },
+};
+
+// Account operations
+export const accountService = {
+  // Income
+  async getIncomes(): Promise<Income[]> {
+    return api.get<Income[]>('/income');
+  },
+  async createIncome(income: Omit<Income, 'id' | 'createdAt'>): Promise<Income> {
+    return api.post<Income>('/income', income);
+  },
+  async deleteIncome(id: string): Promise<void> {
+    return api.delete(`/income/${id}`);
+  },
+
+  // Expense
+  async getExpenses(): Promise<Expense[]> {
+    return api.get<Expense[]>('/expense');
+  },
+  async createExpense(expense: Omit<Expense, 'id' | 'createdAt'>): Promise<Expense> {
+    return api.post<Expense>('/expense', expense);
+  },
+  async deleteExpense(id: string): Promise<void> {
+    return api.delete(`/expense/${id}`);
   },
 };
 

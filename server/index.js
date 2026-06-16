@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
-const { Staff, Task, Attendance, DailyReport } = require('./models');
+const { Staff, Task, Attendance, DailyReport, Income, Expense } = require('./models');
 const Settings = require('./settings');
 const { validateLocation } = require('./utils/locationValidator');
 const crypto = require('crypto');
@@ -451,6 +451,78 @@ app.post('/api/validate-location', async (req, res) => {
 });
 
 
+
+// --- Income Endpoints ---
+app.get('/api/income', async (req, res) => {
+    try {
+        const incomeRecords = await Income.find().sort({ date: -1 });
+        res.json(incomeRecords);
+    } catch (error) {
+        console.error('Error fetching income:', error);
+        res.status(500).json({ error: 'Failed to fetch income records' });
+    }
+});
+
+app.post('/api/income', async (req, res) => {
+    try {
+        const newIncome = new Income({
+            ...req.body,
+            id: crypto.randomUUID(),
+            createdAt: new Date().toISOString()
+        });
+        await newIncome.save();
+        res.json(newIncome);
+    } catch (error) {
+        console.error('Error creating income:', error);
+        res.status(500).json({ error: 'Failed to create income record' });
+    }
+});
+
+app.delete('/api/income/:id', async (req, res) => {
+    try {
+        await Income.deleteOne({ id: req.params.id });
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error deleting income:', error);
+        res.status(500).json({ error: 'Failed to delete income record' });
+    }
+});
+
+// --- Expense Endpoints ---
+app.get('/api/expense', async (req, res) => {
+    try {
+        const expenseRecords = await Expense.find().sort({ date: -1 });
+        res.json(expenseRecords);
+    } catch (error) {
+        console.error('Error fetching expense:', error);
+        res.status(500).json({ error: 'Failed to fetch expense records' });
+    }
+});
+
+app.post('/api/expense', async (req, res) => {
+    try {
+        const newExpense = new Expense({
+            ...req.body,
+            id: crypto.randomUUID(),
+            createdAt: new Date().toISOString()
+        });
+        await newExpense.save();
+        res.json(newExpense);
+    } catch (error) {
+        console.error('Error creating expense:', error);
+        res.status(500).json({ error: 'Failed to create expense record' });
+    }
+});
+
+app.delete('/api/expense/:id', async (req, res) => {
+    try {
+        await Expense.deleteOne({ id: req.params.id });
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error deleting expense:', error);
+        res.status(500).json({ error: 'Failed to delete expense record' });
+    }
+});
 
 const PORT = 5001;
 app.listen(PORT, () => {

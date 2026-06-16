@@ -80,9 +80,33 @@ const dailyReportSchema = new mongoose.Schema({
   updatedAt: String
 });
 
+const incomeSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true },
+  date: String,
+  clientName: String,
+  paymentMethod: String,
+  bank: String,
+  amount: Number,
+  month: String,
+  year: String,
+  createdAt: String
+});
+
+const expenseSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true },
+  date: String,
+  category: String,
+  amount: Number,
+  month: String,
+  year: String,
+  createdAt: String
+});
+
 module.exports = {
   Staff: mongoose.model('Staff', staffSchema),
   Task: mongoose.model('Task', taskSchema),
   Attendance: mongoose.model('Attendance', attendanceSchema),
-  DailyReport: mongoose.model('DailyReport', dailyReportSchema)
+  DailyReport: mongoose.model('DailyReport', dailyReportSchema),
+  Income: mongoose.model('Income', incomeSchema),
+  Expense: mongoose.model('Expense', expenseSchema)
 };
