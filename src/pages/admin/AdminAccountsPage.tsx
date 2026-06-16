@@ -9,7 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { accountService, settingsService, Income, Expense, BankDeposit } from '@/lib/storage';
-import { Trash2, Download, Pencil } from 'lucide-react';
+import { Trash2, Download, Pencil, ChevronUp, ChevronDown } from 'lucide-react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const AdminAccountsPage = () => {
   const { toast } = useToast();
@@ -45,10 +47,15 @@ const AdminAccountsPage = () => {
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [editingBankDeposit, setEditingBankDeposit] = useState<BankDeposit | null>(null);
 
+  // Form Collapse States
+  const [showIncomeForm, setShowIncomeForm] = useState(true);
+  const [showExpenseForm, setShowExpenseForm] = useState(true);
+  const [showBankDepositForm, setShowBankDepositForm] = useState(true);
+
   // Filters
-  const [incomeFilters, setIncomeFilters] = useState({ clientName: 'All', paymentMethod: 'All', bank: 'All', month: 'All', year: 'All', invoiceNumber: '' });
-  const [expenseFilters, setExpenseFilters] = useState({ category: 'All', month: 'All', year: 'All' });
-  const [bankDepositFilters, setBankDepositFilters] = useState({ type: 'All', month: 'All', year: 'All' });
+  const [incomeFilters, setIncomeFilters] = useState({ clientName: 'All', paymentMethod: 'All', bank: 'All', month: 'All', year: 'All', invoiceNumber: '', startDate: '', endDate: '' });
+  const [expenseFilters, setExpenseFilters] = useState({ category: 'All', month: 'All', year: 'All', startDate: '', endDate: '' });
+  const [bankDepositFilters, setBankDepositFilters] = useState({ type: 'All', month: 'All', year: 'All', startDate: '', endDate: '' });
   const [overviewFilters, setOverviewFilters] = useState({ month: 'All', year: 'All' });
 
   const loadData = async () => {
@@ -261,9 +268,24 @@ const AdminAccountsPage = () => {
     }
   };
 
+  const isDateInRange = (dateStr: string, startStr: string, endStr: string) => {
+    if (!startStr && !endStr) return true;
+    const date = new Date(dateStr);
+    if (startStr) {
+      const start = new Date(startStr);
+      if (date < start) return false;
+    }
+    if (endStr) {
+      const end = new Date(endStr);
+      if (date > end) return false;
+    }
+    return true;
+  };
+
   const filteredIncomes = incomes.filter(inc => {
     const matchInvoice = !incomeFilters.invoiceNumber || (inc.invoiceNumber && inc.invoiceNumber.toLowerCase().includes(incomeFilters.invoiceNumber.toLowerCase()));
-    return (incomeFilters.clientName === 'All' || inc.clientName === incomeFilters.clientName) &&
+    const matchDateRange = isDateInRange(inc.date, incomeFilters.startDate, incomeFilters.endDate);
+    return matchDateRange && (incomeFilters.clientName === 'All' || inc.clientName === incomeFilters.clientName) &&
            (incomeFilters.paymentMethod === 'All' || inc.paymentMethod === incomeFilters.paymentMethod) &&
            (incomeFilters.bank === 'All' || inc.bank === incomeFilters.bank) &&
            (incomeFilters.month === 'All' || inc.month === incomeFilters.month) &&
@@ -272,13 +294,15 @@ const AdminAccountsPage = () => {
   });
 
   const filteredExpenses = expenses.filter(exp => {
-    return (expenseFilters.category === 'All' || exp.category === expenseFilters.category) &&
+    const matchDateRange = isDateInRange(exp.date, expenseFilters.startDate, expenseFilters.endDate);
+    return matchDateRange && (expenseFilters.category === 'All' || exp.category === expenseFilters.category) &&
            (expenseFilters.month === 'All' || exp.month === expenseFilters.month) &&
            (expenseFilters.year === 'All' || exp.year === expenseFilters.year);
   });
 
   const filteredBankDeposits = bankDeposits.filter(dep => {
-    return (bankDepositFilters.type === 'All' || dep.type === bankDepositFilters.type) &&
+    const matchDateRange = isDateInRange(dep.date, bankDepositFilters.startDate, bankDepositFilters.endDate);
+    return matchDateRange && (bankDepositFilters.type === 'All' || dep.type === bankDepositFilters.type) &&
            (bankDepositFilters.month === 'All' || dep.month === bankDepositFilters.month) &&
            (bankDepositFilters.year === 'All' || dep.year === bankDepositFilters.year);
   });
@@ -305,30 +329,22 @@ const AdminAccountsPage = () => {
   const totalExpense = filteredExpenses.reduce((acc, curr) => acc + curr.amount, 0);
   const totalBankDeposit = filteredBankDeposits.reduce((acc, curr) => acc + curr.amount, 0);
 
-  // CSV Export
-  const downloadCSV = (data: any[], filename: string) => {
+  // PDF Export
+  const downloadPDF = (data: any[], title: string) => {
     if (data.length === 0) return toast({ title: 'No data to download' });
-    const headers = Object.keys(data[0]).filter(k => k !== 'id' && k !== 'createdAt');
-    const csvRows = [];
-    csvRows.push(headers.join(','));
+    const doc = new jsPDF();
+    const headers = Object.keys(data[0]).filter(k => k !== 'id' && k !== 'createdAt' && k !== 'updatedAt');
+    const tableData = data.map(row => headers.map(header => row[header] || '-'));
     
-    for (const row of data) {
-      const values = headers.map(header => {
-        const escaped = ('' + row[header]).replace(/"/g, '\\"');
-        return `"${escaped}"`;
-      });
-      csvRows.push(values.join(','));
-    }
-
-    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.setAttribute('hidden', '');
-    a.setAttribute('href', url);
-    a.setAttribute('download', filename);
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    doc.text(title, 14, 15);
+    autoTable(doc, {
+      head: [headers.map(h => h.charAt(0).toUpperCase() + h.slice(1).replace(/([A-Z])/g, ' $1').trim())],
+      body: tableData,
+      startY: 20,
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [22, 160, 133] }
+    });
+    doc.save(`${title.toLowerCase().replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
   const getUniqueValues = (data: any[], key: string) => {
@@ -394,71 +410,78 @@ const AdminAccountsPage = () => {
         {/* INCOME TAB */}
         <TabsContent value="income" className="space-y-4 mt-4">
           <GlassCard>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between cursor-pointer" onClick={() => setShowIncomeForm(!showIncomeForm)}>
               <CardTitle>Add Income</CardTitle>
+              <Button variant="ghost" size="sm" className="p-0 h-8 w-8 hover:bg-transparent">
+                {showIncomeForm ? <ChevronUp className="w-5 h-5 text-muted-foreground" /> : <ChevronDown className="w-5 h-5 text-muted-foreground" />}
+              </Button>
             </CardHeader>
-            <CardContent>
-              <form onSubmit={handleAddIncome} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                <div className="space-y-2">
-                  <Label>Date</Label>
-                  <Input type="date" className="[&::-webkit-calendar-picker-indicator]:block" value={incomeForm.date} onChange={e => setIncomeForm({ ...incomeForm, date: e.target.value })} required />
-                </div>
-                <div className="space-y-2">
-                  <Label>Client Name</Label>
-                  <Select value={incomeForm.clientName} onValueChange={v => setIncomeForm({ ...incomeForm, clientName: v })}>
-                    <SelectTrigger><SelectValue placeholder="Select Client" /></SelectTrigger>
-                    <SelectContent>
-                      {clients.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Payment Mode</Label>
-                  <Select value={incomeForm.paymentMethod} onValueChange={v => setIncomeForm({ ...incomeForm, paymentMethod: v })}>
-                    <SelectTrigger><SelectValue placeholder="Select Mode" /></SelectTrigger>
-                    <SelectContent>
-                      {paymentMethods.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Deposited Bank</Label>
-                  <Select value={incomeForm.bank} onValueChange={v => setIncomeForm({ ...incomeForm, bank: v })}>
-                    <SelectTrigger><SelectValue placeholder="Select Bank" /></SelectTrigger>
-                    <SelectContent>
-                      {banks.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Amount</Label>
-                  <Input type="number" step="0.01" value={incomeForm.amount} onChange={e => setIncomeForm({ ...incomeForm, amount: e.target.value })} required placeholder="0.00" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Remarks</Label>
-                  <Input value={incomeForm.remarks} onChange={e => setIncomeForm({ ...incomeForm, remarks: e.target.value })} placeholder="Optional" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Invoice / Proforma No.</Label>
-                  <Input value={incomeForm.invoiceNumber} onChange={e => setIncomeForm({ ...incomeForm, invoiceNumber: e.target.value })} placeholder="Optional" />
-                </div>
-                <div className="md:col-span-1">
-                  <Button type="submit" variant="royal" className="w-full">Add Income</Button>
-                </div>
-              </form>
-            </CardContent>
+            {showIncomeForm && (
+              <CardContent>
+                <form onSubmit={handleAddIncome} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                  <div className="space-y-2">
+                    <Label>Date</Label>
+                    <Input type="date" className="[&::-webkit-calendar-picker-indicator]:block" value={incomeForm.date} onChange={e => setIncomeForm({ ...incomeForm, date: e.target.value })} required />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Client Name</Label>
+                    <Select value={incomeForm.clientName} onValueChange={v => setIncomeForm({ ...incomeForm, clientName: v })}>
+                      <SelectTrigger><SelectValue placeholder="Select Client" /></SelectTrigger>
+                      <SelectContent>
+                        {clients.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Payment Mode</Label>
+                    <Select value={incomeForm.paymentMethod} onValueChange={v => setIncomeForm({ ...incomeForm, paymentMethod: v })}>
+                      <SelectTrigger><SelectValue placeholder="Select Mode" /></SelectTrigger>
+                      <SelectContent>
+                        {paymentMethods.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Deposited Bank</Label>
+                    <Select value={incomeForm.bank} onValueChange={v => setIncomeForm({ ...incomeForm, bank: v })}>
+                      <SelectTrigger><SelectValue placeholder="Select Bank" /></SelectTrigger>
+                      <SelectContent>
+                        {banks.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Amount</Label>
+                    <Input type="number" step="0.01" value={incomeForm.amount} onChange={e => setIncomeForm({ ...incomeForm, amount: e.target.value })} required placeholder="0.00" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Remarks</Label>
+                    <Input value={incomeForm.remarks} onChange={e => setIncomeForm({ ...incomeForm, remarks: e.target.value })} placeholder="Optional" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Invoice / Proforma No.</Label>
+                    <Input value={incomeForm.invoiceNumber} onChange={e => setIncomeForm({ ...incomeForm, invoiceNumber: e.target.value })} placeholder="Optional" />
+                  </div>
+                  <div className="md:col-span-1">
+                    <Button type="submit" variant="royal" className="w-full">Add Income</Button>
+                  </div>
+                </form>
+              </CardContent>
+            )}
           </GlassCard>
 
           <GlassCard>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Income Records</CardTitle>
-              <Button variant="outline" size="sm" onClick={() => downloadCSV(filteredIncomes, 'income_records.csv')}>
-                <Download className="w-4 h-4 mr-2" /> Export CSV
+              <Button variant="outline" size="sm" onClick={() => downloadPDF(filteredIncomes, 'Income Records')}>
+                <Download className="w-4 h-4 mr-2" /> Export PDF
               </Button>
             </CardHeader>
             <CardContent>
               <div className="flex flex-col md:flex-row gap-4 justify-between mb-4">
-                <div className="grid grid-cols-2 md:grid-cols-6 gap-4 flex-1">
+                <div className="grid grid-cols-2 md:grid-cols-8 gap-4 flex-1">
+                  <Input type="date" className="[&::-webkit-calendar-picker-indicator]:block" value={incomeFilters.startDate} onChange={e => setIncomeFilters({ ...incomeFilters, startDate: e.target.value })} placeholder="Start Date" />
+                  <Input type="date" className="[&::-webkit-calendar-picker-indicator]:block" value={incomeFilters.endDate} onChange={e => setIncomeFilters({ ...incomeFilters, endDate: e.target.value })} placeholder="End Date" />
                   <Input placeholder="Filter Invoice No." value={incomeFilters.invoiceNumber} onChange={e => setIncomeFilters({ ...incomeFilters, invoiceNumber: e.target.value })} />
                   <Select value={incomeFilters.clientName} onValueChange={v => setIncomeFilters({ ...incomeFilters, clientName: v })}>
                     <SelectTrigger><SelectValue placeholder="Filter Client" /></SelectTrigger>
@@ -555,47 +578,54 @@ const AdminAccountsPage = () => {
         {/* EXPENSE TAB */}
         <TabsContent value="expense" className="space-y-4 mt-4">
           <GlassCard>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between cursor-pointer" onClick={() => setShowExpenseForm(!showExpenseForm)}>
               <CardTitle>Add Expense</CardTitle>
+              <Button variant="ghost" size="sm" className="p-0 h-8 w-8 hover:bg-transparent">
+                {showExpenseForm ? <ChevronUp className="w-5 h-5 text-muted-foreground" /> : <ChevronDown className="w-5 h-5 text-muted-foreground" />}
+              </Button>
             </CardHeader>
-            <CardContent>
-              <form onSubmit={handleAddExpense} className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
-                <div className="space-y-2">
-                  <Label>Date</Label>
-                  <Input type="date" className="[&::-webkit-calendar-picker-indicator]:block" value={expenseForm.date} onChange={e => setExpenseForm({ ...expenseForm, date: e.target.value })} required />
-                </div>
-                <div className="space-y-2">
-                  <Label>Category</Label>
-                  <Select value={expenseForm.category} onValueChange={v => setExpenseForm({ ...expenseForm, category: v })}>
-                    <SelectTrigger><SelectValue placeholder="Select Category" /></SelectTrigger>
-                    <SelectContent>
-                      {categories.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Amount</Label>
-                  <Input type="number" step="0.01" value={expenseForm.amount} onChange={e => setExpenseForm({ ...expenseForm, amount: e.target.value })} required placeholder="0.00" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Remarks</Label>
-                  <Input value={expenseForm.remarks} onChange={e => setExpenseForm({ ...expenseForm, remarks: e.target.value })} placeholder="Optional" />
-                </div>
-                <Button type="submit" variant="destructive" className="w-full">Add Expense</Button>
-              </form>
-            </CardContent>
+            {showExpenseForm && (
+              <CardContent>
+                <form onSubmit={handleAddExpense} className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+                  <div className="space-y-2">
+                    <Label>Date</Label>
+                    <Input type="date" className="[&::-webkit-calendar-picker-indicator]:block" value={expenseForm.date} onChange={e => setExpenseForm({ ...expenseForm, date: e.target.value })} required />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Category</Label>
+                    <Select value={expenseForm.category} onValueChange={v => setExpenseForm({ ...expenseForm, category: v })}>
+                      <SelectTrigger><SelectValue placeholder="Select Category" /></SelectTrigger>
+                      <SelectContent>
+                        {categories.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Amount</Label>
+                    <Input type="number" step="0.01" value={expenseForm.amount} onChange={e => setExpenseForm({ ...expenseForm, amount: e.target.value })} required placeholder="0.00" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Remarks</Label>
+                    <Input value={expenseForm.remarks} onChange={e => setExpenseForm({ ...expenseForm, remarks: e.target.value })} placeholder="Optional" />
+                  </div>
+                  <Button type="submit" variant="destructive" className="w-full">Add Expense</Button>
+                </form>
+              </CardContent>
+            )}
           </GlassCard>
 
           <GlassCard>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Expense Records</CardTitle>
-              <Button variant="outline" size="sm" onClick={() => downloadCSV(filteredExpenses, 'expense_records.csv')}>
-                <Download className="w-4 h-4 mr-2" /> Export CSV
+              <Button variant="outline" size="sm" onClick={() => downloadPDF(filteredExpenses, 'Expense Records')}>
+                <Download className="w-4 h-4 mr-2" /> Export PDF
               </Button>
             </CardHeader>
             <CardContent>
               <div className="flex flex-col md:flex-row gap-4 justify-between mb-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 flex-1">
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4 flex-1">
+                  <Input type="date" className="[&::-webkit-calendar-picker-indicator]:block" value={expenseFilters.startDate} onChange={e => setExpenseFilters({ ...expenseFilters, startDate: e.target.value })} placeholder="Start Date" />
+                  <Input type="date" className="[&::-webkit-calendar-picker-indicator]:block" value={expenseFilters.endDate} onChange={e => setExpenseFilters({ ...expenseFilters, endDate: e.target.value })} placeholder="End Date" />
                   <Select value={expenseFilters.category} onValueChange={v => setExpenseFilters({ ...expenseFilters, category: v })}>
                     <SelectTrigger><SelectValue placeholder="Filter Category" /></SelectTrigger>
                     <SelectContent>
@@ -671,55 +701,69 @@ const AdminAccountsPage = () => {
         {/* BANK DEPOSIT TAB */}
         <TabsContent value="bank-deposit" className="space-y-4 mt-4">
           <GlassCard>
-            <CardHeader><CardTitle>Add Bank Deposit</CardTitle></CardHeader>
-            <CardContent>
-              <form onSubmit={handleAddBankDeposit} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                <div className="space-y-2">
-                  <Label>Date</Label>
-                  <Input type="date" className="[&::-webkit-calendar-picker-indicator]:block" value={bankDepositForm.date} onChange={e => setBankDepositForm({ ...bankDepositForm, date: e.target.value })} required />
-                </div>
-                <div className="space-y-2">
-                  <Label>Type</Label>
-                  <Select value={bankDepositForm.type} onValueChange={v => setBankDepositForm({ ...bankDepositForm, type: v })}>
-                    <SelectTrigger><SelectValue placeholder="Select Type" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Cash">Cash</SelectItem>
-                      <SelectItem value="Cheque">Cheque</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Amount</Label>
-                  <Input type="number" step="0.01" value={bankDepositForm.amount} onChange={e => setBankDepositForm({ ...bankDepositForm, amount: e.target.value })} required placeholder="0.00" />
-                </div>
-                {bankDepositForm.type === 'Cheque' && (
-                  <>
-                    <div className="space-y-2">
-                      <Label>Cheque No.</Label>
-                      <Input value={bankDepositForm.chequeNo} onChange={e => setBankDepositForm({ ...bankDepositForm, chequeNo: e.target.value })} required placeholder="Alphanumeric" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Bank Name</Label>
-                      <Input value={bankDepositForm.bankName} onChange={e => setBankDepositForm({ ...bankDepositForm, bankName: e.target.value })} required placeholder="Bank Name" />
-                    </div>
-                  </>
-                )}
-                <div className="space-y-2">
-                  <Label>Remarks</Label>
-                  <Input value={bankDepositForm.remarks} onChange={e => setBankDepositForm({ ...bankDepositForm, remarks: e.target.value })} placeholder="Optional" />
-                </div>
-                <div className="md:col-span-1">
-                  <Button type="submit" variant="royal" className="w-full">Add Deposit</Button>
-                </div>
-              </form>
-            </CardContent>
+            <CardHeader className="flex flex-row items-center justify-between cursor-pointer" onClick={() => setShowBankDepositForm(!showBankDepositForm)}>
+              <CardTitle>Add Bank Deposit</CardTitle>
+              <Button variant="ghost" size="sm" className="p-0 h-8 w-8 hover:bg-transparent">
+                {showBankDepositForm ? <ChevronUp className="w-5 h-5 text-muted-foreground" /> : <ChevronDown className="w-5 h-5 text-muted-foreground" />}
+              </Button>
+            </CardHeader>
+            {showBankDepositForm && (
+              <CardContent>
+                <form onSubmit={handleAddBankDeposit} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                  <div className="space-y-2">
+                    <Label>Date</Label>
+                    <Input type="date" className="[&::-webkit-calendar-picker-indicator]:block" value={bankDepositForm.date} onChange={e => setBankDepositForm({ ...bankDepositForm, date: e.target.value })} required />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Type</Label>
+                    <Select value={bankDepositForm.type} onValueChange={v => setBankDepositForm({ ...bankDepositForm, type: v })}>
+                      <SelectTrigger><SelectValue placeholder="Select Type" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Cash">Cash</SelectItem>
+                        <SelectItem value="Cheque">Cheque</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Amount</Label>
+                    <Input type="number" step="0.01" value={bankDepositForm.amount} onChange={e => setBankDepositForm({ ...bankDepositForm, amount: e.target.value })} required placeholder="0.00" />
+                  </div>
+                  {bankDepositForm.type === 'Cheque' && (
+                    <>
+                      <div className="space-y-2">
+                        <Label>Cheque No.</Label>
+                        <Input value={bankDepositForm.chequeNo} onChange={e => setBankDepositForm({ ...bankDepositForm, chequeNo: e.target.value })} required placeholder="Alphanumeric" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Bank Name</Label>
+                        <Input value={bankDepositForm.bankName} onChange={e => setBankDepositForm({ ...bankDepositForm, bankName: e.target.value })} required placeholder="Bank Name" />
+                      </div>
+                    </>
+                  )}
+                  <div className="space-y-2">
+                    <Label>Remarks</Label>
+                    <Input value={bankDepositForm.remarks} onChange={e => setBankDepositForm({ ...bankDepositForm, remarks: e.target.value })} placeholder="Optional" />
+                  </div>
+                  <div className="md:col-span-1">
+                    <Button type="submit" variant="royal" className="w-full">Add Deposit</Button>
+                  </div>
+                </form>
+              </CardContent>
+            )}
           </GlassCard>
 
           <GlassCard>
-            <CardHeader><CardTitle>Bank Deposits History</CardTitle></CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Bank Deposits History</CardTitle>
+              <Button variant="outline" size="sm" onClick={() => downloadPDF(filteredBankDeposits, 'Bank Deposits')}>
+                <Download className="w-4 h-4 mr-2" /> Export PDF
+              </Button>
+            </CardHeader>
             <CardContent>
               <div className="flex flex-col md:flex-row gap-4 justify-between mb-4">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 flex-1">
+                <div className="grid grid-cols-2 md:grid-cols-6 gap-4 flex-1">
+                  <Input type="date" className="[&::-webkit-calendar-picker-indicator]:block" value={bankDepositFilters.startDate} onChange={e => setBankDepositFilters({ ...bankDepositFilters, startDate: e.target.value })} placeholder="Start Date" />
+                  <Input type="date" className="[&::-webkit-calendar-picker-indicator]:block" value={bankDepositFilters.endDate} onChange={e => setBankDepositFilters({ ...bankDepositFilters, endDate: e.target.value })} placeholder="End Date" />
                   <Select value={bankDepositFilters.type} onValueChange={v => setBankDepositFilters({ ...bankDepositFilters, type: v })}>
                     <SelectTrigger><SelectValue placeholder="Filter Type" /></SelectTrigger>
                     <SelectContent>
