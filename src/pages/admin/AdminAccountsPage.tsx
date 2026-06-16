@@ -293,91 +293,51 @@ const AdminAccountsPage = () => {
               </Button>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-4">
-                <Select value={incomeFilters.clientName} onValueChange={v => setIncomeFilters({ ...incomeFilters, clientName: v })}>
-                  <SelectTrigger><SelectValue placeholder="Filter Client" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="All">All Clients</SelectItem>
-                    {getUniqueValues(incomes, 'clientName').map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                <Select value={incomeFilters.paymentMethod} onValueChange={v => setIncomeFilters({ ...incomeFilters, paymentMethod: v })}>
-                  <SelectTrigger><SelectValue placeholder="Filter Mode" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="All">All Modes</SelectItem>
-                    {getUniqueValues(incomes, 'paymentMethod').map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                <Select value={incomeFilters.bank} onValueChange={v => setIncomeFilters({ ...incomeFilters, bank: v })}>
-                  <SelectTrigger><SelectValue placeholder="Filter Bank" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="All">All Banks</SelectItem>
-                    {getUniqueValues(incomes, 'bank').map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                <Select value={incomeFilters.month} onValueChange={v => setIncomeFilters({ ...incomeFilters, month: v })}>
-                  <SelectTrigger><SelectValue placeholder="Filter Month" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="All">All Months</SelectItem>
-                    {getUniqueValues(incomes, 'month').map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                <Select value={incomeFilters.year} onValueChange={v => setIncomeFilters({ ...incomeFilters, year: v })}>
-                  <SelectTrigger><SelectValue placeholder="Filter Year" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="All">All Years</SelectItem>
-                    {getUniqueValues(incomes, 'year').map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+              <div className="flex flex-col md:flex-row gap-4 justify-between mb-4">
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4 flex-1">
+                  <Select value={incomeFilters.clientName} onValueChange={v => setIncomeFilters({ ...incomeFilters, clientName: v })}>
+                    <SelectTrigger><SelectValue placeholder="Filter Client" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="All">All Clients</SelectItem>
+                      {getUniqueValues(incomes, 'clientName').map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Select value={incomeFilters.paymentMethod} onValueChange={v => setIncomeFilters({ ...incomeFilters, paymentMethod: v })}>
+                    <SelectTrigger><SelectValue placeholder="Filter Mode" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="All">All Modes</SelectItem>
+                      {getUniqueValues(incomes, 'paymentMethod').map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Select value={incomeFilters.bank} onValueChange={v => setIncomeFilters({ ...incomeFilters, bank: v })}>
+                    <SelectTrigger><SelectValue placeholder="Filter Bank" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="All">All Banks</SelectItem>
+                      {getUniqueValues(incomes, 'bank').map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Select value={incomeFilters.month} onValueChange={v => setIncomeFilters({ ...incomeFilters, month: v })}>
+                    <SelectTrigger><SelectValue placeholder="Filter Month" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="All">All Months</SelectItem>
+                      {getUniqueValues(incomes, 'month').map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Select value={incomeFilters.year} onValueChange={v => setIncomeFilters({ ...incomeFilters, year: v })}>
+                    <SelectTrigger><SelectValue placeholder="Filter Year" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="All">All Years</SelectItem>
+                      {getUniqueValues(incomes, 'year').map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="bg-success/10 text-success px-4 py-2 rounded-lg border border-success/20 shadow-sm flex items-center justify-center gap-3 shrink-0">
+                  <span className="font-semibold text-sm">Total Income:</span>
+                  <span className="text-xl font-bold">₹{totalIncome.toLocaleString()}</span>
+                </div>
               </div>
 
               <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-primary/10 hover:bg-primary/10">
-                      <TableHead>Date</TableHead>
-                      <TableHead>Client Name</TableHead>
-                      <TableHead>Mode of Payment</TableHead>
-                      <TableHead>Deposited Bank</TableHead>
-                      <TableHead>Month</TableHead>
-                      <TableHead>Year</TableHead>
-                      <TableHead>Remarks</TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
-                      <TableHead className="w-[50px]"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredIncomes.map((inc) => (
-                      <TableRow key={inc.id}>
-                        <TableCell>{inc.date}</TableCell>
-                        <TableCell className="font-medium">{inc.clientName}</TableCell>
-                        <TableCell>{inc.paymentMethod}</TableCell>
-                        <TableCell>{inc.bank}</TableCell>
-                        <TableCell>{inc.month}</TableCell>
-                        <TableCell>{inc.year}</TableCell>
-                        <TableCell className="max-w-[150px] truncate" title={inc.remarks}>{inc.remarks || '-'}</TableCell>
-                        <TableCell className="text-right font-medium">₹{inc.amount.toLocaleString()}</TableCell>
-                        <TableCell>
-                          <Button variant="ghost" size="icon" onClick={() => handleDeleteIncome(inc.id)} className="text-red-500 hover:text-red-700">
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {filteredIncomes.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={9} className="text-center py-4 text-muted-foreground">No income records found</TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-              <div className="mt-4 flex justify-end">
-                <div className="bg-success/10 text-success px-4 py-3 rounded-lg border border-success/20 shadow-sm flex items-center gap-3">
-                  <span className="font-semibold text-lg">Total Income:</span>
-                  <span className="text-2xl font-bold">₹{totalIncome.toLocaleString()}</span>
-                </div>
-              </div>
             </CardContent>
           </GlassCard>
         </TabsContent>
@@ -424,73 +384,37 @@ const AdminAccountsPage = () => {
               </Button>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                <Select value={expenseFilters.category} onValueChange={v => setExpenseFilters({ ...expenseFilters, category: v })}>
-                  <SelectTrigger><SelectValue placeholder="Filter Category" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="All">All Categories</SelectItem>
-                    {getUniqueValues(expenses, 'category').map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                <Select value={expenseFilters.month} onValueChange={v => setExpenseFilters({ ...expenseFilters, month: v })}>
-                  <SelectTrigger><SelectValue placeholder="Filter Month" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="All">All Months</SelectItem>
-                    {getUniqueValues(expenses, 'month').map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                <Select value={expenseFilters.year} onValueChange={v => setExpenseFilters({ ...expenseFilters, year: v })}>
-                  <SelectTrigger><SelectValue placeholder="Filter Year" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="All">All Years</SelectItem>
-                    {getUniqueValues(expenses, 'year').map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+              <div className="flex flex-col md:flex-row gap-4 justify-between mb-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 flex-1">
+                  <Select value={expenseFilters.category} onValueChange={v => setExpenseFilters({ ...expenseFilters, category: v })}>
+                    <SelectTrigger><SelectValue placeholder="Filter Category" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="All">All Categories</SelectItem>
+                      {getUniqueValues(expenses, 'category').map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Select value={expenseFilters.month} onValueChange={v => setExpenseFilters({ ...expenseFilters, month: v })}>
+                    <SelectTrigger><SelectValue placeholder="Filter Month" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="All">All Months</SelectItem>
+                      {getUniqueValues(expenses, 'month').map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Select value={expenseFilters.year} onValueChange={v => setExpenseFilters({ ...expenseFilters, year: v })}>
+                    <SelectTrigger><SelectValue placeholder="Filter Year" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="All">All Years</SelectItem>
+                      {getUniqueValues(expenses, 'year').map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="bg-destructive/10 text-destructive px-4 py-2 rounded-lg border border-destructive/20 shadow-sm flex items-center justify-center gap-3 shrink-0">
+                  <span className="font-semibold text-sm">Total Expense:</span>
+                  <span className="text-xl font-bold">₹{totalExpense.toLocaleString()}</span>
+                </div>
               </div>
 
               <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-destructive/10 hover:bg-destructive/10">
-                      <TableHead>Date</TableHead>
-                      <TableHead>Category</TableHead>
-                      <TableHead>Month</TableHead>
-                      <TableHead>Year</TableHead>
-                      <TableHead>Remarks</TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
-                      <TableHead className="w-[50px]"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredExpenses.map((exp) => (
-                      <TableRow key={exp.id}>
-                        <TableCell>{exp.date}</TableCell>
-                        <TableCell className="font-medium">{exp.category}</TableCell>
-                        <TableCell>{exp.month}</TableCell>
-                        <TableCell>{exp.year}</TableCell>
-                        <TableCell className="max-w-[150px] truncate" title={exp.remarks}>{exp.remarks || '-'}</TableCell>
-                        <TableCell className="text-right font-medium">₹{exp.amount.toLocaleString()}</TableCell>
-                        <TableCell>
-                          <Button variant="ghost" size="icon" onClick={() => handleDeleteExpense(exp.id)} className="text-red-500 hover:text-red-700">
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {filteredExpenses.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={7} className="text-center py-4 text-muted-foreground">No expense records found</TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-              <div className="mt-4 flex justify-end">
-                <div className="bg-destructive/10 text-destructive px-4 py-3 rounded-lg border border-destructive/20 shadow-sm flex items-center gap-3">
-                  <span className="font-semibold text-lg">Total Expense:</span>
-                  <span className="text-2xl font-bold">₹{totalExpense.toLocaleString()}</span>
-                </div>
-              </div>
             </CardContent>
           </GlassCard>
         </TabsContent>
