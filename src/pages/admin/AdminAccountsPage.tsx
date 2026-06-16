@@ -471,17 +471,20 @@ const AdminAccountsPage = () => {
           </GlassCard>
 
           <GlassCard>
-            <CardHeader className="flex flex-row items-center justify-between">
+            <CardHeader className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <CardTitle>Income Records</CardTitle>
-              <Button variant="outline" size="sm" onClick={() => downloadPDF(filteredIncomes, 'Income Records')}>
-                <Download className="w-4 h-4 mr-2" /> Export PDF
-              </Button>
+              <div className="flex items-center gap-2">
+                <Input type="date" className="h-9 w-auto [&::-webkit-calendar-picker-indicator]:block" value={incomeFilters.startDate} onChange={e => setIncomeFilters({ ...incomeFilters, startDate: e.target.value })} placeholder="Start Date" />
+                <span className="text-muted-foreground">-</span>
+                <Input type="date" className="h-9 w-auto [&::-webkit-calendar-picker-indicator]:block" value={incomeFilters.endDate} onChange={e => setIncomeFilters({ ...incomeFilters, endDate: e.target.value })} placeholder="End Date" />
+                <Button variant="outline" size="sm" onClick={() => downloadPDF(filteredIncomes, 'Income Records')}>
+                  <Download className="w-4 h-4 mr-2" /> Export PDF
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="flex flex-col md:flex-row gap-4 justify-between mb-4">
-                <div className="grid grid-cols-2 md:grid-cols-8 gap-4 flex-1">
-                  <Input type="date" className="[&::-webkit-calendar-picker-indicator]:block" value={incomeFilters.startDate} onChange={e => setIncomeFilters({ ...incomeFilters, startDate: e.target.value })} placeholder="Start Date" />
-                  <Input type="date" className="[&::-webkit-calendar-picker-indicator]:block" value={incomeFilters.endDate} onChange={e => setIncomeFilters({ ...incomeFilters, endDate: e.target.value })} placeholder="End Date" />
+                <div className="grid grid-cols-2 md:grid-cols-6 gap-4 flex-1">
                   <Input placeholder="Filter Invoice No." value={incomeFilters.invoiceNumber} onChange={e => setIncomeFilters({ ...incomeFilters, invoiceNumber: e.target.value })} />
                   <Select value={incomeFilters.clientName} onValueChange={v => setIncomeFilters({ ...incomeFilters, clientName: v })}>
                     <SelectTrigger><SelectValue placeholder="Filter Client" /></SelectTrigger>
