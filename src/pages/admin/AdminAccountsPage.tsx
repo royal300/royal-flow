@@ -27,6 +27,8 @@ const AdminAccountsPage = () => {
   const [newPaymentMethod, setNewPaymentMethod] = useState('');
   const [newBank, setNewBank] = useState('');
   const [newCategory, setNewCategory] = useState('');
+  
+  const [editingSetting, setEditingSetting] = useState<{ key: string, oldValue: string, newValue: string } | null>(null);
 
   // Data State
   const [incomes, setIncomes] = useState<Income[]>([]);
@@ -135,6 +137,23 @@ const AdminAccountsPage = () => {
       toast({ title: 'Removed successfully' });
     } catch (e) {
       toast({ title: 'Error removing item', variant: 'destructive' });
+    }
+  };
+
+  const handleEditSetting = async (key: string, oldValue: string, newValue: string, list: string[], setList: (val: string[]) => void) => {
+    if (!newValue.trim() || newValue.trim() === oldValue) return setEditingSetting(null);
+    if (list.includes(newValue.trim())) {
+      toast({ title: 'Item already exists', variant: 'destructive' });
+      return;
+    }
+    const newList = list.map(item => item === oldValue ? newValue.trim() : item);
+    try {
+      await settingsService.update(key, newList);
+      setList(newList);
+      toast({ title: 'Updated successfully' });
+      setEditingSetting(null);
+    } catch (e) {
+      toast({ title: 'Error updating item', variant: 'destructive' });
     }
   };
 
@@ -930,8 +949,21 @@ const AdminAccountsPage = () => {
                 <div className="space-y-2">
                   {clients.map(c => (
                     <div key={c} className="flex justify-between items-center p-2 bg-muted/50 rounded border">
-                      <span>{c}</span>
-                      <Button variant="ghost" size="sm" onClick={() => handleRemoveSetting('accountClients', c, clients, setClients)}><Trash2 className="w-4 h-4 text-red-500" /></Button>
+                      {editingSetting?.key === 'accountClients' && editingSetting?.oldValue === c ? (
+                        <div className="flex gap-2 w-full mr-2">
+                          <Input value={editingSetting.newValue} onChange={(e) => setEditingSetting({ ...editingSetting, newValue: e.target.value })} autoFocus />
+                          <Button size="sm" onClick={() => handleEditSetting('accountClients', c, editingSetting.newValue, clients, setClients)}>Save</Button>
+                          <Button size="sm" variant="ghost" onClick={() => setEditingSetting(null)}>Cancel</Button>
+                        </div>
+                      ) : (
+                        <>
+                          <span>{c}</span>
+                          <div>
+                            <Button variant="ghost" size="sm" onClick={() => setEditingSetting({ key: 'accountClients', oldValue: c, newValue: c })}><Pencil className="w-4 h-4 text-blue-500" /></Button>
+                            <Button variant="ghost" size="sm" onClick={() => handleRemoveSetting('accountClients', c, clients, setClients)}><Trash2 className="w-4 h-4 text-red-500" /></Button>
+                          </div>
+                        </>
+                      )}
                     </div>
                   ))}
                   {clients.length === 0 && <p className="text-sm text-muted-foreground text-center">No clients added.</p>}
@@ -950,8 +982,21 @@ const AdminAccountsPage = () => {
                 <div className="space-y-2">
                   {paymentMethods.map(m => (
                     <div key={m} className="flex justify-between items-center p-2 bg-muted/50 rounded border">
-                      <span>{m}</span>
-                      <Button variant="ghost" size="sm" onClick={() => handleRemoveSetting('accountPaymentMethods', m, paymentMethods, setPaymentMethods)}><Trash2 className="w-4 h-4 text-red-500" /></Button>
+                      {editingSetting?.key === 'accountPaymentMethods' && editingSetting?.oldValue === m ? (
+                        <div className="flex gap-2 w-full mr-2">
+                          <Input value={editingSetting.newValue} onChange={(e) => setEditingSetting({ ...editingSetting, newValue: e.target.value })} autoFocus />
+                          <Button size="sm" onClick={() => handleEditSetting('accountPaymentMethods', m, editingSetting.newValue, paymentMethods, setPaymentMethods)}>Save</Button>
+                          <Button size="sm" variant="ghost" onClick={() => setEditingSetting(null)}>Cancel</Button>
+                        </div>
+                      ) : (
+                        <>
+                          <span>{m}</span>
+                          <div>
+                            <Button variant="ghost" size="sm" onClick={() => setEditingSetting({ key: 'accountPaymentMethods', oldValue: m, newValue: m })}><Pencil className="w-4 h-4 text-blue-500" /></Button>
+                            <Button variant="ghost" size="sm" onClick={() => handleRemoveSetting('accountPaymentMethods', m, paymentMethods, setPaymentMethods)}><Trash2 className="w-4 h-4 text-red-500" /></Button>
+                          </div>
+                        </>
+                      )}
                     </div>
                   ))}
                   {paymentMethods.length === 0 && <p className="text-sm text-muted-foreground text-center">No methods added.</p>}
@@ -970,8 +1015,21 @@ const AdminAccountsPage = () => {
                 <div className="space-y-2">
                   {banks.map(b => (
                     <div key={b} className="flex justify-between items-center p-2 bg-muted/50 rounded border">
-                      <span>{b}</span>
-                      <Button variant="ghost" size="sm" onClick={() => handleRemoveSetting('accountBanks', b, banks, setBanks)}><Trash2 className="w-4 h-4 text-red-500" /></Button>
+                      {editingSetting?.key === 'accountBanks' && editingSetting?.oldValue === b ? (
+                        <div className="flex gap-2 w-full mr-2">
+                          <Input value={editingSetting.newValue} onChange={(e) => setEditingSetting({ ...editingSetting, newValue: e.target.value })} autoFocus />
+                          <Button size="sm" onClick={() => handleEditSetting('accountBanks', b, editingSetting.newValue, banks, setBanks)}>Save</Button>
+                          <Button size="sm" variant="ghost" onClick={() => setEditingSetting(null)}>Cancel</Button>
+                        </div>
+                      ) : (
+                        <>
+                          <span>{b}</span>
+                          <div>
+                            <Button variant="ghost" size="sm" onClick={() => setEditingSetting({ key: 'accountBanks', oldValue: b, newValue: b })}><Pencil className="w-4 h-4 text-blue-500" /></Button>
+                            <Button variant="ghost" size="sm" onClick={() => handleRemoveSetting('accountBanks', b, banks, setBanks)}><Trash2 className="w-4 h-4 text-red-500" /></Button>
+                          </div>
+                        </>
+                      )}
                     </div>
                   ))}
                   {banks.length === 0 && <p className="text-sm text-muted-foreground text-center">No banks added.</p>}
@@ -990,8 +1048,21 @@ const AdminAccountsPage = () => {
                 <div className="space-y-2">
                   {categories.map(c => (
                     <div key={c} className="flex justify-between items-center p-2 bg-muted/50 rounded border">
-                      <span>{c}</span>
-                      <Button variant="ghost" size="sm" onClick={() => handleRemoveSetting('accountCategories', c, categories, setCategories)}><Trash2 className="w-4 h-4 text-red-500" /></Button>
+                      {editingSetting?.key === 'accountCategories' && editingSetting?.oldValue === c ? (
+                        <div className="flex gap-2 w-full mr-2">
+                          <Input value={editingSetting.newValue} onChange={(e) => setEditingSetting({ ...editingSetting, newValue: e.target.value })} autoFocus />
+                          <Button size="sm" onClick={() => handleEditSetting('accountCategories', c, editingSetting.newValue, categories, setCategories)}>Save</Button>
+                          <Button size="sm" variant="ghost" onClick={() => setEditingSetting(null)}>Cancel</Button>
+                        </div>
+                      ) : (
+                        <>
+                          <span>{c}</span>
+                          <div>
+                            <Button variant="ghost" size="sm" onClick={() => setEditingSetting({ key: 'accountCategories', oldValue: c, newValue: c })}><Pencil className="w-4 h-4 text-blue-500" /></Button>
+                            <Button variant="ghost" size="sm" onClick={() => handleRemoveSetting('accountCategories', c, categories, setCategories)}><Trash2 className="w-4 h-4 text-red-500" /></Button>
+                          </div>
+                        </>
+                      )}
                     </div>
                   ))}
                   {categories.length === 0 && <p className="text-sm text-muted-foreground text-center">No categories added.</p>}
