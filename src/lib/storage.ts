@@ -108,6 +108,7 @@ export interface Expense {
   id: string;
   date: string;
   category: string;
+  bank?: string;
   amount: number;
   month: string;
   year: string;
@@ -119,6 +120,7 @@ export interface BankDeposit {
   id: string;
   date: string;
   type: 'Cash' | 'Cheque';
+  bank?: string;
   amount: number;
   chequeNo?: string;
   bankName?: string;

@@ -98,6 +98,7 @@ const expenseSchema = new mongoose.Schema({
   id: { type: String, required: true, unique: true },
   date: String,
   category: String,
+  bank: String,
   amount: Number,
   month: String,
   year: String,
@@ -109,6 +110,7 @@ const bankDepositSchema = new mongoose.Schema({
   id: { type: String, required: true, unique: true },
   date: String,
   type: String, // 'Cash' or 'Cheque'
+  bank: String,
   amount: Number,
   chequeNo: String,
   bankName: String,

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { GlassCard, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,10 +37,29 @@ const AdminAccountsPage = () => {
   const [incomeForm, setIncomeForm] = useState({ date: '', clientName: '', paymentMethod: '', bank: '', amount: '', remarks: '', invoiceNumber: '' });
   
   // Expense Form State
-  const [expenseForm, setExpenseForm] = useState({ date: '', category: '', amount: '', remarks: '' });
+  const [expenseForm, setExpenseForm] = useState({ date: '', category: '', bank: '', amount: '', remarks: '' });
 
   // Bank Deposit Form State
-  const [bankDepositForm, setBankDepositForm] = useState({ date: '', type: 'Cash', amount: '', chequeNo: '', bankName: '', remarks: '' });
+  const [bankDepositForm, setBankDepositForm] = useState({ date: '', type: 'Cash', bank: '', amount: '', chequeNo: '', bankName: '', remarks: '' });
+
+  // Input Refs for Settings
+  const clientInputRef = useRef<HTMLInputElement>(null);
+  const paymentMethodInputRef = useRef<HTMLInputElement>(null);
+  const bankInputRef = useRef<HTMLInputElement>(null);
+  const categoryInputRef = useRef<HTMLInputElement>(null);
+
+  // PDF Preview State
+  const [pdfPreviewData, setPdfPreviewData] = useState<{ title: string, headers: string[], tableData: any[][] } | null>(null);
+
+  // Date Formatter
+  const formatDate = (dateStr: string) => {
+    if (!dateStr) return '';
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+      return `${parts[2]}-${parts[1]}-${parts[0]}`;
+    }
+    return dateStr;
+  };
 
   // Edit Modals State
   const [editingIncome, setEditingIncome] = useState<Income | null>(null);
@@ -92,7 +111,7 @@ const AdminAccountsPage = () => {
   }, []);
 
   // Handlers for Settings
-  const handleAddSetting = async (key: string, value: string, list: string[], setList: (val: string[]) => void, resetInput: () => void) => {
+  const handleAddSetting = async (key: string, value: string, list: string[], setList: (val: string[]) => void, resetInput: () => void, inputRef?: React.RefObject<HTMLInputElement>) => {
     if (!value.trim() || list.includes(value.trim())) return;
     const newList = [...list, value.trim()];
     try {
@@ -100,6 +119,9 @@ const AdminAccountsPage = () => {
       setList(newList);
       resetInput();
       toast({ title: 'Added successfully' });
+      if (inputRef && inputRef.current) {
+        inputRef.current.focus();
+      }
     } catch (e) {
       toast({ title: 'Error adding item', variant: 'destructive' });
     }
@@ -161,13 +183,14 @@ const AdminAccountsPage = () => {
       await accountService.createExpense({
         date: expenseForm.date,
         category: expenseForm.category,
+        bank: expenseForm.bank,
         amount: Number(expenseForm.amount),
         month,
         year,
         remarks: expenseForm.remarks
       });
       toast({ title: 'Expense added successfully' });
-      setExpenseForm({ date: '', category: '', amount: '', remarks: '' });
+      setExpenseForm({ date: '', category: '', bank: '', amount: '', remarks: '' });
       loadData();
     } catch (err) {
       toast({ title: 'Failed to add expense', variant: 'destructive' });
@@ -184,6 +207,7 @@ const AdminAccountsPage = () => {
       await accountService.createBankDeposit({
         date: bankDepositForm.date,
         type: bankDepositForm.type as 'Cash' | 'Cheque',
+        bank: bankDepositForm.bank,
         amount: Number(bankDepositForm.amount),
         chequeNo: bankDepositForm.type === 'Cheque' ? bankDepositForm.chequeNo : undefined,
         bankName: bankDepositForm.type === 'Cheque' ? bankDepositForm.bankName : undefined,
@@ -192,7 +216,7 @@ const AdminAccountsPage = () => {
         remarks: bankDepositForm.remarks
       });
       toast({ title: 'Bank Deposit added successfully' });
-      setBankDepositForm({ date: '', type: 'Cash', amount: '', chequeNo: '', bankName: '', remarks: '' });
+      setBankDepositForm({ date: '', type: 'Cash', bank: '', amount: '', chequeNo: '', bankName: '', remarks: '' });
       loadData();
     } catch (err) {
       toast({ title: 'Failed to add bank deposit', variant: 'destructive' });
@@ -325,26 +349,51 @@ const AdminAccountsPage = () => {
   const totalOverviewExpense = overviewExpenses.reduce((sum, item) => sum + item.amount, 0);
   const totalOverviewDeposit = overviewDeposits.reduce((sum, item) => sum + item.amount, 0);
 
+  const totalCashIncome = overviewIncomes.filter(inc => inc.paymentMethod?.toLowerCase().includes('cash')).reduce((sum, item) => sum + item.amount, 0);
+  const totalInHand = totalCashIncome - totalOverviewDeposit;
+
   const totalIncome = filteredIncomes.reduce((acc, curr) => acc + curr.amount, 0);
   const totalExpense = filteredExpenses.reduce((acc, curr) => acc + curr.amount, 0);
   const totalBankDeposit = filteredBankDeposits.reduce((acc, curr) => acc + curr.amount, 0);
 
-  // PDF Export
-  const downloadPDF = (data: any[], title: string) => {
+  const handlePreviewPDF = (data: any[], title: string) => {
     if (data.length === 0) return toast({ title: 'No data to download' });
+    let headers: string[] = [];
+    let tableData: any[][] = [];
+
+    if (title === 'Income Records') {
+      headers = ['Date', 'Client Name', 'Mode of Payment', 'Deposited Bank', 'Month', 'Year', 'Invoice No.', 'Remarks', 'Amount'];
+      tableData = data.map(row => [
+        formatDate(row.date), row.clientName, row.paymentMethod, row.bank, row.month, row.year, row.invoiceNumber || '-', row.remarks || '-', row.amount
+      ]);
+    } else if (title === 'Expense Records') {
+      headers = ['Date', 'Category', 'Bank', 'Month', 'Year', 'Remarks', 'Amount'];
+      tableData = data.map(row => [
+        formatDate(row.date), row.category, row.bank || '-', row.month, row.year, row.remarks || '-', row.amount
+      ]);
+    } else if (title === 'Bank Deposits') {
+      headers = ['Date', 'Bank', 'Type', 'Cheque Details', 'Month', 'Year', 'Remarks', 'Amount'];
+      tableData = data.map(row => [
+        formatDate(row.date), row.bank || '-', row.type, row.type === 'Cheque' ? `${row.chequeNo} (${row.bankName})` : '-', row.month, row.year, row.remarks || '-', row.amount
+      ]);
+    }
+
+    setPdfPreviewData({ title, headers, tableData });
+  };
+
+  const downloadGeneratedPDF = () => {
+    if (!pdfPreviewData) return;
     const doc = new jsPDF();
-    const headers = Object.keys(data[0]).filter(k => k !== 'id' && k !== 'createdAt' && k !== 'updatedAt');
-    const tableData = data.map(row => headers.map(header => row[header] || '-'));
-    
-    doc.text(title, 14, 15);
+    doc.text(pdfPreviewData.title, 14, 15);
     autoTable(doc, {
-      head: [headers.map(h => h.charAt(0).toUpperCase() + h.slice(1).replace(/([A-Z])/g, ' $1').trim())],
-      body: tableData,
+      head: [pdfPreviewData.headers],
+      body: pdfPreviewData.tableData,
       startY: 20,
       styles: { fontSize: 8 },
       headStyles: { fillColor: [22, 160, 133] }
     });
-    doc.save(`${title.toLowerCase().replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
+    doc.save(`${pdfPreviewData.title.toLowerCase().replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
+    setPdfPreviewData(null);
   };
 
   const getUniqueValues = (data: any[], key: string) => {
@@ -389,7 +438,7 @@ const AdminAccountsPage = () => {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 pt-4">
                 <div className="bg-green-100 dark:bg-green-900/30 p-6 rounded-xl border border-green-200 dark:border-green-800 flex flex-col items-center justify-center">
                   <span className="text-green-800 dark:text-green-400 text-sm font-semibold uppercase tracking-wider mb-2">Total Income</span>
                   <span className="text-4xl font-bold text-green-900 dark:text-green-300">₹{totalOverviewIncome.toLocaleString()}</span>
@@ -401,6 +450,10 @@ const AdminAccountsPage = () => {
                 <div className="bg-blue-100 dark:bg-blue-900/30 p-6 rounded-xl border border-blue-200 dark:border-blue-800 flex flex-col items-center justify-center">
                   <span className="text-blue-800 dark:text-blue-400 text-sm font-semibold uppercase tracking-wider mb-2">Total Bank Deposit</span>
                   <span className="text-4xl font-bold text-blue-900 dark:text-blue-300">₹{totalOverviewDeposit.toLocaleString()}</span>
+                </div>
+                <div className="bg-orange-100 dark:bg-orange-900/30 p-6 rounded-xl border border-orange-200 dark:border-orange-800 flex flex-col items-center justify-center">
+                  <span className="text-orange-800 dark:text-orange-400 text-sm font-semibold uppercase tracking-wider mb-2">In Hand</span>
+                  <span className="text-4xl font-bold text-orange-900 dark:text-orange-300">₹{totalInHand.toLocaleString()}</span>
                 </div>
               </div>
             </CardContent>
@@ -477,7 +530,7 @@ const AdminAccountsPage = () => {
                 <Input type="date" className="h-9 w-auto [&::-webkit-calendar-picker-indicator]:block" value={incomeFilters.startDate} onChange={e => setIncomeFilters({ ...incomeFilters, startDate: e.target.value })} placeholder="Start Date" />
                 <span className="text-muted-foreground">-</span>
                 <Input type="date" className="h-9 w-auto [&::-webkit-calendar-picker-indicator]:block" value={incomeFilters.endDate} onChange={e => setIncomeFilters({ ...incomeFilters, endDate: e.target.value })} placeholder="End Date" />
-                <Button variant="outline" size="sm" onClick={() => downloadPDF(filteredIncomes, 'Income Records')}>
+                <Button variant="outline" size="sm" onClick={() => handlePreviewPDF(filteredIncomes, 'Income Records')}>
                   <Download className="w-4 h-4 mr-2" /> Export PDF
                 </Button>
               </div>
@@ -547,7 +600,7 @@ const AdminAccountsPage = () => {
                   <TableBody>
                     {filteredIncomes.map((inc) => (
                       <TableRow key={inc.id}>
-                        <TableCell>{inc.date}</TableCell>
+                        <TableCell>{formatDate(inc.date)}</TableCell>
                         <TableCell className="font-medium">{inc.clientName}</TableCell>
                         <TableCell>{inc.paymentMethod}</TableCell>
                         <TableCell>{inc.bank}</TableCell>
@@ -589,7 +642,7 @@ const AdminAccountsPage = () => {
             </CardHeader>
             {showExpenseForm && (
               <CardContent>
-                <form onSubmit={handleAddExpense} className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+                <form onSubmit={handleAddExpense} className="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
                   <div className="space-y-2">
                     <Label>Date</Label>
                     <Input type="date" className="[&::-webkit-calendar-picker-indicator]:block" value={expenseForm.date} onChange={e => setExpenseForm({ ...expenseForm, date: e.target.value })} required />
@@ -600,6 +653,15 @@ const AdminAccountsPage = () => {
                       <SelectTrigger><SelectValue placeholder="Select Category" /></SelectTrigger>
                       <SelectContent>
                         {categories.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Bank</Label>
+                    <Select value={expenseForm.bank} onValueChange={v => setExpenseForm({ ...expenseForm, bank: v })}>
+                      <SelectTrigger><SelectValue placeholder="Select Bank" /></SelectTrigger>
+                      <SelectContent>
+                        {banks.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
@@ -620,7 +682,7 @@ const AdminAccountsPage = () => {
           <GlassCard>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Expense Records</CardTitle>
-              <Button variant="outline" size="sm" onClick={() => downloadPDF(filteredExpenses, 'Expense Records')}>
+              <Button variant="outline" size="sm" onClick={() => handlePreviewPDF(filteredExpenses, 'Expense Records')}>
                 <Download className="w-4 h-4 mr-2" /> Export PDF
               </Button>
             </CardHeader>
@@ -663,6 +725,7 @@ const AdminAccountsPage = () => {
                     <TableRow className="bg-destructive/10 hover:bg-destructive/10">
                       <TableHead>Date</TableHead>
                       <TableHead>Category</TableHead>
+                      <TableHead>Bank</TableHead>
                       <TableHead>Month</TableHead>
                       <TableHead>Year</TableHead>
                       <TableHead>Remarks</TableHead>
@@ -673,8 +736,9 @@ const AdminAccountsPage = () => {
                   <TableBody>
                     {filteredExpenses.map((exp) => (
                       <TableRow key={exp.id}>
-                        <TableCell>{exp.date}</TableCell>
+                        <TableCell>{formatDate(exp.date)}</TableCell>
                         <TableCell className="font-medium">{exp.category}</TableCell>
+                        <TableCell>{exp.bank || '-'}</TableCell>
                         <TableCell>{exp.month}</TableCell>
                         <TableCell>{exp.year}</TableCell>
                         <TableCell className="max-w-[150px] truncate" title={exp.remarks}>{exp.remarks || '-'}</TableCell>
@@ -712,7 +776,7 @@ const AdminAccountsPage = () => {
             </CardHeader>
             {showBankDepositForm && (
               <CardContent>
-                <form onSubmit={handleAddBankDeposit} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                <form onSubmit={handleAddBankDeposit} className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
                   <div className="space-y-2">
                     <Label>Date</Label>
                     <Input type="date" className="[&::-webkit-calendar-picker-indicator]:block" value={bankDepositForm.date} onChange={e => setBankDepositForm({ ...bankDepositForm, date: e.target.value })} required />
@@ -724,6 +788,15 @@ const AdminAccountsPage = () => {
                       <SelectContent>
                         <SelectItem value="Cash">Cash</SelectItem>
                         <SelectItem value="Cheque">Cheque</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Bank</Label>
+                    <Select value={bankDepositForm.bank} onValueChange={v => setBankDepositForm({ ...bankDepositForm, bank: v })}>
+                      <SelectTrigger><SelectValue placeholder="Select Bank" /></SelectTrigger>
+                      <SelectContent>
+                        {banks.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
@@ -758,7 +831,7 @@ const AdminAccountsPage = () => {
           <GlassCard>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Bank Deposits History</CardTitle>
-              <Button variant="outline" size="sm" onClick={() => downloadPDF(filteredBankDeposits, 'Bank Deposits')}>
+              <Button variant="outline" size="sm" onClick={() => handlePreviewPDF(filteredBankDeposits, 'Bank Deposits')}>
                 <Download className="w-4 h-4 mr-2" /> Export PDF
               </Button>
             </CardHeader>
@@ -813,7 +886,7 @@ const AdminAccountsPage = () => {
                   <TableBody>
                     {filteredBankDeposits.map((dep) => (
                       <TableRow key={dep.id}>
-                        <TableCell>{dep.date}</TableCell>
+                        <TableCell>{formatDate(dep.date)}</TableCell>
                         <TableCell className="font-medium">{dep.type}</TableCell>
                         <TableCell>{dep.type === 'Cheque' ? `${dep.chequeNo} (${dep.bankName})` : '-'}</TableCell>
                         <TableCell>{dep.month}</TableCell>
@@ -851,8 +924,8 @@ const AdminAccountsPage = () => {
               <CardHeader><CardTitle>Manage Clients</CardTitle></CardHeader>
               <CardContent>
                 <div className="flex gap-2 mb-4">
-                  <Input placeholder="New client name" value={newClient} onChange={e => setNewClient(e.target.value)} />
-                  <Button onClick={() => handleAddSetting('accountClients', newClient, clients, setClients, () => setNewClient(''))}>Add</Button>
+                  <Input placeholder="New client name" value={newClient} onChange={e => setNewClient(e.target.value)} ref={clientInputRef} />
+                  <Button onClick={() => handleAddSetting('accountClients', newClient, clients, setClients, () => setNewClient(''), clientInputRef)}>Add</Button>
                 </div>
                 <div className="space-y-2">
                   {clients.map(c => (
@@ -871,8 +944,8 @@ const AdminAccountsPage = () => {
               <CardHeader><CardTitle>Manage Payment Methods</CardTitle></CardHeader>
               <CardContent>
                 <div className="flex gap-2 mb-4">
-                  <Input placeholder="New payment method" value={newPaymentMethod} onChange={e => setNewPaymentMethod(e.target.value)} />
-                  <Button onClick={() => handleAddSetting('accountPaymentMethods', newPaymentMethod, paymentMethods, setPaymentMethods, () => setNewPaymentMethod(''))}>Add</Button>
+                  <Input placeholder="New payment method" value={newPaymentMethod} onChange={e => setNewPaymentMethod(e.target.value)} ref={paymentMethodInputRef} />
+                  <Button onClick={() => handleAddSetting('accountPaymentMethods', newPaymentMethod, paymentMethods, setPaymentMethods, () => setNewPaymentMethod(''), paymentMethodInputRef)}>Add</Button>
                 </div>
                 <div className="space-y-2">
                   {paymentMethods.map(m => (
@@ -891,8 +964,8 @@ const AdminAccountsPage = () => {
               <CardHeader><CardTitle>Manage Banks</CardTitle></CardHeader>
               <CardContent>
                 <div className="flex gap-2 mb-4">
-                  <Input placeholder="New bank name" value={newBank} onChange={e => setNewBank(e.target.value)} />
-                  <Button onClick={() => handleAddSetting('accountBanks', newBank, banks, setBanks, () => setNewBank(''))}>Add</Button>
+                  <Input placeholder="New bank name" value={newBank} onChange={e => setNewBank(e.target.value)} ref={bankInputRef} />
+                  <Button onClick={() => handleAddSetting('accountBanks', newBank, banks, setBanks, () => setNewBank(''), bankInputRef)}>Add</Button>
                 </div>
                 <div className="space-y-2">
                   {banks.map(b => (
@@ -911,8 +984,8 @@ const AdminAccountsPage = () => {
               <CardHeader><CardTitle>Manage Expense Categories</CardTitle></CardHeader>
               <CardContent>
                 <div className="flex gap-2 mb-4">
-                  <Input placeholder="New category" value={newCategory} onChange={e => setNewCategory(e.target.value)} />
-                  <Button onClick={() => handleAddSetting('accountCategories', newCategory, categories, setCategories, () => setNewCategory(''))}>Add</Button>
+                  <Input placeholder="New category" value={newCategory} onChange={e => setNewCategory(e.target.value)} ref={categoryInputRef} />
+                  <Button onClick={() => handleAddSetting('accountCategories', newCategory, categories, setCategories, () => setNewCategory(''), categoryInputRef)}>Add</Button>
                 </div>
                 <div className="space-y-2">
                   {categories.map(c => (
@@ -1015,6 +1088,15 @@ const AdminAccountsPage = () => {
                   </Select>
                 </div>
                 <div className="space-y-2">
+                  <Label>Bank</Label>
+                  <Select value={editingExpense.bank || ''} onValueChange={v => setEditingExpense({ ...editingExpense, bank: v })}>
+                    <SelectTrigger><SelectValue placeholder="Select Bank" /></SelectTrigger>
+                    <SelectContent>
+                      {banks.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
                   <Label>Amount</Label>
                   <Input type="number" step="0.01" value={editingExpense.amount} onChange={e => setEditingExpense({ ...editingExpense, amount: Number(e.target.value) })} required />
                 </div>
@@ -1056,6 +1138,15 @@ const AdminAccountsPage = () => {
                   </Select>
                 </div>
                 <div className="space-y-2">
+                  <Label>Bank</Label>
+                  <Select value={editingBankDeposit.bank || ''} onValueChange={v => setEditingBankDeposit({ ...editingBankDeposit, bank: v })}>
+                    <SelectTrigger><SelectValue placeholder="Select Bank" /></SelectTrigger>
+                    <SelectContent>
+                      {banks.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
                   <Label>Amount</Label>
                   <Input type="number" step="0.01" value={editingBankDeposit.amount} onChange={e => setEditingBankDeposit({ ...editingBankDeposit, amount: Number(e.target.value) })} required />
                 </div>
@@ -1082,6 +1173,44 @@ const AdminAccountsPage = () => {
               </div>
             </form>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* PDF PREVIEW DIALOG */}
+      <Dialog open={!!pdfPreviewData} onOpenChange={(open) => !open && setPdfPreviewData(null)}>
+        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>PDF Preview: {pdfPreviewData?.title}</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-auto border rounded mt-4">
+            {pdfPreviewData && (
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted">
+                    {pdfPreviewData.headers.map((h, i) => <TableHead key={i}>{h}</TableHead>)}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {pdfPreviewData.tableData.map((row, i) => (
+                    <TableRow key={i}>
+                      {row.map((cell, j) => <TableCell key={j}>{cell}</TableCell>)}
+                    </TableRow>
+                  ))}
+                  {pdfPreviewData.tableData.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={pdfPreviewData.headers.length} className="text-center py-4 text-muted-foreground">No data to preview</TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            )}
+          </div>
+          <div className="flex justify-end pt-4 gap-2 mt-auto">
+            <Button variant="ghost" onClick={() => setPdfPreviewData(null)}>Cancel</Button>
+            <Button onClick={downloadGeneratedPDF} variant="default">
+              <Download className="w-4 h-4 mr-2" /> Download PDF
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
