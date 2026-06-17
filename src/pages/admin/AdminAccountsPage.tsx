@@ -516,7 +516,7 @@ const AdminAccountsPage = () => {
                     <Input value={incomeForm.invoiceNumber} onChange={e => setIncomeForm({ ...incomeForm, invoiceNumber: e.target.value })} placeholder="Optional" />
                   </div>
                   <div className="md:col-span-1">
-                    <Button type="submit" variant="royal" className="w-full">Add Income</Button>
+                    <Button type="submit" className="w-full bg-green-800 hover:bg-green-900 text-white font-semibold">Add Income</Button>
                   </div>
                 </form>
               </CardContent>
@@ -584,17 +584,17 @@ const AdminAccountsPage = () => {
               <div className="rounded-md border">
                 <Table>
                   <TableHeader>
-                    <TableRow className="bg-green-800 hover:bg-green-700 text-white">
-                      <TableHead className="text-white">Date</TableHead>
-                      <TableHead className="text-white">Client Name</TableHead>
-                      <TableHead className="text-white">Mode of Payment</TableHead>
-                      <TableHead className="text-white">Deposited Bank</TableHead>
-                      <TableHead className="text-white">Month</TableHead>
-                      <TableHead className="text-white">Year</TableHead>
-                      <TableHead className="text-white">Invoice No.</TableHead>
-                      <TableHead className="text-white">Remarks</TableHead>
-                      <TableHead className="text-right text-white">Amount</TableHead>
-                      <TableHead className="w-[80px] text-white"></TableHead>
+                    <TableRow className="bg-green-100 hover:bg-green-200 text-green-900">
+                      <TableHead className="text-green-900 font-semibold">Date</TableHead>
+                      <TableHead className="text-green-900 font-semibold">Client Name</TableHead>
+                      <TableHead className="text-green-900 font-semibold">Mode of Payment</TableHead>
+                      <TableHead className="text-green-900 font-semibold">Deposited Bank</TableHead>
+                      <TableHead className="text-green-900 font-semibold">Month</TableHead>
+                      <TableHead className="text-green-900 font-semibold">Year</TableHead>
+                      <TableHead className="text-green-900 font-semibold">Invoice No.</TableHead>
+                      <TableHead className="text-green-900 font-semibold">Remarks</TableHead>
+                      <TableHead className="text-right text-green-900 font-semibold">Amount</TableHead>
+                      <TableHead className="w-[80px] text-green-900"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
