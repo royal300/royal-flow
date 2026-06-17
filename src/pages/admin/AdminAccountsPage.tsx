@@ -391,7 +391,7 @@ const AdminAccountsPage = () => {
         formatDate(row.date), row.category, row.bank || '-', row.month, row.year, row.remarks || '-', row.amount
       ]);
     } else if (title === 'Bank Deposits') {
-      headers = ['Date', 'Bank', 'Type', 'Cheque Details', 'Month', 'Year', 'Remarks', 'Amount'];
+      headers = ['Date', 'Deposited Bank', 'Type', 'Cheque Details', 'Month', 'Year', 'Remarks', 'Amount'];
       tableData = data.map(row => [
         formatDate(row.date), row.bank || '-', row.type, row.type === 'Cheque' ? `${row.chequeNo} (${row.bankName})` : '-', row.month, row.year, row.remarks || '-', row.amount
       ]);
@@ -811,7 +811,7 @@ const AdminAccountsPage = () => {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label>Bank</Label>
+                    <Label>Deposited Bank</Label>
                     <Select value={bankDepositForm.bank} onValueChange={v => setBankDepositForm({ ...bankDepositForm, bank: v })}>
                       <SelectTrigger><SelectValue placeholder="Select Bank" /></SelectTrigger>
                       <SelectContent>
@@ -893,6 +893,7 @@ const AdminAccountsPage = () => {
                   <TableHeader>
                     <TableRow className="bg-blue-50 hover:bg-blue-50">
                       <TableHead>Date</TableHead>
+                      <TableHead>Deposited Bank</TableHead>
                       <TableHead>Type</TableHead>
                       <TableHead>Cheque Details</TableHead>
                       <TableHead>Month</TableHead>
@@ -906,6 +907,7 @@ const AdminAccountsPage = () => {
                     {filteredBankDeposits.map((dep) => (
                       <TableRow key={dep.id}>
                         <TableCell>{formatDate(dep.date)}</TableCell>
+                        <TableCell>{dep.bank || '-'}</TableCell>
                         <TableCell className="font-medium">{dep.type}</TableCell>
                         <TableCell>{dep.type === 'Cheque' ? `${dep.chequeNo} (${dep.bankName})` : '-'}</TableCell>
                         <TableCell>{dep.month}</TableCell>
@@ -1209,7 +1211,7 @@ const AdminAccountsPage = () => {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Bank</Label>
+                  <Label>Deposited Bank</Label>
                   <Select value={editingBankDeposit.bank || ''} onValueChange={v => setEditingBankDeposit({ ...editingBankDeposit, bank: v })}>
                     <SelectTrigger><SelectValue placeholder="Select Bank" /></SelectTrigger>
                     <SelectContent>
