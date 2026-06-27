@@ -99,6 +99,7 @@ const expenseSchema = new mongoose.Schema({
   date: String,
   category: String,
   bank: String,
+  clientName: String,
   amount: Number,
   month: String,
   year: String,

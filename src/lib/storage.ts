@@ -109,6 +109,7 @@ export interface Expense {
   date: string;
   category: string;
   bank?: string;
+  clientName?: string;
   amount: number;
   month: string;
   year: string;

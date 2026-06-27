@@ -13,6 +13,89 @@ import { Trash2, Download, Pencil, ChevronUp, ChevronDown } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
+interface AutocompleteProps {
+  value: string;
+  onChange: (val: string) => void;
+  suggestions: string[];
+  placeholder?: string;
+  className?: string;
+}
+
+const Autocomplete = ({ value, onChange, suggestions, placeholder = "Type to search...", className = "" }: AutocompleteProps) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [filteredSuggestions, setFilteredSuggestions] = useState<string[]>([]);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    onChange(val);
+    if (val.trim().length >= 1) {
+      const filtered = suggestions.filter(s =>
+        s.toLowerCase().includes(val.toLowerCase())
+      );
+      setFilteredSuggestions(filtered);
+      setIsOpen(true);
+    } else {
+      setFilteredSuggestions([]);
+      setIsOpen(false);
+    }
+  };
+
+  const handleFocus = () => {
+    if (value.trim().length >= 1) {
+      const filtered = suggestions.filter(s =>
+        s.toLowerCase().includes(value.toLowerCase())
+      );
+      setFilteredSuggestions(filtered);
+      setIsOpen(true);
+    } else if (suggestions.length > 0) {
+      setFilteredSuggestions(suggestions);
+      setIsOpen(true);
+    }
+  };
+
+  const selectSuggestion = (suggestion: string) => {
+    onChange(suggestion);
+    setIsOpen(false);
+  };
+
+  return (
+    <div ref={containerRef} className={`relative w-full ${className}`}>
+      <Input
+        type="text"
+        value={value}
+        onChange={handleInputChange}
+        onFocus={handleFocus}
+        placeholder={placeholder}
+        className="w-full bg-background border border-input rounded-md shadow-sm h-10"
+      />
+      {isOpen && filteredSuggestions.length > 0 && (
+        <div className="absolute z-50 w-full mt-1 bg-popover text-popover-foreground border rounded-md shadow-md max-h-60 overflow-auto">
+          {filteredSuggestions.map((s, idx) => (
+            <div
+              key={idx}
+              onClick={() => selectSuggestion(s)}
+              className="px-3 py-2 text-sm cursor-pointer hover:bg-accent hover:text-accent-foreground text-left"
+            >
+              {s}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const AdminAccountsPage = () => {
   const { toast } = useToast();
   
@@ -39,7 +122,7 @@ const AdminAccountsPage = () => {
   const [incomeForm, setIncomeForm] = useState({ date: '', clientName: '', paymentMethod: '', bank: '', amount: '', remarks: '', invoiceNumber: '' });
   
   // Expense Form State
-  const [expenseForm, setExpenseForm] = useState({ date: '', category: '', bank: '', amount: '', remarks: '' });
+  const [expenseForm, setExpenseForm] = useState({ date: '', category: '', bank: '', clientName: '', amount: '', remarks: '' });
 
   // Bank Deposit Form State
   const [bankDepositForm, setBankDepositForm] = useState({ date: '', type: 'Cash', bank: '', amount: '', chequeNo: '', bankName: '', remarks: '' });
@@ -75,7 +158,7 @@ const AdminAccountsPage = () => {
 
   // Filters
   const [incomeFilters, setIncomeFilters] = useState({ clientName: 'All', paymentMethod: 'All', bank: 'All', month: 'All', year: 'All', invoiceNumber: '', startDate: '', endDate: '' });
-  const [expenseFilters, setExpenseFilters] = useState({ category: 'All', month: 'All', year: 'All', startDate: '', endDate: '' });
+  const [expenseFilters, setExpenseFilters] = useState({ category: 'All', clientName: 'All', month: 'All', year: 'All', startDate: '', endDate: '' });
   const [bankDepositFilters, setBankDepositFilters] = useState({ type: 'All', month: 'All', year: 'All', startDate: '', endDate: '' });
   const [overviewFilters, setOverviewFilters] = useState({ month: 'All', year: 'All' });
 
@@ -203,13 +286,14 @@ const AdminAccountsPage = () => {
         date: expenseForm.date,
         category: expenseForm.category,
         bank: expenseForm.bank,
+        clientName: expenseForm.clientName || undefined,
         amount: Number(expenseForm.amount),
         month,
         year,
         remarks: expenseForm.remarks
       });
       toast({ title: 'Expense added successfully' });
-      setExpenseForm({ date: '', category: '', bank: '', amount: '', remarks: '' });
+      setExpenseForm({ date: '', category: '', bank: '', clientName: '', amount: '', remarks: '' });
       loadData();
     } catch (err) {
       toast({ title: 'Failed to add expense', variant: 'destructive' });
@@ -339,6 +423,7 @@ const AdminAccountsPage = () => {
   const filteredExpenses = expenses.filter(exp => {
     const matchDateRange = isDateInRange(exp.date, expenseFilters.startDate, expenseFilters.endDate);
     return matchDateRange && (expenseFilters.category === 'All' || exp.category === expenseFilters.category) &&
+           (expenseFilters.clientName === 'All' || exp.clientName === expenseFilters.clientName) &&
            (expenseFilters.month === 'All' || exp.month === expenseFilters.month) &&
            (expenseFilters.year === 'All' || exp.year === expenseFilters.year);
   });
@@ -386,9 +471,9 @@ const AdminAccountsPage = () => {
         formatDate(row.date), row.clientName, row.paymentMethod, row.bank, row.month, row.year, row.invoiceNumber || '-', row.remarks || '-', row.amount
       ]);
     } else if (title === 'Expense Records') {
-      headers = ['Date', 'Category', 'Bank', 'Month', 'Year', 'Remarks', 'Amount'];
+      headers = ['Date', 'Category', 'Client Name', 'Bank', 'Month', 'Year', 'Remarks', 'Amount'];
       tableData = data.map(row => [
-        formatDate(row.date), row.category, row.bank || '-', row.month, row.year, row.remarks || '-', row.amount
+        formatDate(row.date), row.category, row.clientName || '-', row.bank || '-', row.month, row.year, row.remarks || '-', row.amount
       ]);
     } else if (title === 'Bank Deposits') {
       headers = ['Date', 'Deposited Bank', 'Type', 'Cheque Details', 'Month', 'Year', 'Remarks', 'Amount'];
@@ -497,12 +582,12 @@ const AdminAccountsPage = () => {
                   </div>
                   <div className="space-y-2">
                     <Label>Client Name</Label>
-                    <Select value={incomeForm.clientName} onValueChange={v => setIncomeForm({ ...incomeForm, clientName: v })}>
-                      <SelectTrigger><SelectValue placeholder="Select Client" /></SelectTrigger>
-                      <SelectContent>
-                        {clients.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                    <Autocomplete
+                      value={incomeForm.clientName}
+                      onChange={v => setIncomeForm({ ...incomeForm, clientName: v })}
+                      suggestions={clients}
+                      placeholder="Type client name..."
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label>Payment Mode</Label>
@@ -661,7 +746,7 @@ const AdminAccountsPage = () => {
             </CardHeader>
             {showExpenseForm && (
               <CardContent>
-                <form onSubmit={handleAddExpense} className="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
+                <form onSubmit={handleAddExpense} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                   <div className="space-y-2">
                     <Label>Date</Label>
                     <Input type="date" className="[&::-webkit-calendar-picker-indicator]:block" value={expenseForm.date} onChange={e => setExpenseForm({ ...expenseForm, date: e.target.value })} required />
@@ -685,14 +770,25 @@ const AdminAccountsPage = () => {
                     </Select>
                   </div>
                   <div className="space-y-2">
+                    <Label>Client Name</Label>
+                    <Autocomplete
+                      value={expenseForm.clientName}
+                      onChange={v => setExpenseForm({ ...expenseForm, clientName: v })}
+                      suggestions={clients}
+                      placeholder="Type client name..."
+                    />
+                  </div>
+                  <div className="space-y-2">
                     <Label>Amount</Label>
                     <Input type="number" step="0.01" value={expenseForm.amount} onChange={e => setExpenseForm({ ...expenseForm, amount: e.target.value })} required placeholder="0.00" />
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-2 md:col-span-2">
                     <Label>Remarks</Label>
                     <Input value={expenseForm.remarks} onChange={e => setExpenseForm({ ...expenseForm, remarks: e.target.value })} placeholder="Optional" />
                   </div>
-                  <Button type="submit" variant="destructive" className="w-full">Add Expense</Button>
+                  <div className="md:col-span-1">
+                    <Button type="submit" variant="destructive" className="w-full">Add Expense</Button>
+                  </div>
                 </form>
               </CardContent>
             )}
@@ -707,7 +803,7 @@ const AdminAccountsPage = () => {
             </CardHeader>
             <CardContent>
               <div className="flex flex-col md:flex-row gap-4 justify-between mb-4">
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-4 flex-1">
+                <div className="grid grid-cols-2 md:grid-cols-6 gap-4 flex-1">
                   <Input type="date" className="[&::-webkit-calendar-picker-indicator]:block" value={expenseFilters.startDate} onChange={e => setExpenseFilters({ ...expenseFilters, startDate: e.target.value })} placeholder="Start Date" />
                   <Input type="date" className="[&::-webkit-calendar-picker-indicator]:block" value={expenseFilters.endDate} onChange={e => setExpenseFilters({ ...expenseFilters, endDate: e.target.value })} placeholder="End Date" />
                   <Select value={expenseFilters.category} onValueChange={v => setExpenseFilters({ ...expenseFilters, category: v })}>
@@ -715,6 +811,13 @@ const AdminAccountsPage = () => {
                     <SelectContent>
                       <SelectItem value="All">All Categories</SelectItem>
                       {getUniqueValues(expenses, 'category').map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Select value={expenseFilters.clientName} onValueChange={v => setExpenseFilters({ ...expenseFilters, clientName: v })}>
+                    <SelectTrigger><SelectValue placeholder="Filter Client" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="All">All Clients</SelectItem>
+                      {getUniqueValues(expenses, 'clientName').map(c => c && <SelectItem key={c} value={c}>{c}</SelectItem>)}
                     </SelectContent>
                   </Select>
                   <Select value={expenseFilters.month} onValueChange={v => setExpenseFilters({ ...expenseFilters, month: v })}>
@@ -744,6 +847,7 @@ const AdminAccountsPage = () => {
                     <TableRow className="bg-destructive/10 hover:bg-destructive/10">
                       <TableHead>Date</TableHead>
                       <TableHead>Category</TableHead>
+                      <TableHead>Client Name</TableHead>
                       <TableHead>Bank</TableHead>
                       <TableHead>Month</TableHead>
                       <TableHead>Year</TableHead>
@@ -757,6 +861,7 @@ const AdminAccountsPage = () => {
                       <TableRow key={exp.id}>
                         <TableCell>{formatDate(exp.date)}</TableCell>
                         <TableCell className="font-medium">{exp.category}</TableCell>
+                        <TableCell>{exp.clientName || '-'}</TableCell>
                         <TableCell>{exp.bank || '-'}</TableCell>
                         <TableCell>{exp.month}</TableCell>
                         <TableCell>{exp.year}</TableCell>
@@ -774,7 +879,7 @@ const AdminAccountsPage = () => {
                     ))}
                     {filteredExpenses.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-4 text-muted-foreground">No expense records found</TableCell>
+                        <TableCell colSpan={9} className="text-center py-4 text-muted-foreground">No expense records found</TableCell>
                       </TableRow>
                     )}
                   </TableBody>
@@ -1091,12 +1196,12 @@ const AdminAccountsPage = () => {
                 </div>
                 <div className="space-y-2">
                   <Label>Client Name</Label>
-                  <Select value={editingIncome.clientName} onValueChange={v => setEditingIncome({ ...editingIncome, clientName: v })}>
-                    <SelectTrigger><SelectValue placeholder="Select Client" /></SelectTrigger>
-                    <SelectContent>
-                      {clients.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <Autocomplete
+                    value={editingIncome.clientName}
+                    onChange={v => setEditingIncome({ ...editingIncome, clientName: v })}
+                    suggestions={clients}
+                    placeholder="Type client name..."
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Payment Mode</Label>
@@ -1168,6 +1273,15 @@ const AdminAccountsPage = () => {
                       {banks.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}
                     </SelectContent>
                   </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Client Name</Label>
+                  <Autocomplete
+                    value={editingExpense.clientName || ''}
+                    onChange={v => setEditingExpense({ ...editingExpense, clientName: v })}
+                    suggestions={clients}
+                    placeholder="Type client name..."
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Amount</Label>
