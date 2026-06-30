@@ -90,6 +90,7 @@ const incomeSchema = new mongoose.Schema({
   month: String,
   year: String,
   invoiceNumber: String,
+  rfNo: String,
   remarks: String,
   createdAt: String
 });
@@ -100,6 +101,7 @@ const expenseSchema = new mongoose.Schema({
   category: String,
   bank: String,
   clientName: String,
+  rfNo: String,
   amount: Number,
   month: String,
   year: String,

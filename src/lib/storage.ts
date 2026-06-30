@@ -100,6 +100,7 @@ export interface Income {
   month: string;
   year: string;
   invoiceNumber?: string;
+  rfNo?: string;
   remarks?: string;
   createdAt: string;
 }
@@ -110,6 +111,7 @@ export interface Expense {
   category: string;
   bank?: string;
   clientName?: string;
+  rfNo?: string;
   amount: number;
   month: string;
   year: string;

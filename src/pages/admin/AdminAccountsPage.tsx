@@ -119,10 +119,10 @@ const AdminAccountsPage = () => {
   const [bankDeposits, setBankDeposits] = useState<BankDeposit[]>([]);
 
   // Income Form State
-  const [incomeForm, setIncomeForm] = useState({ date: '', clientName: '', paymentMethod: '', bank: '', amount: '', remarks: '', invoiceNumber: '' });
+  const [incomeForm, setIncomeForm] = useState({ date: '', clientName: '', paymentMethod: '', bank: '', amount: '', remarks: '', invoiceNumber: '', rfNo: '' });
   
   // Expense Form State
-  const [expenseForm, setExpenseForm] = useState({ date: '', category: '', bank: '', clientName: '', amount: '', remarks: '' });
+  const [expenseForm, setExpenseForm] = useState({ date: '', category: '', bank: '', clientName: '', amount: '', remarks: '', rfNo: '' });
 
   // Bank Deposit Form State
   const [bankDepositForm, setBankDepositForm] = useState({ date: '', type: 'Cash', bank: '', amount: '', chequeNo: '', bankName: '', remarks: '' });
@@ -261,10 +261,11 @@ const AdminAccountsPage = () => {
         month,
         year,
         remarks: incomeForm.remarks,
-        invoiceNumber: incomeForm.invoiceNumber
+        invoiceNumber: incomeForm.invoiceNumber,
+        rfNo: incomeForm.rfNo || undefined
       });
       toast({ title: 'Income added successfully' });
-      setIncomeForm({ date: '', clientName: '', paymentMethod: '', bank: '', amount: '', remarks: '', invoiceNumber: '' });
+      setIncomeForm({ date: '', clientName: '', paymentMethod: '', bank: '', amount: '', remarks: '', invoiceNumber: '', rfNo: '' });
       loadData();
     } catch (err) {
       toast({ title: 'Failed to add income', variant: 'destructive' });
@@ -287,13 +288,14 @@ const AdminAccountsPage = () => {
         category: expenseForm.category,
         bank: expenseForm.bank,
         clientName: expenseForm.clientName || undefined,
+        rfNo: expenseForm.rfNo || undefined,
         amount: Number(expenseForm.amount),
         month,
         year,
         remarks: expenseForm.remarks
       });
       toast({ title: 'Expense added successfully' });
-      setExpenseForm({ date: '', category: '', bank: '', clientName: '', amount: '', remarks: '' });
+      setExpenseForm({ date: '', category: '', bank: '', clientName: '', amount: '', remarks: '', rfNo: '' });
       loadData();
     } catch (err) {
       toast({ title: 'Failed to add expense', variant: 'destructive' });
@@ -466,14 +468,14 @@ const AdminAccountsPage = () => {
     let tableData: any[][] = [];
 
     if (title === 'Income Records') {
-      headers = ['Date', 'Client Name', 'Mode of Payment', 'Deposited Bank', 'Month', 'Year', 'Invoice No.', 'Remarks', 'Amount'];
+      headers = ['Date', 'Client Name', 'Mode of Payment', 'Deposited Bank', 'Month', 'Year', 'Invoice No.', 'RF. No.', 'Remarks', 'Amount'];
       tableData = data.map(row => [
-        formatDate(row.date), row.clientName, row.paymentMethod, row.bank, row.month, row.year, row.invoiceNumber || '-', row.remarks || '-', row.amount
+        formatDate(row.date), row.clientName, row.paymentMethod, row.bank, row.month, row.year, row.invoiceNumber || '-', row.rfNo || '-', row.remarks || '-', row.amount
       ]);
     } else if (title === 'Expense Records') {
-      headers = ['Date', 'Category', 'Client Name', 'Bank', 'Month', 'Year', 'Remarks', 'Amount'];
+      headers = ['Date', 'Category', 'Client Name', 'RF. No.', 'Bank', 'Month', 'Year', 'Remarks', 'Amount'];
       tableData = data.map(row => [
-        formatDate(row.date), row.category, row.clientName || '-', row.bank || '-', row.month, row.year, row.remarks || '-', row.amount
+        formatDate(row.date), row.category, row.clientName || '-', row.rfNo || '-', row.bank || '-', row.month, row.year, row.remarks || '-', row.amount
       ]);
     } else if (title === 'Bank Deposits') {
       headers = ['Date', 'Deposited Bank', 'Type', 'Cheque Details', 'Month', 'Year', 'Remarks', 'Amount'];
@@ -612,14 +614,18 @@ const AdminAccountsPage = () => {
                     <Input type="number" step="0.01" value={incomeForm.amount} onChange={e => setIncomeForm({ ...incomeForm, amount: e.target.value })} required placeholder="0.00" />
                   </div>
                   <div className="space-y-2">
-                    <Label>Remarks</Label>
-                    <Input value={incomeForm.remarks} onChange={e => setIncomeForm({ ...incomeForm, remarks: e.target.value })} placeholder="Optional" />
-                  </div>
-                  <div className="space-y-2">
                     <Label>Invoice / Proforma No.</Label>
                     <Input value={incomeForm.invoiceNumber} onChange={e => setIncomeForm({ ...incomeForm, invoiceNumber: e.target.value })} placeholder="Optional" />
                   </div>
-                  <div className="md:col-span-1">
+                  <div className="space-y-2">
+                    <Label>RF. No.</Label>
+                    <Input value={incomeForm.rfNo} onChange={e => setIncomeForm({ ...incomeForm, rfNo: e.target.value })} placeholder="Optional" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Remarks</Label>
+                    <Input value={incomeForm.remarks} onChange={e => setIncomeForm({ ...incomeForm, remarks: e.target.value })} placeholder="Optional" />
+                  </div>
+                  <div className="md:col-span-1 md:col-start-4">
                     <Button type="submit" className="w-full bg-green-800 hover:bg-green-900 text-white font-semibold">Add Income</Button>
                   </div>
                 </form>
@@ -696,6 +702,7 @@ const AdminAccountsPage = () => {
                       <TableHead className="text-green-900 font-semibold">Month</TableHead>
                       <TableHead className="text-green-900 font-semibold">Year</TableHead>
                       <TableHead className="text-green-900 font-semibold">Invoice No.</TableHead>
+                      <TableHead className="text-green-900 font-semibold">RF. No.</TableHead>
                       <TableHead className="text-green-900 font-semibold">Remarks</TableHead>
                       <TableHead className="text-right text-green-900 font-semibold">Amount</TableHead>
                       <TableHead className="w-[80px] text-green-900"></TableHead>
@@ -711,6 +718,7 @@ const AdminAccountsPage = () => {
                         <TableCell>{inc.month}</TableCell>
                         <TableCell>{inc.year}</TableCell>
                         <TableCell>{inc.invoiceNumber || '-'}</TableCell>
+                        <TableCell>{inc.rfNo || '-'}</TableCell>
                         <TableCell className="max-w-[150px] truncate" title={inc.remarks}>{inc.remarks || '-'}</TableCell>
                         <TableCell className="text-right font-medium">₹{inc.amount.toLocaleString()}</TableCell>
                         <TableCell className="flex gap-1 justify-end">
@@ -725,7 +733,7 @@ const AdminAccountsPage = () => {
                     ))}
                     {filteredIncomes.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={10} className="text-center py-4 text-muted-foreground">No income records found</TableCell>
+                        <TableCell colSpan={11} className="text-center py-4 text-muted-foreground">No income records found</TableCell>
                       </TableRow>
                     )}
                   </TableBody>
@@ -782,11 +790,15 @@ const AdminAccountsPage = () => {
                     <Label>Amount</Label>
                     <Input type="number" step="0.01" value={expenseForm.amount} onChange={e => setExpenseForm({ ...expenseForm, amount: e.target.value })} required placeholder="0.00" />
                   </div>
+                  <div className="space-y-2">
+                    <Label>RF. No.</Label>
+                    <Input value={expenseForm.rfNo} onChange={e => setExpenseForm({ ...expenseForm, rfNo: e.target.value })} placeholder="Optional" />
+                  </div>
                   <div className="space-y-2 md:col-span-2">
                     <Label>Remarks</Label>
                     <Input value={expenseForm.remarks} onChange={e => setExpenseForm({ ...expenseForm, remarks: e.target.value })} placeholder="Optional" />
                   </div>
-                  <div className="md:col-span-1">
+                  <div className="md:col-span-1 md:col-start-4">
                     <Button type="submit" variant="destructive" className="w-full">Add Expense</Button>
                   </div>
                 </form>
@@ -848,6 +860,7 @@ const AdminAccountsPage = () => {
                       <TableHead>Date</TableHead>
                       <TableHead>Category</TableHead>
                       <TableHead>Client Name</TableHead>
+                      <TableHead>RF. No.</TableHead>
                       <TableHead>Bank</TableHead>
                       <TableHead>Month</TableHead>
                       <TableHead>Year</TableHead>
@@ -862,6 +875,7 @@ const AdminAccountsPage = () => {
                         <TableCell>{formatDate(exp.date)}</TableCell>
                         <TableCell className="font-medium">{exp.category}</TableCell>
                         <TableCell>{exp.clientName || '-'}</TableCell>
+                        <TableCell>{exp.rfNo || '-'}</TableCell>
                         <TableCell>{exp.bank || '-'}</TableCell>
                         <TableCell>{exp.month}</TableCell>
                         <TableCell>{exp.year}</TableCell>
@@ -879,7 +893,7 @@ const AdminAccountsPage = () => {
                     ))}
                     {filteredExpenses.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={9} className="text-center py-4 text-muted-foreground">No expense records found</TableCell>
+                        <TableCell colSpan={10} className="text-center py-4 text-muted-foreground">No expense records found</TableCell>
                       </TableRow>
                     )}
                   </TableBody>
@@ -1229,7 +1243,11 @@ const AdminAccountsPage = () => {
                   <Label>Invoice/Proforma No.</Label>
                   <Input value={editingIncome.invoiceNumber || ''} onChange={e => setEditingIncome({ ...editingIncome, invoiceNumber: e.target.value })} />
                 </div>
-                <div className="space-y-2 col-span-2">
+                <div className="space-y-2">
+                  <Label>RF. No.</Label>
+                  <Input value={editingIncome.rfNo || ''} onChange={e => setEditingIncome({ ...editingIncome, rfNo: e.target.value })} />
+                </div>
+                <div className="space-y-2">
                   <Label>Remarks</Label>
                   <Input value={editingIncome.remarks || ''} onChange={e => setEditingIncome({ ...editingIncome, remarks: e.target.value })} />
                 </div>
@@ -1288,6 +1306,10 @@ const AdminAccountsPage = () => {
                   <Input type="number" step="0.01" value={editingExpense.amount} onChange={e => setEditingExpense({ ...editingExpense, amount: Number(e.target.value) })} required />
                 </div>
                 <div className="space-y-2">
+                  <Label>RF. No.</Label>
+                  <Input value={editingExpense.rfNo || ''} onChange={e => setEditingExpense({ ...editingExpense, rfNo: e.target.value })} />
+                </div>
+                <div className="space-y-2 col-span-2">
                   <Label>Remarks</Label>
                   <Input value={editingExpense.remarks || ''} onChange={e => setEditingExpense({ ...editingExpense, remarks: e.target.value })} />
                 </div>
