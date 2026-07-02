@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
+import { Checkbox } from '@/components/ui/checkbox';
 import { accountService, settingsService, Income, Expense, BankDeposit } from '@/lib/storage';
 import { Trash2, Download, Pencil, ChevronUp, ChevronDown } from 'lucide-react';
 import jsPDF from 'jspdf';
@@ -122,7 +123,7 @@ const AdminAccountsPage = () => {
   const [incomeForm, setIncomeForm] = useState({ date: '', clientName: '', paymentMethod: '', bank: '', amount: '', remarks: '', invoiceNumber: '', rfNo: '' });
   
   // Expense Form State
-  const [expenseForm, setExpenseForm] = useState({ date: '', category: '', bank: '', clientName: '', amount: '', remarks: '', rfNo: '' });
+  const [expenseForm, setExpenseForm] = useState({ date: '', category: '', bank: '', clientName: '', amount: '', remarks: '', rfNo: '', isGst: false });
 
   // Bank Deposit Form State
   const [bankDepositForm, setBankDepositForm] = useState({ date: '', type: 'Cash', bank: '', amount: '', chequeNo: '', bankName: '', remarks: '' });
@@ -282,6 +283,10 @@ const AdminAccountsPage = () => {
     const month = dateObj.toLocaleString('default', { month: 'long' });
     const year = dateObj.getFullYear().toString();
 
+    const amountVal = Number(expenseForm.amount);
+    const withoutGstVal = expenseForm.isGst ? Number((amountVal / 1.18).toFixed(2)) : amountVal;
+    const gstVal = expenseForm.isGst ? Number((amountVal - withoutGstVal).toFixed(2)) : 0;
+
     try {
       await accountService.createExpense({
         date: expenseForm.date,
@@ -289,13 +294,16 @@ const AdminAccountsPage = () => {
         bank: expenseForm.bank,
         clientName: expenseForm.clientName || undefined,
         rfNo: expenseForm.rfNo || undefined,
-        amount: Number(expenseForm.amount),
+        amount: amountVal,
+        isGst: expenseForm.isGst,
+        gstAmount: gstVal,
+        withoutGstAmount: withoutGstVal,
         month,
         year,
         remarks: expenseForm.remarks
       });
       toast({ title: 'Expense added successfully' });
-      setExpenseForm({ date: '', category: '', bank: '', clientName: '', amount: '', remarks: '', rfNo: '' });
+      setExpenseForm({ date: '', category: '', bank: '', clientName: '', amount: '', remarks: '', rfNo: '', isGst: false });
       loadData();
     } catch (err) {
       toast({ title: 'Failed to add expense', variant: 'destructive' });
@@ -375,7 +383,16 @@ const AdminAccountsPage = () => {
     e.preventDefault();
     if (!editingExpense) return;
     try {
-      await accountService.updateExpense(editingExpense.id, editingExpense);
+      const amountVal = Number(editingExpense.amount);
+      const withoutGstVal = editingExpense.isGst ? Number((amountVal / 1.18).toFixed(2)) : amountVal;
+      const gstVal = editingExpense.isGst ? Number((amountVal - withoutGstVal).toFixed(2)) : 0;
+      const updatedData = {
+        ...editingExpense,
+        amount: amountVal,
+        gstAmount: gstVal,
+        withoutGstAmount: withoutGstVal
+      };
+      await accountService.updateExpense(editingExpense.id, updatedData);
       toast({ title: 'Expense updated successfully' });
       setEditingExpense(null);
       loadData();
@@ -460,6 +477,7 @@ const AdminAccountsPage = () => {
 
   const totalIncome = filteredIncomes.reduce((acc, curr) => acc + curr.amount, 0);
   const totalExpense = filteredExpenses.reduce((acc, curr) => acc + curr.amount, 0);
+  const totalExpenseGst = filteredExpenses.reduce((acc, curr) => acc + (curr.gstAmount || 0), 0);
   const totalBankDeposit = filteredBankDeposits.reduce((acc, curr) => acc + curr.amount, 0);
 
   const handlePreviewPDF = (data: any[], title: string) => {
@@ -473,9 +491,9 @@ const AdminAccountsPage = () => {
         formatDate(row.date), row.clientName, row.paymentMethod, row.bank, row.month, row.year, row.invoiceNumber || '-', row.rfNo || '-', row.remarks || '-', row.amount
       ]);
     } else if (title === 'Expense Records') {
-      headers = ['Date', 'Category', 'Client Name', 'RF. No.', 'Bank', 'Month', 'Year', 'Remarks', 'Amount'];
+      headers = ['Date', 'Category', 'Client Name', 'RF. No.', 'Bank', 'Month', 'Year', 'Remarks', 'GST', 'Amount'];
       tableData = data.map(row => [
-        formatDate(row.date), row.category, row.clientName || '-', row.rfNo || '-', row.bank || '-', row.month, row.year, row.remarks || '-', row.amount
+        formatDate(row.date), row.category, row.clientName || '-', row.rfNo || '-', row.bank || '-', row.month, row.year, row.remarks || '-', row.gstAmount ? `₹${row.gstAmount}` : '-', row.amount
       ]);
     } else if (title === 'Bank Deposits') {
       headers = ['Date', 'Deposited Bank', 'Type', 'Cheque Details', 'Month', 'Year', 'Remarks', 'Amount'];
@@ -610,16 +628,16 @@ const AdminAccountsPage = () => {
                     </Select>
                   </div>
                   <div className="space-y-2">
+                    <Label>RF. No.</Label>
+                    <Input value={incomeForm.rfNo} onChange={e => setIncomeForm({ ...incomeForm, rfNo: e.target.value })} placeholder="Optional" />
+                  </div>
+                  <div className="space-y-2">
                     <Label>Amount</Label>
                     <Input type="number" step="0.01" value={incomeForm.amount} onChange={e => setIncomeForm({ ...incomeForm, amount: e.target.value })} required placeholder="0.00" />
                   </div>
                   <div className="space-y-2">
                     <Label>Invoice / Proforma No.</Label>
                     <Input value={incomeForm.invoiceNumber} onChange={e => setIncomeForm({ ...incomeForm, invoiceNumber: e.target.value })} placeholder="Optional" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>RF. No.</Label>
-                    <Input value={incomeForm.rfNo} onChange={e => setIncomeForm({ ...incomeForm, rfNo: e.target.value })} placeholder="Optional" />
                   </div>
                   <div className="space-y-2">
                     <Label>Remarks</Label>
@@ -760,6 +778,15 @@ const AdminAccountsPage = () => {
                     <Input type="date" className="[&::-webkit-calendar-picker-indicator]:block" value={expenseForm.date} onChange={e => setExpenseForm({ ...expenseForm, date: e.target.value })} required />
                   </div>
                   <div className="space-y-2">
+                    <Label>Client Name</Label>
+                    <Autocomplete
+                      value={expenseForm.clientName}
+                      onChange={v => setExpenseForm({ ...expenseForm, clientName: v })}
+                      suggestions={clients}
+                      placeholder="Type client name..."
+                    />
+                  </div>
+                  <div className="space-y-2">
                     <Label>Category</Label>
                     <Select value={expenseForm.category} onValueChange={v => setExpenseForm({ ...expenseForm, category: v })}>
                       <SelectTrigger><SelectValue placeholder="Select Category" /></SelectTrigger>
@@ -778,27 +805,48 @@ const AdminAccountsPage = () => {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label>Client Name</Label>
-                    <Autocomplete
-                      value={expenseForm.clientName}
-                      onChange={v => setExpenseForm({ ...expenseForm, clientName: v })}
-                      suggestions={clients}
-                      placeholder="Type client name..."
-                    />
+                    <Label>RF. No.</Label>
+                    <Input value={expenseForm.rfNo} onChange={e => setExpenseForm({ ...expenseForm, rfNo: e.target.value })} placeholder="Optional" />
                   </div>
                   <div className="space-y-2">
                     <Label>Amount</Label>
                     <Input type="number" step="0.01" value={expenseForm.amount} onChange={e => setExpenseForm({ ...expenseForm, amount: e.target.value })} required placeholder="0.00" />
                   </div>
-                  <div className="space-y-2">
-                    <Label>RF. No.</Label>
-                    <Input value={expenseForm.rfNo} onChange={e => setExpenseForm({ ...expenseForm, rfNo: e.target.value })} placeholder="Optional" />
-                  </div>
                   <div className="space-y-2 md:col-span-2">
                     <Label>Remarks</Label>
                     <Input value={expenseForm.remarks} onChange={e => setExpenseForm({ ...expenseForm, remarks: e.target.value })} placeholder="Optional" />
                   </div>
-                  <div className="md:col-span-1 md:col-start-4">
+                  <div className="flex items-center space-x-2 py-2">
+                    <Checkbox
+                      id="expense-gst"
+                      checked={expenseForm.isGst}
+                      onCheckedChange={(checked) => setExpenseForm({ ...expenseForm, isGst: checked === true })}
+                    />
+                    <Label htmlFor="expense-gst" className="font-medium cursor-pointer">GST (18% Included)</Label>
+                  </div>
+                  {expenseForm.isGst && (
+                    <>
+                      <div className="space-y-2">
+                        <Label>Without GST Amount</Label>
+                        <Input
+                          type="text"
+                          readOnly
+                          value={expenseForm.amount ? (Number(expenseForm.amount) / 1.18).toFixed(2) : '0.00'}
+                          className="bg-muted text-muted-foreground font-semibold"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>GST Amount (18%)</Label>
+                        <Input
+                          type="text"
+                          readOnly
+                          value={expenseForm.amount ? (Number(expenseForm.amount) - Number(expenseForm.amount) / 1.18).toFixed(2) : '0.00'}
+                          className="bg-muted text-muted-foreground font-semibold"
+                        />
+                      </div>
+                    </>
+                  )}
+                  <div className={expenseForm.isGst ? "md:col-span-1" : "md:col-span-1 md:col-start-4"}>
                     <Button type="submit" variant="destructive" className="w-full">Add Expense</Button>
                   </div>
                 </form>
@@ -847,9 +895,15 @@ const AdminAccountsPage = () => {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="bg-destructive/10 text-destructive px-4 py-2 rounded-lg border border-destructive/20 shadow-sm flex items-center justify-center gap-3 shrink-0">
-                  <span className="font-semibold text-sm">Total Expense:</span>
-                  <span className="text-xl font-bold">₹{totalExpense.toLocaleString()}</span>
+                <div className="flex flex-wrap gap-2 shrink-0">
+                  <div className="bg-destructive/10 text-destructive px-4 py-2 rounded-lg border border-destructive/20 shadow-sm flex items-center justify-center gap-3">
+                    <span className="font-semibold text-sm">Total Expense:</span>
+                    <span className="text-xl font-bold">₹{totalExpense.toLocaleString()}</span>
+                  </div>
+                  <div className="bg-amber-500/10 text-amber-600 dark:text-amber-400 px-4 py-2 rounded-lg border border-amber-500/20 shadow-sm flex items-center justify-center gap-3">
+                    <span className="font-semibold text-sm">Total GST:</span>
+                    <span className="text-xl font-bold">₹{totalExpenseGst.toLocaleString()}</span>
+                  </div>
                 </div>
               </div>
 
@@ -865,6 +919,7 @@ const AdminAccountsPage = () => {
                       <TableHead>Month</TableHead>
                       <TableHead>Year</TableHead>
                       <TableHead>Remarks</TableHead>
+                      <TableHead className="text-right">GST</TableHead>
                       <TableHead className="text-right">Amount</TableHead>
                       <TableHead className="w-[80px]"></TableHead>
                     </TableRow>
@@ -880,6 +935,7 @@ const AdminAccountsPage = () => {
                         <TableCell>{exp.month}</TableCell>
                         <TableCell>{exp.year}</TableCell>
                         <TableCell className="max-w-[150px] truncate" title={exp.remarks}>{exp.remarks || '-'}</TableCell>
+                        <TableCell className="text-right font-medium text-amber-600 dark:text-amber-400">{exp.gstAmount ? `₹${exp.gstAmount.toLocaleString()}` : '-'}</TableCell>
                         <TableCell className="text-right font-medium">₹{exp.amount.toLocaleString()}</TableCell>
                         <TableCell className="flex gap-1 justify-end">
                           <Button variant="ghost" size="icon" onClick={() => setEditingExpense(exp)} className="text-blue-500 hover:text-blue-700">
@@ -893,7 +949,7 @@ const AdminAccountsPage = () => {
                     ))}
                     {filteredExpenses.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={10} className="text-center py-4 text-muted-foreground">No expense records found</TableCell>
+                        <TableCell colSpan={11} className="text-center py-4 text-muted-foreground">No expense records found</TableCell>
                       </TableRow>
                     )}
                   </TableBody>
@@ -1313,6 +1369,36 @@ const AdminAccountsPage = () => {
                   <Label>Remarks</Label>
                   <Input value={editingExpense.remarks || ''} onChange={e => setEditingExpense({ ...editingExpense, remarks: e.target.value })} />
                 </div>
+                <div className="flex items-center space-x-2 py-1 col-span-2">
+                  <Checkbox
+                    id="edit-expense-gst"
+                    checked={editingExpense.isGst || false}
+                    onCheckedChange={(checked) => setEditingExpense({ ...editingExpense, isGst: checked === true })}
+                  />
+                  <Label htmlFor="edit-expense-gst" className="font-medium cursor-pointer">GST (18% Included)</Label>
+                </div>
+                {editingExpense.isGst && (
+                  <>
+                    <div className="space-y-2">
+                      <Label>Without GST Amount</Label>
+                      <Input
+                        type="text"
+                        readOnly
+                        value={editingExpense.amount ? (Number(editingExpense.amount) / 1.18).toFixed(2) : '0.00'}
+                        className="bg-muted text-muted-foreground font-semibold"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>GST Amount (18%)</Label>
+                      <Input
+                        type="text"
+                        readOnly
+                        value={editingExpense.amount ? (Number(editingExpense.amount) - Number(editingExpense.amount) / 1.18).toFixed(2) : '0.00'}
+                        className="bg-muted text-muted-foreground font-semibold"
+                      />
+                    </div>
+                  </>
+                )}
               </div>
               <div className="flex justify-end pt-4">
                 <Button type="button" variant="ghost" onClick={() => setEditingExpense(null)} className="mr-2">Cancel</Button>

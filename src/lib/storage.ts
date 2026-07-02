@@ -113,6 +113,9 @@ export interface Expense {
   clientName?: string;
   rfNo?: string;
   amount: number;
+  isGst?: boolean;
+  gstAmount?: number;
+  withoutGstAmount?: number;
   month: string;
   year: string;
   remarks?: string;
