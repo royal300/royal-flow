@@ -486,14 +486,14 @@ const AdminAccountsPage = () => {
     let tableData: any[][] = [];
 
     if (title === 'Income Records') {
-      headers = ['Date', 'Client Name', 'Mode of Payment', 'Deposited Bank', 'Month', 'Year', 'Invoice No.', 'RF. No.', 'Remarks', 'Amount'];
+      headers = ['Date', 'Client Name', 'Mode of Payment', 'Deposited Bank', 'RF. No.', 'Month', 'Year', 'Invoice No.', 'Remarks', 'Amount'];
       tableData = data.map(row => [
-        formatDate(row.date), row.clientName, row.paymentMethod, row.bank, row.month, row.year, row.invoiceNumber || '-', row.rfNo || '-', row.remarks || '-', row.amount
+        formatDate(row.date), row.clientName, row.paymentMethod, row.bank, row.rfNo || '-', row.month, row.year, row.invoiceNumber || '-', row.remarks || '-', row.amount
       ]);
     } else if (title === 'Expense Records') {
-      headers = ['Date', 'Category', 'Client Name', 'RF. No.', 'Bank', 'Month', 'Year', 'Remarks', 'GST', 'Amount'];
+      headers = ['Date', 'Client Name', 'Category', 'Bank', 'RF. No.', 'Month', 'Year', 'Remarks', 'Amount', 'GST'];
       tableData = data.map(row => [
-        formatDate(row.date), row.category, row.clientName || '-', row.rfNo || '-', row.bank || '-', row.month, row.year, row.remarks || '-', row.gstAmount ? `₹${row.gstAmount}` : '-', row.amount
+        formatDate(row.date), row.clientName || '-', row.category, row.bank || '-', row.rfNo || '-', row.month, row.year, row.remarks || '-', row.amount, row.gstAmount ? `₹${row.gstAmount}` : '-'
       ]);
     } else if (title === 'Bank Deposits') {
       headers = ['Date', 'Deposited Bank', 'Type', 'Cheque Details', 'Month', 'Year', 'Remarks', 'Amount'];
@@ -611,21 +611,21 @@ const AdminAccountsPage = () => {
                   </div>
                   <div className="space-y-2">
                     <Label>Payment Mode</Label>
-                    <Select value={incomeForm.paymentMethod} onValueChange={v => setIncomeForm({ ...incomeForm, paymentMethod: v })}>
-                      <SelectTrigger><SelectValue placeholder="Select Mode" /></SelectTrigger>
-                      <SelectContent>
-                        {paymentMethods.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                    <Autocomplete
+                      value={incomeForm.paymentMethod}
+                      onChange={v => setIncomeForm({ ...incomeForm, paymentMethod: v })}
+                      suggestions={paymentMethods}
+                      placeholder="Type payment mode..."
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label>Deposited Bank</Label>
-                    <Select value={incomeForm.bank} onValueChange={v => setIncomeForm({ ...incomeForm, bank: v })}>
-                      <SelectTrigger><SelectValue placeholder="Select Bank" /></SelectTrigger>
-                      <SelectContent>
-                        {banks.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                    <Autocomplete
+                      value={incomeForm.bank}
+                      onChange={v => setIncomeForm({ ...incomeForm, bank: v })}
+                      suggestions={banks}
+                      placeholder="Type deposited bank..."
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label>RF. No.</Label>
@@ -717,10 +717,10 @@ const AdminAccountsPage = () => {
                       <TableHead className="text-green-900 font-semibold">Client Name</TableHead>
                       <TableHead className="text-green-900 font-semibold">Mode of Payment</TableHead>
                       <TableHead className="text-green-900 font-semibold">Deposited Bank</TableHead>
+                      <TableHead className="text-green-900 font-semibold">RF. No.</TableHead>
                       <TableHead className="text-green-900 font-semibold">Month</TableHead>
                       <TableHead className="text-green-900 font-semibold">Year</TableHead>
                       <TableHead className="text-green-900 font-semibold">Invoice No.</TableHead>
-                      <TableHead className="text-green-900 font-semibold">RF. No.</TableHead>
                       <TableHead className="text-green-900 font-semibold">Remarks</TableHead>
                       <TableHead className="text-right text-green-900 font-semibold">Amount</TableHead>
                       <TableHead className="w-[80px] text-green-900"></TableHead>
@@ -733,10 +733,10 @@ const AdminAccountsPage = () => {
                         <TableCell className="font-medium">{inc.clientName}</TableCell>
                         <TableCell>{inc.paymentMethod}</TableCell>
                         <TableCell>{inc.bank}</TableCell>
+                        <TableCell>{inc.rfNo || '-'}</TableCell>
                         <TableCell>{inc.month}</TableCell>
                         <TableCell>{inc.year}</TableCell>
                         <TableCell>{inc.invoiceNumber || '-'}</TableCell>
-                        <TableCell>{inc.rfNo || '-'}</TableCell>
                         <TableCell className="max-w-[150px] truncate" title={inc.remarks}>{inc.remarks || '-'}</TableCell>
                         <TableCell className="text-right font-medium">₹{inc.amount.toLocaleString()}</TableCell>
                         <TableCell className="flex gap-1 justify-end">
@@ -788,21 +788,21 @@ const AdminAccountsPage = () => {
                   </div>
                   <div className="space-y-2">
                     <Label>Category</Label>
-                    <Select value={expenseForm.category} onValueChange={v => setExpenseForm({ ...expenseForm, category: v })}>
-                      <SelectTrigger><SelectValue placeholder="Select Category" /></SelectTrigger>
-                      <SelectContent>
-                        {categories.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                    <Autocomplete
+                      value={expenseForm.category}
+                      onChange={v => setExpenseForm({ ...expenseForm, category: v })}
+                      suggestions={categories}
+                      placeholder="Type category..."
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label>Bank</Label>
-                    <Select value={expenseForm.bank} onValueChange={v => setExpenseForm({ ...expenseForm, bank: v })}>
-                      <SelectTrigger><SelectValue placeholder="Select Bank" /></SelectTrigger>
-                      <SelectContent>
-                        {banks.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                    <Autocomplete
+                      value={expenseForm.bank}
+                      onChange={v => setExpenseForm({ ...expenseForm, bank: v })}
+                      suggestions={banks}
+                      placeholder="Type bank..."
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label>RF. No.</Label>
@@ -912,15 +912,15 @@ const AdminAccountsPage = () => {
                   <TableHeader>
                     <TableRow className="bg-destructive/10 hover:bg-destructive/10">
                       <TableHead>Date</TableHead>
-                      <TableHead>Category</TableHead>
                       <TableHead>Client Name</TableHead>
-                      <TableHead>RF. No.</TableHead>
+                      <TableHead>Category</TableHead>
                       <TableHead>Bank</TableHead>
+                      <TableHead>RF. No.</TableHead>
                       <TableHead>Month</TableHead>
                       <TableHead>Year</TableHead>
                       <TableHead>Remarks</TableHead>
-                      <TableHead className="text-right">GST</TableHead>
                       <TableHead className="text-right">Amount</TableHead>
+                      <TableHead className="text-right">GST</TableHead>
                       <TableHead className="w-[80px]"></TableHead>
                     </TableRow>
                   </TableHeader>
@@ -928,15 +928,15 @@ const AdminAccountsPage = () => {
                     {filteredExpenses.map((exp) => (
                       <TableRow key={exp.id}>
                         <TableCell>{formatDate(exp.date)}</TableCell>
-                        <TableCell className="font-medium">{exp.category}</TableCell>
                         <TableCell>{exp.clientName || '-'}</TableCell>
-                        <TableCell>{exp.rfNo || '-'}</TableCell>
+                        <TableCell className="font-medium">{exp.category}</TableCell>
                         <TableCell>{exp.bank || '-'}</TableCell>
+                        <TableCell>{exp.rfNo || '-'}</TableCell>
                         <TableCell>{exp.month}</TableCell>
                         <TableCell>{exp.year}</TableCell>
                         <TableCell className="max-w-[150px] truncate" title={exp.remarks}>{exp.remarks || '-'}</TableCell>
-                        <TableCell className="text-right font-medium text-amber-600 dark:text-amber-400">{exp.gstAmount ? `₹${exp.gstAmount.toLocaleString()}` : '-'}</TableCell>
                         <TableCell className="text-right font-medium">₹{exp.amount.toLocaleString()}</TableCell>
+                        <TableCell className="text-right font-medium text-amber-600 dark:text-amber-400">{exp.gstAmount ? `₹${exp.gstAmount.toLocaleString()}` : '-'}</TableCell>
                         <TableCell className="flex gap-1 justify-end">
                           <Button variant="ghost" size="icon" onClick={() => setEditingExpense(exp)} className="text-blue-500 hover:text-blue-700">
                             <Pencil className="h-4 w-4" />
@@ -977,22 +977,21 @@ const AdminAccountsPage = () => {
                   </div>
                   <div className="space-y-2">
                     <Label>Type</Label>
-                    <Select value={bankDepositForm.type} onValueChange={v => setBankDepositForm({ ...bankDepositForm, type: v })}>
-                      <SelectTrigger><SelectValue placeholder="Select Type" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Cash">Cash</SelectItem>
-                        <SelectItem value="Cheque">Cheque</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Autocomplete
+                      value={bankDepositForm.type}
+                      onChange={v => setBankDepositForm({ ...bankDepositForm, type: v })}
+                      suggestions={['Cash', 'Cheque']}
+                      placeholder="Type Cash/Cheque..."
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label>Deposited Bank</Label>
-                    <Select value={bankDepositForm.bank} onValueChange={v => setBankDepositForm({ ...bankDepositForm, bank: v })}>
-                      <SelectTrigger><SelectValue placeholder="Select Bank" /></SelectTrigger>
-                      <SelectContent>
-                        {banks.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                    <Autocomplete
+                      value={bankDepositForm.bank}
+                      onChange={v => setBankDepositForm({ ...bankDepositForm, bank: v })}
+                      suggestions={banks}
+                      placeholder="Type bank..."
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label>Amount</Label>
@@ -1006,7 +1005,12 @@ const AdminAccountsPage = () => {
                       </div>
                       <div className="space-y-2">
                         <Label>Bank Name</Label>
-                        <Input value={bankDepositForm.bankName} onChange={e => setBankDepositForm({ ...bankDepositForm, bankName: e.target.value })} required placeholder="Bank Name" />
+                        <Autocomplete
+                          value={bankDepositForm.bankName}
+                          onChange={v => setBankDepositForm({ ...bankDepositForm, bankName: v })}
+                          suggestions={banks}
+                          placeholder="Type bank name..."
+                        />
                       </div>
                     </>
                   )}
@@ -1275,21 +1279,21 @@ const AdminAccountsPage = () => {
                 </div>
                 <div className="space-y-2">
                   <Label>Payment Mode</Label>
-                  <Select value={editingIncome.paymentMethod} onValueChange={v => setEditingIncome({ ...editingIncome, paymentMethod: v })}>
-                    <SelectTrigger><SelectValue placeholder="Select Mode" /></SelectTrigger>
-                    <SelectContent>
-                      {paymentMethods.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <Autocomplete
+                    value={editingIncome.paymentMethod}
+                    onChange={v => setEditingIncome({ ...editingIncome, paymentMethod: v })}
+                    suggestions={paymentMethods}
+                    placeholder="Type payment mode..."
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Deposited Bank</Label>
-                  <Select value={editingIncome.bank} onValueChange={v => setEditingIncome({ ...editingIncome, bank: v })}>
-                    <SelectTrigger><SelectValue placeholder="Select Bank" /></SelectTrigger>
-                    <SelectContent>
-                      {banks.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <Autocomplete
+                    value={editingIncome.bank}
+                    onChange={v => setEditingIncome({ ...editingIncome, bank: v })}
+                    suggestions={banks}
+                    placeholder="Type bank..."
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Amount</Label>
@@ -1332,21 +1336,21 @@ const AdminAccountsPage = () => {
                 </div>
                 <div className="space-y-2">
                   <Label>Category</Label>
-                  <Select value={editingExpense.category} onValueChange={v => setEditingExpense({ ...editingExpense, category: v })}>
-                    <SelectTrigger><SelectValue placeholder="Select Category" /></SelectTrigger>
-                    <SelectContent>
-                      {categories.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <Autocomplete
+                    value={editingExpense.category}
+                    onChange={v => setEditingExpense({ ...editingExpense, category: v })}
+                    suggestions={categories}
+                    placeholder="Type category..."
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Bank</Label>
-                  <Select value={editingExpense.bank || ''} onValueChange={v => setEditingExpense({ ...editingExpense, bank: v })}>
-                    <SelectTrigger><SelectValue placeholder="Select Bank" /></SelectTrigger>
-                    <SelectContent>
-                      {banks.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <Autocomplete
+                    value={editingExpense.bank || ''}
+                    onChange={v => setEditingExpense({ ...editingExpense, bank: v })}
+                    suggestions={banks}
+                    placeholder="Type bank..."
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Client Name</Label>
@@ -1424,22 +1428,21 @@ const AdminAccountsPage = () => {
                 </div>
                 <div className="space-y-2">
                   <Label>Type</Label>
-                  <Select value={editingBankDeposit.type} onValueChange={v => setEditingBankDeposit({ ...editingBankDeposit, type: v as 'Cash' | 'Cheque' })}>
-                    <SelectTrigger><SelectValue placeholder="Select Type" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Cash">Cash</SelectItem>
-                      <SelectItem value="Cheque">Cheque</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Autocomplete
+                    value={editingBankDeposit.type}
+                    onChange={v => setEditingBankDeposit({ ...editingBankDeposit, type: v as 'Cash' | 'Cheque' })}
+                    suggestions={['Cash', 'Cheque']}
+                    placeholder="Type Cash/Cheque..."
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Deposited Bank</Label>
-                  <Select value={editingBankDeposit.bank || ''} onValueChange={v => setEditingBankDeposit({ ...editingBankDeposit, bank: v })}>
-                    <SelectTrigger><SelectValue placeholder="Select Bank" /></SelectTrigger>
-                    <SelectContent>
-                      {banks.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <Autocomplete
+                    value={editingBankDeposit.bank || ''}
+                    onChange={v => setEditingBankDeposit({ ...editingBankDeposit, bank: v })}
+                    suggestions={banks}
+                    placeholder="Type bank..."
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Amount</Label>
@@ -1457,7 +1460,12 @@ const AdminAccountsPage = () => {
                     </div>
                     <div className="space-y-2">
                       <Label>Bank Name</Label>
-                      <Input value={editingBankDeposit.bankName || ''} onChange={e => setEditingBankDeposit({ ...editingBankDeposit, bankName: e.target.value })} required />
+                      <Autocomplete
+                        value={editingBankDeposit.bankName || ''}
+                        onChange={v => setEditingBankDeposit({ ...editingBankDeposit, bankName: v })}
+                        suggestions={banks}
+                        placeholder="Type bank name..."
+                      />
                     </div>
                   </>
                 )}
