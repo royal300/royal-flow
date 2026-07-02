@@ -97,6 +97,9 @@ export interface Income {
   paymentMethod: string;
   bank: string;
   amount: number;
+  isGst?: boolean;
+  gstAmount?: number;
+  withoutGstAmount?: number;
   month: string;
   year: string;
   invoiceNumber?: string;

@@ -120,7 +120,7 @@ const AdminAccountsPage = () => {
   const [bankDeposits, setBankDeposits] = useState<BankDeposit[]>([]);
 
   // Income Form State
-  const [incomeForm, setIncomeForm] = useState({ date: '', clientName: '', paymentMethod: '', bank: '', amount: '', remarks: '', invoiceNumber: '', rfNo: '' });
+  const [incomeForm, setIncomeForm] = useState({ date: '', clientName: '', paymentMethod: '', bank: '', amount: '', remarks: '', invoiceNumber: '', rfNo: '', isGst: false });
   
   // Expense Form State
   const [expenseForm, setExpenseForm] = useState({ date: '', category: '', bank: '', clientName: '', amount: '', remarks: '', rfNo: '', isGst: false });
@@ -252,13 +252,20 @@ const AdminAccountsPage = () => {
     const month = dateObj.toLocaleString('default', { month: 'long' });
     const year = dateObj.getFullYear().toString();
 
+    const amountVal = Number(incomeForm.amount);
+    const withoutGstVal = incomeForm.isGst ? Number((amountVal / 1.18).toFixed(2)) : amountVal;
+    const gstVal = incomeForm.isGst ? Number((amountVal - withoutGstVal).toFixed(2)) : 0;
+
     try {
       await accountService.createIncome({
         date: incomeForm.date,
         clientName: incomeForm.clientName,
         paymentMethod: incomeForm.paymentMethod,
         bank: incomeForm.bank,
-        amount: Number(incomeForm.amount),
+        amount: amountVal,
+        isGst: incomeForm.isGst,
+        gstAmount: gstVal,
+        withoutGstAmount: withoutGstVal,
         month,
         year,
         remarks: incomeForm.remarks,
@@ -266,7 +273,7 @@ const AdminAccountsPage = () => {
         rfNo: incomeForm.rfNo || undefined
       });
       toast({ title: 'Income added successfully' });
-      setIncomeForm({ date: '', clientName: '', paymentMethod: '', bank: '', amount: '', remarks: '', invoiceNumber: '', rfNo: '' });
+      setIncomeForm({ date: '', clientName: '', paymentMethod: '', bank: '', amount: '', remarks: '', invoiceNumber: '', rfNo: '', isGst: false });
       loadData();
     } catch (err) {
       toast({ title: 'Failed to add income', variant: 'destructive' });
@@ -322,8 +329,8 @@ const AdminAccountsPage = () => {
         type: bankDepositForm.type as 'Cash' | 'Cheque',
         bank: bankDepositForm.bank,
         amount: Number(bankDepositForm.amount),
-        chequeNo: bankDepositForm.type === 'Cheque' ? bankDepositForm.chequeNo : undefined,
-        bankName: bankDepositForm.type === 'Cheque' ? bankDepositForm.bankName : undefined,
+        chequeNo: bankDepositForm.chequeNo,
+        bankName: bankDepositForm.bankName,
         month,
         year,
         remarks: bankDepositForm.remarks
@@ -370,7 +377,16 @@ const AdminAccountsPage = () => {
     e.preventDefault();
     if (!editingIncome) return;
     try {
-      await accountService.updateIncome(editingIncome.id, editingIncome);
+      const amountVal = Number(editingIncome.amount);
+      const withoutGstVal = editingIncome.isGst ? Number((amountVal / 1.18).toFixed(2)) : amountVal;
+      const gstVal = editingIncome.isGst ? Number((amountVal - withoutGstVal).toFixed(2)) : 0;
+      const updatedData = {
+        ...editingIncome,
+        amount: amountVal,
+        gstAmount: gstVal,
+        withoutGstAmount: withoutGstVal
+      };
+      await accountService.updateIncome(editingIncome.id, updatedData);
       toast({ title: 'Income updated successfully' });
       setEditingIncome(null);
       loadData();
@@ -476,6 +492,7 @@ const AdminAccountsPage = () => {
   const totalInHand = totalCashIncome - totalOverviewDeposit;
 
   const totalIncome = filteredIncomes.reduce((acc, curr) => acc + curr.amount, 0);
+  const totalIncomeGst = filteredIncomes.reduce((acc, curr) => acc + (curr.gstAmount || 0), 0);
   const totalExpense = filteredExpenses.reduce((acc, curr) => acc + curr.amount, 0);
   const totalExpenseGst = filteredExpenses.reduce((acc, curr) => acc + (curr.gstAmount || 0), 0);
   const totalBankDeposit = filteredBankDeposits.reduce((acc, curr) => acc + curr.amount, 0);
@@ -486,9 +503,9 @@ const AdminAccountsPage = () => {
     let tableData: any[][] = [];
 
     if (title === 'Income Records') {
-      headers = ['Date', 'Client Name', 'Mode of Payment', 'Deposited Bank', 'RF. No.', 'Month', 'Year', 'Invoice No.', 'Remarks', 'Amount'];
+      headers = ['Date', 'Client Name', 'Mode of Payment', 'Deposited Bank', 'RF. No.', 'Month', 'Year', 'Invoice No.', 'Remarks', 'Amount', 'GST'];
       tableData = data.map(row => [
-        formatDate(row.date), row.clientName, row.paymentMethod, row.bank, row.rfNo || '-', row.month, row.year, row.invoiceNumber || '-', row.remarks || '-', row.amount
+        formatDate(row.date), row.clientName, row.paymentMethod, row.bank, row.rfNo || '-', row.month, row.year, row.invoiceNumber || '-', row.remarks || '-', row.amount, row.gstAmount ? `₹${row.gstAmount}` : '-'
       ]);
     } else if (title === 'Expense Records') {
       headers = ['Date', 'Client Name', 'Category', 'Bank', 'RF. No.', 'Month', 'Year', 'Remarks', 'Amount', 'GST'];
@@ -643,7 +660,37 @@ const AdminAccountsPage = () => {
                     <Label>Remarks</Label>
                     <Input value={incomeForm.remarks} onChange={e => setIncomeForm({ ...incomeForm, remarks: e.target.value })} placeholder="Optional" />
                   </div>
-                  <div className="md:col-span-1 md:col-start-4">
+                  <div className="flex items-center space-x-2 py-2">
+                    <Checkbox
+                      id="income-gst"
+                      checked={incomeForm.isGst}
+                      onCheckedChange={(checked) => setIncomeForm({ ...incomeForm, isGst: checked === true })}
+                    />
+                    <Label htmlFor="income-gst" className="font-medium cursor-pointer">GST (18% Included)</Label>
+                  </div>
+                  {incomeForm.isGst && (
+                    <>
+                      <div className="space-y-2">
+                        <Label>Without GST Amount</Label>
+                        <Input
+                          type="text"
+                          readOnly
+                          value={incomeForm.amount ? (Number(incomeForm.amount) / 1.18).toFixed(2) : '0.00'}
+                          className="bg-muted text-muted-foreground font-semibold"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>GST Amount (18%)</Label>
+                        <Input
+                          type="text"
+                          readOnly
+                          value={incomeForm.amount ? (Number(incomeForm.amount) - Number(incomeForm.amount) / 1.18).toFixed(2) : '0.00'}
+                          className="bg-muted text-muted-foreground font-semibold"
+                        />
+                      </div>
+                    </>
+                  )}
+                  <div className={incomeForm.isGst ? "md:col-span-1" : "md:col-span-1 md:col-start-4"}>
                     <Button type="submit" className="w-full bg-green-800 hover:bg-green-900 text-white font-semibold">Add Income</Button>
                   </div>
                 </form>
@@ -703,9 +750,15 @@ const AdminAccountsPage = () => {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="bg-success/10 text-success px-4 py-2 rounded-lg border border-success/20 shadow-sm flex items-center justify-center gap-3 shrink-0">
-                  <span className="font-semibold text-sm">Total Income:</span>
-                  <span className="text-xl font-bold">₹{totalIncome.toLocaleString()}</span>
+                <div className="flex flex-wrap gap-2 shrink-0">
+                  <div className="bg-success/10 text-success px-4 py-2 rounded-lg border border-success/20 shadow-sm flex items-center justify-center gap-3">
+                    <span className="font-semibold text-sm">Total Income:</span>
+                    <span className="text-xl font-bold">₹{totalIncome.toLocaleString()}</span>
+                  </div>
+                  <div className="bg-amber-500/10 text-amber-600 dark:text-amber-400 px-4 py-2 rounded-lg border border-amber-500/20 shadow-sm flex items-center justify-center gap-3">
+                    <span className="font-semibold text-sm">Total GST:</span>
+                    <span className="text-xl font-bold">₹{totalIncomeGst.toLocaleString()}</span>
+                  </div>
                 </div>
               </div>
 
@@ -723,6 +776,7 @@ const AdminAccountsPage = () => {
                       <TableHead className="text-green-900 font-semibold">Invoice No.</TableHead>
                       <TableHead className="text-green-900 font-semibold">Remarks</TableHead>
                       <TableHead className="text-right text-green-900 font-semibold">Amount</TableHead>
+                      <TableHead className="text-right text-green-900 font-semibold">GST</TableHead>
                       <TableHead className="w-[80px] text-green-900"></TableHead>
                     </TableRow>
                   </TableHeader>
@@ -739,6 +793,7 @@ const AdminAccountsPage = () => {
                         <TableCell>{inc.invoiceNumber || '-'}</TableCell>
                         <TableCell className="max-w-[150px] truncate" title={inc.remarks}>{inc.remarks || '-'}</TableCell>
                         <TableCell className="text-right font-medium">₹{inc.amount.toLocaleString()}</TableCell>
+                        <TableCell className="text-right font-medium text-amber-600 dark:text-amber-400">{inc.gstAmount ? `₹${inc.gstAmount.toLocaleString()}` : '-'}</TableCell>
                         <TableCell className="flex gap-1 justify-end">
                           <Button variant="ghost" size="icon" onClick={() => setEditingIncome(inc)} className="text-blue-500 hover:text-blue-700">
                             <Pencil className="h-4 w-4" />
@@ -751,7 +806,7 @@ const AdminAccountsPage = () => {
                     ))}
                     {filteredIncomes.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={11} className="text-center py-4 text-muted-foreground">No income records found</TableCell>
+                        <TableCell colSpan={12} className="text-center py-4 text-muted-foreground">No income records found</TableCell>
                       </TableRow>
                     )}
                   </TableBody>
@@ -1307,10 +1362,40 @@ const AdminAccountsPage = () => {
                   <Label>RF. No.</Label>
                   <Input value={editingIncome.rfNo || ''} onChange={e => setEditingIncome({ ...editingIncome, rfNo: e.target.value })} />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-2 col-span-2">
                   <Label>Remarks</Label>
                   <Input value={editingIncome.remarks || ''} onChange={e => setEditingIncome({ ...editingIncome, remarks: e.target.value })} />
                 </div>
+                <div className="flex items-center space-x-2 py-1 col-span-2">
+                  <Checkbox
+                    id="edit-income-gst"
+                    checked={editingIncome.isGst || false}
+                    onCheckedChange={(checked) => setEditingIncome({ ...editingIncome, isGst: checked === true })}
+                  />
+                  <Label htmlFor="edit-income-gst" className="font-medium cursor-pointer">GST (18% Included)</Label>
+                </div>
+                {editingIncome.isGst && (
+                  <>
+                    <div className="space-y-2">
+                      <Label>Without GST Amount</Label>
+                      <Input
+                        type="text"
+                        readOnly
+                        value={editingIncome.amount ? (Number(editingIncome.amount) / 1.18).toFixed(2) : '0.00'}
+                        className="bg-muted text-muted-foreground font-semibold"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>GST Amount (18%)</Label>
+                      <Input
+                        type="text"
+                        readOnly
+                        value={editingIncome.amount ? (Number(editingIncome.amount) - Number(editingIncome.amount) / 1.18).toFixed(2) : '0.00'}
+                        className="bg-muted text-muted-foreground font-semibold"
+                      />
+                    </div>
+                  </>
+                )}
               </div>
               <div className="flex justify-end pt-4">
                 <Button type="button" variant="ghost" onClick={() => setEditingIncome(null)} className="mr-2">Cancel</Button>
