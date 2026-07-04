@@ -25,7 +25,9 @@ interface AutocompleteProps {
 const Autocomplete = ({ value, onChange, suggestions, placeholder = "Type to search...", className = "" }: AutocompleteProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [filteredSuggestions, setFilteredSuggestions] = useState<string[]>([]);
+  const [activeIndex, setActiveIndex] = useState<number>(-1);
   const containerRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -37,9 +39,19 @@ const Autocomplete = ({ value, onChange, suggestions, placeholder = "Type to sea
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    if (isOpen && activeIndex >= 0 && listRef.current) {
+      const activeElement = listRef.current.children[activeIndex] as HTMLElement;
+      if (activeElement) {
+        activeElement.scrollIntoView({ block: 'nearest' });
+      }
+    }
+  }, [activeIndex, isOpen]);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     onChange(val);
+    setActiveIndex(-1);
     if (val.trim().length >= 1) {
       const filtered = suggestions.filter(s =>
         s.toLowerCase().includes(val.toLowerCase())
@@ -53,6 +65,7 @@ const Autocomplete = ({ value, onChange, suggestions, placeholder = "Type to sea
   };
 
   const handleFocus = () => {
+    setActiveIndex(-1);
     if (value.trim().length >= 1) {
       const filtered = suggestions.filter(s =>
         s.toLowerCase().includes(value.toLowerCase())
@@ -68,6 +81,46 @@ const Autocomplete = ({ value, onChange, suggestions, placeholder = "Type to sea
   const selectSuggestion = (suggestion: string) => {
     onChange(suggestion);
     setIsOpen(false);
+    setActiveIndex(-1);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!isOpen) {
+      if ((e.key === "ArrowDown" || e.key === "ArrowUp") && suggestions.length > 0) {
+        const filtered = value.trim().length >= 1
+          ? suggestions.filter(s => s.toLowerCase().includes(value.toLowerCase()))
+          : suggestions;
+        if (filtered.length > 0) {
+          e.preventDefault();
+          setFilteredSuggestions(filtered);
+          setIsOpen(true);
+          setActiveIndex(e.key === "ArrowDown" ? 0 : filtered.length - 1);
+        }
+      }
+      return;
+    }
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActiveIndex(prev => (prev < filteredSuggestions.length - 1 ? prev + 1 : 0));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveIndex(prev => (prev > 0 ? prev - 1 : filteredSuggestions.length - 1));
+    } else if (e.key === "Enter") {
+      if (activeIndex >= 0 && activeIndex < filteredSuggestions.length) {
+        e.preventDefault();
+        selectSuggestion(filteredSuggestions[activeIndex]);
+      } else {
+        setIsOpen(false);
+      }
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      setIsOpen(false);
+      setActiveIndex(-1);
+    } else if (e.key === "Tab") {
+      setIsOpen(false);
+      setActiveIndex(-1);
+    }
   };
 
   return (
@@ -77,16 +130,22 @@ const Autocomplete = ({ value, onChange, suggestions, placeholder = "Type to sea
         value={value}
         onChange={handleInputChange}
         onFocus={handleFocus}
+        onKeyDown={handleKeyDown}
         placeholder={placeholder}
         className="w-full bg-background border border-input rounded-md shadow-sm h-10"
       />
       {isOpen && filteredSuggestions.length > 0 && (
-        <div className="absolute z-50 w-full mt-1 bg-popover text-popover-foreground border rounded-md shadow-md max-h-60 overflow-auto">
+        <div ref={listRef} className="absolute z-50 w-full mt-1 bg-popover text-popover-foreground border rounded-md shadow-md max-h-60 overflow-auto">
           {filteredSuggestions.map((s, idx) => (
             <div
               key={idx}
               onClick={() => selectSuggestion(s)}
-              className="px-3 py-2 text-sm cursor-pointer hover:bg-accent hover:text-accent-foreground text-left"
+              onMouseEnter={() => setActiveIndex(idx)}
+              className={`px-3 py-2 text-sm cursor-pointer text-left transition-colors ${
+                idx === activeIndex
+                  ? "bg-accent text-accent-foreground font-medium"
+                  : "hover:bg-accent hover:text-accent-foreground"
+              }`}
             >
               {s}
             </div>
@@ -503,12 +562,12 @@ const AdminAccountsPage = () => {
     let tableData: any[][] = [];
 
     if (title === 'Income Records') {
-      headers = ['Date', 'Client Name', 'Mode of Payment', 'Deposited Bank', 'RF. No.', 'Month', 'Year', 'Invoice No.', 'Remarks', 'Amount', 'GST'];
+      headers = ['Date', 'Client Name', 'Mode of Payment', 'Deposited Bank', 'Ref No.', 'Month', 'Year', 'Invoice No.', 'Remarks', 'Amount', 'GST'];
       tableData = data.map(row => [
         formatDate(row.date), row.clientName, row.paymentMethod, row.bank, row.rfNo || '-', row.month, row.year, row.invoiceNumber || '-', row.remarks || '-', row.amount, row.gstAmount ? `₹${row.gstAmount}` : '-'
       ]);
     } else if (title === 'Expense Records') {
-      headers = ['Date', 'Client Name', 'Category', 'Bank', 'RF. No.', 'Month', 'Year', 'Remarks', 'Amount', 'GST'];
+      headers = ['Date', 'Client Name', 'Category', 'Bank', 'Ref No.', 'Month', 'Year', 'Remarks', 'Amount', 'GST'];
       tableData = data.map(row => [
         formatDate(row.date), row.clientName || '-', row.category, row.bank || '-', row.rfNo || '-', row.month, row.year, row.remarks || '-', row.amount, row.gstAmount ? `₹${row.gstAmount}` : '-'
       ]);
@@ -645,7 +704,7 @@ const AdminAccountsPage = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>RF. No.</Label>
+                    <Label>Ref No.</Label>
                     <Input value={incomeForm.rfNo} onChange={e => setIncomeForm({ ...incomeForm, rfNo: e.target.value })} placeholder="Optional" />
                   </div>
                   <div className="space-y-2">
@@ -770,7 +829,7 @@ const AdminAccountsPage = () => {
                       <TableHead className="text-green-900 font-semibold">Client Name</TableHead>
                       <TableHead className="text-green-900 font-semibold">Mode of Payment</TableHead>
                       <TableHead className="text-green-900 font-semibold">Deposited Bank</TableHead>
-                      <TableHead className="text-green-900 font-semibold">RF. No.</TableHead>
+                      <TableHead className="text-green-900 font-semibold">Ref No.</TableHead>
                       <TableHead className="text-green-900 font-semibold">Month</TableHead>
                       <TableHead className="text-green-900 font-semibold">Year</TableHead>
                       <TableHead className="text-green-900 font-semibold">Invoice No.</TableHead>
@@ -860,7 +919,7 @@ const AdminAccountsPage = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>RF. No.</Label>
+                    <Label>Ref No.</Label>
                     <Input value={expenseForm.rfNo} onChange={e => setExpenseForm({ ...expenseForm, rfNo: e.target.value })} placeholder="Optional" />
                   </div>
                   <div className="space-y-2">
@@ -970,7 +1029,7 @@ const AdminAccountsPage = () => {
                       <TableHead>Client Name</TableHead>
                       <TableHead>Category</TableHead>
                       <TableHead>Bank</TableHead>
-                      <TableHead>RF. No.</TableHead>
+                      <TableHead>Ref No.</TableHead>
                       <TableHead>Month</TableHead>
                       <TableHead>Year</TableHead>
                       <TableHead>Remarks</TableHead>
@@ -1359,7 +1418,7 @@ const AdminAccountsPage = () => {
                   <Input value={editingIncome.invoiceNumber || ''} onChange={e => setEditingIncome({ ...editingIncome, invoiceNumber: e.target.value })} />
                 </div>
                 <div className="space-y-2">
-                  <Label>RF. No.</Label>
+                  <Label>Ref No.</Label>
                   <Input value={editingIncome.rfNo || ''} onChange={e => setEditingIncome({ ...editingIncome, rfNo: e.target.value })} />
                 </div>
                 <div className="space-y-2 col-span-2">
@@ -1451,7 +1510,7 @@ const AdminAccountsPage = () => {
                   <Input type="number" step="0.01" value={editingExpense.amount} onChange={e => setEditingExpense({ ...editingExpense, amount: Number(e.target.value) })} required />
                 </div>
                 <div className="space-y-2">
-                  <Label>RF. No.</Label>
+                  <Label>Ref No.</Label>
                   <Input value={editingExpense.rfNo || ''} onChange={e => setEditingExpense({ ...editingExpense, rfNo: e.target.value })} />
                 </div>
                 <div className="space-y-2 col-span-2">
