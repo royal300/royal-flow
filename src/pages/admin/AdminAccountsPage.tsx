@@ -179,7 +179,7 @@ const AdminAccountsPage = () => {
   const [bankDeposits, setBankDeposits] = useState<BankDeposit[]>([]);
 
   // Income Form State
-  const [incomeForm, setIncomeForm] = useState({ date: '', clientName: '', paymentMethod: '', bank: '', amount: '', remarks: '', invoiceNumber: '', rfNo: '', isGst: false });
+  const [incomeForm, setIncomeForm] = useState({ date: '', clientName: '', paymentMethod: '', bank: '', amount: '', remarks: '', invoicePrefix: 'INV', invoiceNumber: '', rfNo: '', isGst: false });
   
   // Expense Form State
   const [expenseForm, setExpenseForm] = useState({ date: '', category: '', bank: '', clientName: '', amount: '', remarks: '', rfNo: '', isGst: false });
@@ -328,11 +328,11 @@ const AdminAccountsPage = () => {
         month,
         year,
         remarks: incomeForm.remarks,
-        invoiceNumber: incomeForm.invoiceNumber,
+        invoiceNumber: incomeForm.invoiceNumber.trim() ? `${incomeForm.invoicePrefix}-${incomeForm.invoiceNumber.trim().replace(/^(INV|PFI)-/i, '')}` : '',
         rfNo: incomeForm.rfNo || undefined
       });
       toast({ title: 'Income added successfully' });
-      setIncomeForm({ date: '', clientName: '', paymentMethod: '', bank: '', amount: '', remarks: '', invoiceNumber: '', rfNo: '', isGst: false });
+      setIncomeForm({ date: '', clientName: '', paymentMethod: '', bank: '', amount: '', remarks: '', invoicePrefix: 'INV', invoiceNumber: '', rfNo: '', isGst: false });
       loadData();
     } catch (err) {
       toast({ title: 'Failed to add income', variant: 'destructive' });
@@ -713,7 +713,36 @@ const AdminAccountsPage = () => {
                   </div>
                   <div className="space-y-2">
                     <Label>Invoice / Proforma No.</Label>
-                    <Input value={incomeForm.invoiceNumber} onChange={e => setIncomeForm({ ...incomeForm, invoiceNumber: e.target.value })} placeholder="Optional" />
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center border rounded-md p-1 bg-muted/30 h-10">
+                        <label className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold cursor-pointer rounded hover:bg-accent/50">
+                          <input
+                            type="radio"
+                            name="invoicePrefix"
+                            checked={incomeForm.invoicePrefix === 'INV'}
+                            onChange={() => setIncomeForm({ ...incomeForm, invoicePrefix: 'INV' })}
+                            className="accent-green-700"
+                          />
+                          INV
+                        </label>
+                        <label className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold cursor-pointer rounded hover:bg-accent/50">
+                          <input
+                            type="radio"
+                            name="invoicePrefix"
+                            checked={incomeForm.invoicePrefix === 'PFI'}
+                            onChange={() => setIncomeForm({ ...incomeForm, invoicePrefix: 'PFI' })}
+                            className="accent-green-700"
+                          />
+                          PFI
+                        </label>
+                      </div>
+                      <Input
+                        value={incomeForm.invoiceNumber}
+                        onChange={e => setIncomeForm({ ...incomeForm, invoiceNumber: e.target.value })}
+                        placeholder="e.g. 1234"
+                        className="flex-1"
+                      />
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <Label>Remarks</Label>
