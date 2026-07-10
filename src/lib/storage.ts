@@ -105,6 +105,7 @@ export interface Income {
   year: string;
   invoiceNumber?: string;
   rfNo?: string;
+  chequeNo?: string;
   remarks?: string;
   createdAt: string;
 }

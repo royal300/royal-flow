@@ -179,7 +179,7 @@ const AdminAccountsPage = () => {
   const [bankDeposits, setBankDeposits] = useState<BankDeposit[]>([]);
 
   // Income Form State
-  const [incomeForm, setIncomeForm] = useState({ date: '', clientName: '', category: '', paymentMethod: '', bank: '', amount: '', remarks: '', invoicePrefix: 'INV', invoiceNumber: '', rfNo: '', isGst: false });
+  const [incomeForm, setIncomeForm] = useState({ date: '', clientName: '', category: '', paymentMethod: '', bank: '', amount: '', remarks: '', invoicePrefix: 'INV', invoiceNumber: '', rfNo: '', chequeNo: '', isGst: false });
   
   // Expense Form State
   const [expenseForm, setExpenseForm] = useState({ date: '', category: '', bank: '', clientName: '', amount: '', remarks: '', rfNo: '', isGst: false });
@@ -331,10 +331,11 @@ const AdminAccountsPage = () => {
         year,
         remarks: incomeForm.remarks,
         invoiceNumber: incomeForm.invoiceNumber.trim() ? `${incomeForm.invoicePrefix}-${incomeForm.invoiceNumber.trim().replace(/^(INV|PFI)-/i, '')}` : '',
-        rfNo: incomeForm.rfNo || undefined
+        rfNo: incomeForm.rfNo || undefined,
+        chequeNo: incomeForm.chequeNo.trim() || undefined
       });
       toast({ title: 'Income added successfully' });
-      setIncomeForm({ date: '', clientName: '', category: '', paymentMethod: '', bank: '', amount: '', remarks: '', invoicePrefix: 'INV', invoiceNumber: '', rfNo: '', isGst: false });
+      setIncomeForm({ date: '', clientName: '', category: '', paymentMethod: '', bank: '', amount: '', remarks: '', invoicePrefix: 'INV', invoiceNumber: '', rfNo: '', chequeNo: '', isGst: false });
       loadData();
     } catch (err) {
       toast({ title: 'Failed to add income', variant: 'destructive' });
@@ -508,28 +509,30 @@ const AdminAccountsPage = () => {
   const filteredIncomes = incomes.filter(inc => {
     const matchInvoice = !incomeFilters.invoiceNumber || (inc.invoiceNumber && inc.invoiceNumber.toLowerCase().includes(incomeFilters.invoiceNumber.toLowerCase()));
     const matchDateRange = isDateInRange(inc.date, incomeFilters.startDate, incomeFilters.endDate);
-    return matchDateRange && (incomeFilters.clientName === 'All' || inc.clientName === incomeFilters.clientName) &&
-           (incomeFilters.category === 'All' || inc.category === incomeFilters.category) &&
-           (incomeFilters.paymentMethod === 'All' || inc.paymentMethod === incomeFilters.paymentMethod) &&
-           (incomeFilters.bank === 'All' || inc.bank === incomeFilters.bank) &&
-           (incomeFilters.month === 'All' || inc.month === incomeFilters.month) &&
-           (incomeFilters.year === 'All' || inc.year === incomeFilters.year) &&
-           matchInvoice;
+    const matchClient = incomeFilters.clientName === 'All' || !incomeFilters.clientName || (inc.clientName && inc.clientName.toLowerCase().includes(incomeFilters.clientName.toLowerCase()));
+    const matchCategory = incomeFilters.category === 'All' || !incomeFilters.category || (inc.category && inc.category.toLowerCase().includes(incomeFilters.category.toLowerCase()));
+    const matchPayment = incomeFilters.paymentMethod === 'All' || !incomeFilters.paymentMethod || (inc.paymentMethod && inc.paymentMethod.toLowerCase().includes(incomeFilters.paymentMethod.toLowerCase()));
+    const matchBank = incomeFilters.bank === 'All' || !incomeFilters.bank || (inc.bank && inc.bank.toLowerCase().includes(incomeFilters.bank.toLowerCase()));
+    const matchMonth = incomeFilters.month === 'All' || !incomeFilters.month || (inc.month && inc.month.toLowerCase().includes(incomeFilters.month.toLowerCase()));
+    const matchYear = incomeFilters.year === 'All' || !incomeFilters.year || (inc.year && inc.year.toString().toLowerCase().includes(incomeFilters.year.toString().toLowerCase()));
+    return matchDateRange && matchClient && matchCategory && matchPayment && matchBank && matchMonth && matchYear && matchInvoice;
   });
 
   const filteredExpenses = expenses.filter(exp => {
     const matchDateRange = isDateInRange(exp.date, expenseFilters.startDate, expenseFilters.endDate);
-    return matchDateRange && (expenseFilters.category === 'All' || exp.category === expenseFilters.category) &&
-           (expenseFilters.clientName === 'All' || exp.clientName === expenseFilters.clientName) &&
-           (expenseFilters.month === 'All' || exp.month === expenseFilters.month) &&
-           (expenseFilters.year === 'All' || exp.year === expenseFilters.year);
+    const matchCategory = expenseFilters.category === 'All' || !expenseFilters.category || (exp.category && exp.category.toLowerCase().includes(expenseFilters.category.toLowerCase()));
+    const matchClient = expenseFilters.clientName === 'All' || !expenseFilters.clientName || (exp.clientName && exp.clientName.toLowerCase().includes(expenseFilters.clientName.toLowerCase()));
+    const matchMonth = expenseFilters.month === 'All' || !expenseFilters.month || (exp.month && exp.month.toLowerCase().includes(expenseFilters.month.toLowerCase()));
+    const matchYear = expenseFilters.year === 'All' || !expenseFilters.year || (exp.year && exp.year.toString().toLowerCase().includes(expenseFilters.year.toString().toLowerCase()));
+    return matchDateRange && matchCategory && matchClient && matchMonth && matchYear;
   });
 
   const filteredBankDeposits = bankDeposits.filter(dep => {
     const matchDateRange = isDateInRange(dep.date, bankDepositFilters.startDate, bankDepositFilters.endDate);
-    return matchDateRange && (bankDepositFilters.type === 'All' || dep.type === bankDepositFilters.type) &&
-           (bankDepositFilters.month === 'All' || dep.month === bankDepositFilters.month) &&
-           (bankDepositFilters.year === 'All' || dep.year === bankDepositFilters.year);
+    const matchType = bankDepositFilters.type === 'All' || !bankDepositFilters.type || (dep.type && dep.type.toLowerCase().includes(bankDepositFilters.type.toLowerCase()));
+    const matchMonth = bankDepositFilters.month === 'All' || !bankDepositFilters.month || (dep.month && dep.month.toLowerCase().includes(bankDepositFilters.month.toLowerCase()));
+    const matchYear = bankDepositFilters.year === 'All' || !bankDepositFilters.year || (dep.year && dep.year.toString().toLowerCase().includes(bankDepositFilters.year.toString().toLowerCase()));
+    return matchDateRange && matchType && matchMonth && matchYear;
   });
 
   // Combined Ledger Entries
@@ -559,9 +562,10 @@ const AdminAccountsPage = () => {
       year: exp.year || ''
     }))
   ].filter(entry => {
-    return (ledgerFilters.clientName === 'All' || entry.clientName === ledgerFilters.clientName) &&
-           (ledgerFilters.month === 'All' || entry.month === ledgerFilters.month) &&
-           (ledgerFilters.year === 'All' || entry.year === ledgerFilters.year);
+    const matchClient = ledgerFilters.clientName === 'All' || !ledgerFilters.clientName || (entry.clientName && entry.clientName.toLowerCase().includes(ledgerFilters.clientName.toLowerCase()));
+    const matchMonth = ledgerFilters.month === 'All' || !ledgerFilters.month || (entry.month && entry.month.toLowerCase().includes(ledgerFilters.month.toLowerCase()));
+    const matchYear = ledgerFilters.year === 'All' || !ledgerFilters.year || (entry.year && entry.year.toString().toLowerCase().includes(ledgerFilters.year.toString().toLowerCase()));
+    return matchClient && matchMonth && matchYear;
   }).sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime());
 
   const totalLedgerIncome = ledgerEntries.filter(e => e.type === 'Income').reduce((sum, e) => sum + (e.amount || 0), 0);
@@ -604,7 +608,7 @@ const AdminAccountsPage = () => {
     if (title === 'Income Records') {
       headers = ['Date', 'Client Name', 'Category', 'Mode of Payment', 'Deposited Bank', 'Ref No.', 'Month', 'Year', 'Invoice No.', 'Remarks', 'Amount', 'GST'];
       tableData = data.map(row => [
-        formatDate(row.date), row.clientName, row.category || '-', row.paymentMethod, row.bank, row.rfNo || '-', row.month, row.year, row.invoiceNumber || '-', row.remarks || '-', row.amount, row.gstAmount ? `₹${row.gstAmount}` : '-'
+        formatDate(row.date), row.clientName, row.category || '-', row.paymentMethod && row.paymentMethod.toLowerCase() === 'cheque' && row.chequeNo ? `Cheque\nNo. : ${row.chequeNo}` : row.paymentMethod, row.bank, row.rfNo || '-', row.month, row.year, row.invoiceNumber || '-', row.remarks || '-', row.amount, row.gstAmount ? `₹${row.gstAmount}` : '-'
       ]);
     } else if (title === 'Expense Records') {
       headers = ['Date', 'Client Name', 'Category', 'Bank', 'Ref No.', 'Month', 'Year', 'Remarks', 'Amount', 'GST'];
@@ -749,6 +753,17 @@ const AdminAccountsPage = () => {
                       placeholder="Type payment mode..."
                     />
                   </div>
+                  {incomeForm.paymentMethod.toLowerCase() === 'cheque' && (
+                    <div className="space-y-2">
+                      <Label>Cheque No. *</Label>
+                      <Input
+                        value={incomeForm.chequeNo}
+                        onChange={e => setIncomeForm({ ...incomeForm, chequeNo: e.target.value })}
+                        placeholder="Alphanumeric Cheque No."
+                        required
+                      />
+                    </div>
+                  )}
                   <div className="space-y-2">
                     <Label>Deposited Bank</Label>
                     <Autocomplete
@@ -855,43 +870,49 @@ const AdminAccountsPage = () => {
             </CardHeader>
             <CardContent>
               <div className="flex flex-col md:flex-row gap-4 justify-between mb-4">
-                <div className="grid grid-cols-2 md:grid-cols-6 gap-4 flex-1">
-                  <Input placeholder="Filter Invoice No." value={incomeFilters.invoiceNumber} onChange={e => setIncomeFilters({ ...incomeFilters, invoiceNumber: e.target.value })} />
-                  <Select value={incomeFilters.clientName} onValueChange={v => setIncomeFilters({ ...incomeFilters, clientName: v })}>
-                    <SelectTrigger><SelectValue placeholder="Filter Client" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="All">All Clients</SelectItem>
-                      {getUniqueValues(incomes, 'clientName').map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  <Select value={incomeFilters.paymentMethod} onValueChange={v => setIncomeFilters({ ...incomeFilters, paymentMethod: v })}>
-                    <SelectTrigger><SelectValue placeholder="Filter Mode" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="All">All Modes</SelectItem>
-                      {getUniqueValues(incomes, 'paymentMethod').map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  <Select value={incomeFilters.bank} onValueChange={v => setIncomeFilters({ ...incomeFilters, bank: v })}>
-                    <SelectTrigger><SelectValue placeholder="Filter Bank" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="All">All Banks</SelectItem>
-                      {getUniqueValues(incomes, 'bank').map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  <Select value={incomeFilters.month} onValueChange={v => setIncomeFilters({ ...incomeFilters, month: v })}>
-                    <SelectTrigger><SelectValue placeholder="Filter Month" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="All">All Months</SelectItem>
-                      {getUniqueValues(incomes, 'month').map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  <Select value={incomeFilters.year} onValueChange={v => setIncomeFilters({ ...incomeFilters, year: v })}>
-                    <SelectTrigger><SelectValue placeholder="Filter Year" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="All">All Years</SelectItem>
-                      {getUniqueValues(incomes, 'year').map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                <div className="grid grid-cols-2 md:grid-cols-7 gap-3 flex-1">
+                  <Autocomplete
+                    placeholder="Filter Invoice No."
+                    value={incomeFilters.invoiceNumber}
+                    onChange={v => setIncomeFilters({ ...incomeFilters, invoiceNumber: v })}
+                    suggestions={getUniqueValues(incomes, 'invoiceNumber')}
+                  />
+                  <Autocomplete
+                    placeholder="Filter Client..."
+                    value={incomeFilters.clientName === 'All' ? '' : incomeFilters.clientName}
+                    onChange={v => setIncomeFilters({ ...incomeFilters, clientName: v || 'All' })}
+                    suggestions={getUniqueValues(incomes, 'clientName')}
+                  />
+                  <Autocomplete
+                    placeholder="Filter Category..."
+                    value={incomeFilters.category === 'All' ? '' : incomeFilters.category}
+                    onChange={v => setIncomeFilters({ ...incomeFilters, category: v || 'All' })}
+                    suggestions={getUniqueValues(incomes, 'category')}
+                  />
+                  <Autocomplete
+                    placeholder="Filter Mode..."
+                    value={incomeFilters.paymentMethod === 'All' ? '' : incomeFilters.paymentMethod}
+                    onChange={v => setIncomeFilters({ ...incomeFilters, paymentMethod: v || 'All' })}
+                    suggestions={getUniqueValues(incomes, 'paymentMethod')}
+                  />
+                  <Autocomplete
+                    placeholder="Filter Bank..."
+                    value={incomeFilters.bank === 'All' ? '' : incomeFilters.bank}
+                    onChange={v => setIncomeFilters({ ...incomeFilters, bank: v || 'All' })}
+                    suggestions={getUniqueValues(incomes, 'bank')}
+                  />
+                  <Autocomplete
+                    placeholder="Filter Month..."
+                    value={incomeFilters.month === 'All' ? '' : incomeFilters.month}
+                    onChange={v => setIncomeFilters({ ...incomeFilters, month: v || 'All' })}
+                    suggestions={getUniqueValues(incomes, 'month')}
+                  />
+                  <Autocomplete
+                    placeholder="Filter Year..."
+                    value={incomeFilters.year === 'All' ? '' : incomeFilters.year}
+                    onChange={v => setIncomeFilters({ ...incomeFilters, year: v || 'All' })}
+                    suggestions={getUniqueValues(incomes, 'year')}
+                  />
                 </div>
                 <div className="flex flex-wrap gap-2 shrink-0">
                   <div className="bg-success/10 text-success px-4 py-2 rounded-lg border border-success/20 shadow-sm flex items-center justify-center gap-3">
@@ -930,7 +951,16 @@ const AdminAccountsPage = () => {
                         <TableCell>{formatDate(inc.date)}</TableCell>
                         <TableCell className="font-medium">{inc.clientName}</TableCell>
                         <TableCell>{inc.category || '-'}</TableCell>
-                        <TableCell>{inc.paymentMethod}</TableCell>
+                        <TableCell>
+                          <div className="flex flex-col">
+                            <span>{inc.paymentMethod}</span>
+                            {inc.paymentMethod.toLowerCase() === 'cheque' && inc.chequeNo && (
+                              <span className="text-xs text-muted-foreground font-medium mt-0.5">
+                                No. : {inc.chequeNo}
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell>{inc.bank}</TableCell>
                         <TableCell>{inc.rfNo || '-'}</TableCell>
                         <TableCell>{inc.month}</TableCell>
@@ -1066,34 +1096,30 @@ const AdminAccountsPage = () => {
                 <div className="grid grid-cols-2 md:grid-cols-6 gap-4 flex-1">
                   <Input type="date" className="[&::-webkit-calendar-picker-indicator]:block" value={expenseFilters.startDate} onChange={e => setExpenseFilters({ ...expenseFilters, startDate: e.target.value })} placeholder="Start Date" />
                   <Input type="date" className="[&::-webkit-calendar-picker-indicator]:block" value={expenseFilters.endDate} onChange={e => setExpenseFilters({ ...expenseFilters, endDate: e.target.value })} placeholder="End Date" />
-                  <Select value={expenseFilters.category} onValueChange={v => setExpenseFilters({ ...expenseFilters, category: v })}>
-                    <SelectTrigger><SelectValue placeholder="Filter Category" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="All">All Categories</SelectItem>
-                      {getUniqueValues(expenses, 'category').map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  <Select value={expenseFilters.clientName} onValueChange={v => setExpenseFilters({ ...expenseFilters, clientName: v })}>
-                    <SelectTrigger><SelectValue placeholder="Filter Client" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="All">All Clients</SelectItem>
-                      {getUniqueValues(expenses, 'clientName').map(c => c && <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  <Select value={expenseFilters.month} onValueChange={v => setExpenseFilters({ ...expenseFilters, month: v })}>
-                    <SelectTrigger><SelectValue placeholder="Filter Month" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="All">All Months</SelectItem>
-                      {getUniqueValues(expenses, 'month').map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  <Select value={expenseFilters.year} onValueChange={v => setExpenseFilters({ ...expenseFilters, year: v })}>
-                    <SelectTrigger><SelectValue placeholder="Filter Year" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="All">All Years</SelectItem>
-                      {getUniqueValues(expenses, 'year').map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <Autocomplete
+                    placeholder="Filter Category..."
+                    value={expenseFilters.category === 'All' ? '' : expenseFilters.category}
+                    onChange={v => setExpenseFilters({ ...expenseFilters, category: v || 'All' })}
+                    suggestions={getUniqueValues(expenses, 'category')}
+                  />
+                  <Autocomplete
+                    placeholder="Filter Client..."
+                    value={expenseFilters.clientName === 'All' ? '' : expenseFilters.clientName}
+                    onChange={v => setExpenseFilters({ ...expenseFilters, clientName: v || 'All' })}
+                    suggestions={getUniqueValues(expenses, 'clientName').filter(Boolean)}
+                  />
+                  <Autocomplete
+                    placeholder="Filter Month..."
+                    value={expenseFilters.month === 'All' ? '' : expenseFilters.month}
+                    onChange={v => setExpenseFilters({ ...expenseFilters, month: v || 'All' })}
+                    suggestions={getUniqueValues(expenses, 'month')}
+                  />
+                  <Autocomplete
+                    placeholder="Filter Year..."
+                    value={expenseFilters.year === 'All' ? '' : expenseFilters.year}
+                    onChange={v => setExpenseFilters({ ...expenseFilters, year: v || 'All' })}
+                    suggestions={getUniqueValues(expenses, 'year')}
+                  />
                 </div>
                 <div className="flex flex-wrap gap-2 shrink-0">
                   <div className="bg-destructive/10 text-destructive px-4 py-2 rounded-lg border border-destructive/20 shadow-sm flex items-center justify-center gap-3">
@@ -1238,28 +1264,24 @@ const AdminAccountsPage = () => {
                 <div className="grid grid-cols-2 md:grid-cols-6 gap-4 flex-1">
                   <Input type="date" className="[&::-webkit-calendar-picker-indicator]:block" value={bankDepositFilters.startDate} onChange={e => setBankDepositFilters({ ...bankDepositFilters, startDate: e.target.value })} placeholder="Start Date" />
                   <Input type="date" className="[&::-webkit-calendar-picker-indicator]:block" value={bankDepositFilters.endDate} onChange={e => setBankDepositFilters({ ...bankDepositFilters, endDate: e.target.value })} placeholder="End Date" />
-                  <Select value={bankDepositFilters.type} onValueChange={v => setBankDepositFilters({ ...bankDepositFilters, type: v })}>
-                    <SelectTrigger><SelectValue placeholder="Filter Type" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="All">All Types</SelectItem>
-                      <SelectItem value="Cash">Cash</SelectItem>
-                      <SelectItem value="Cheque">Cheque</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Select value={bankDepositFilters.month} onValueChange={v => setBankDepositFilters({ ...bankDepositFilters, month: v })}>
-                    <SelectTrigger><SelectValue placeholder="Filter Month" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="All">All Months</SelectItem>
-                      {getUniqueValues(bankDeposits, 'month').map(m => m && <SelectItem key={m} value={m}>{m}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  <Select value={bankDepositFilters.year} onValueChange={v => setBankDepositFilters({ ...bankDepositFilters, year: v })}>
-                    <SelectTrigger><SelectValue placeholder="Filter Year" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="All">All Years</SelectItem>
-                      {getUniqueValues(bankDeposits, 'year').map(y => y && <SelectItem key={y} value={y}>{y}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <Autocomplete
+                    placeholder="Filter Type..."
+                    value={bankDepositFilters.type === 'All' ? '' : bankDepositFilters.type}
+                    onChange={v => setBankDepositFilters({ ...bankDepositFilters, type: v || 'All' })}
+                    suggestions={['Cash', 'Cheque']}
+                  />
+                  <Autocomplete
+                    placeholder="Filter Month..."
+                    value={bankDepositFilters.month === 'All' ? '' : bankDepositFilters.month}
+                    onChange={v => setBankDepositFilters({ ...bankDepositFilters, month: v || 'All' })}
+                    suggestions={getUniqueValues(bankDeposits, 'month')}
+                  />
+                  <Autocomplete
+                    placeholder="Filter Year..."
+                    value={bankDepositFilters.year === 'All' ? '' : bankDepositFilters.year}
+                    onChange={v => setBankDepositFilters({ ...bankDepositFilters, year: v || 'All' })}
+                    suggestions={getUniqueValues(bankDeposits, 'year')}
+                  />
                 </div>
                 <div className="bg-blue-100/50 text-blue-800 px-4 py-2 rounded-lg border border-blue-200 flex items-center gap-3 shrink-0">
                   <span className="font-semibold text-sm">Total Deposit:</span>
@@ -1368,29 +1390,32 @@ const AdminAccountsPage = () => {
             <CardContent>
               {/* Filters */}
               <div className="flex flex-wrap gap-3 mb-6 bg-muted/30 p-3 rounded-lg border border-border/50">
-                <Select value={ledgerFilters.clientName} onValueChange={v => setLedgerFilters({ ...ledgerFilters, clientName: v })}>
-                  <SelectTrigger className="w-[220px]"><SelectValue placeholder="All Clients" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="All">All Clients</SelectItem>
-                    {getUniqueValues([...incomes, ...expenses], 'clientName').map((c: any) => c && <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <div className="w-[240px]">
+                  <Autocomplete
+                    placeholder="Search Client..."
+                    value={ledgerFilters.clientName === 'All' ? '' : ledgerFilters.clientName}
+                    onChange={v => setLedgerFilters({ ...ledgerFilters, clientName: v || 'All' })}
+                    suggestions={getUniqueValues([...incomes, ...expenses], 'clientName').filter(Boolean)}
+                  />
+                </div>
 
-                <Select value={ledgerFilters.month} onValueChange={v => setLedgerFilters({ ...ledgerFilters, month: v })}>
-                  <SelectTrigger className="w-[140px]"><SelectValue placeholder="Month" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="All">All Months</SelectItem>
-                    {getUniqueValues([...incomes, ...expenses], 'month').map((m: any) => m && <SelectItem key={m} value={m}>{m}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <div className="w-[160px]">
+                  <Autocomplete
+                    placeholder="Search Month..."
+                    value={ledgerFilters.month === 'All' ? '' : ledgerFilters.month}
+                    onChange={v => setLedgerFilters({ ...ledgerFilters, month: v || 'All' })}
+                    suggestions={getUniqueValues([...incomes, ...expenses], 'month').filter(Boolean)}
+                  />
+                </div>
 
-                <Select value={ledgerFilters.year} onValueChange={v => setLedgerFilters({ ...ledgerFilters, year: v })}>
-                  <SelectTrigger className="w-[120px]"><SelectValue placeholder="Year" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="All">All Years</SelectItem>
-                    {getUniqueValues([...incomes, ...expenses], 'year').map((y: any) => y && <SelectItem key={y} value={y}>{y}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <div className="w-[140px]">
+                  <Autocomplete
+                    placeholder="Search Year..."
+                    value={ledgerFilters.year === 'All' ? '' : ledgerFilters.year}
+                    onChange={v => setLedgerFilters({ ...ledgerFilters, year: v || 'All' })}
+                    suggestions={getUniqueValues([...incomes, ...expenses], 'year').filter(Boolean)}
+                  />
+                </div>
 
                 {(ledgerFilters.clientName !== 'All' || ledgerFilters.month !== 'All' || ledgerFilters.year !== 'All') && (
                   <Button variant="ghost" size="sm" onClick={() => setLedgerFilters({ clientName: 'All', month: 'All', year: 'All' })} className="text-muted-foreground">
@@ -1639,6 +1664,16 @@ const AdminAccountsPage = () => {
                     placeholder="Type payment mode..."
                   />
                 </div>
+                {editingIncome.paymentMethod.toLowerCase() === 'cheque' && (
+                  <div className="space-y-2">
+                    <Label>Cheque No.</Label>
+                    <Input
+                      value={editingIncome.chequeNo || ''}
+                      onChange={e => setEditingIncome({ ...editingIncome, chequeNo: e.target.value })}
+                      placeholder="Alphanumeric Cheque No."
+                    />
+                  </div>
+                )}
                 <div className="space-y-2">
                   <Label>Deposited Bank</Label>
                   <Autocomplete
