@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { useToast } from '@/hooks/use-toast';
 import { Checkbox } from '@/components/ui/checkbox';
 import { accountService, settingsService, Income, Expense, BankDeposit } from '@/lib/storage';
-import { Trash2, Download, Pencil, ChevronUp, ChevronDown } from 'lucide-react';
+import { Trash2, Download, Pencil, ChevronUp, ChevronDown, FileText } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -221,6 +221,7 @@ const AdminAccountsPage = () => {
   const [expenseFilters, setExpenseFilters] = useState({ category: 'All', clientName: 'All', month: 'All', year: 'All', startDate: '', endDate: '' });
   const [bankDepositFilters, setBankDepositFilters] = useState({ type: 'All', month: 'All', year: 'All', startDate: '', endDate: '' });
   const [overviewFilters, setOverviewFilters] = useState({ month: 'All', year: 'All' });
+  const [ledgerFilters, setLedgerFilters] = useState({ clientName: 'All', month: 'All', year: 'All' });
 
   const loadData = async () => {
     try {
@@ -531,6 +532,43 @@ const AdminAccountsPage = () => {
            (bankDepositFilters.year === 'All' || dep.year === bankDepositFilters.year);
   });
 
+  // Combined Ledger Entries
+  const ledgerEntries = [
+    ...incomes.map(inc => ({
+      id: inc.id,
+      date: inc.date,
+      clientName: inc.clientName || '-',
+      category: inc.category || '-',
+      amount: inc.amount,
+      gstAmount: inc.gstAmount || 0,
+      remarks: inc.remarks || '-',
+      type: 'Income' as const,
+      month: inc.month,
+      year: inc.year
+    })),
+    ...expenses.map(exp => ({
+      id: exp.id,
+      date: exp.date,
+      clientName: exp.clientName || '-',
+      category: exp.category || '-',
+      amount: exp.amount,
+      gstAmount: exp.gstAmount || 0,
+      remarks: exp.remarks || '-',
+      type: 'Expense' as const,
+      month: exp.month,
+      year: exp.year
+    }))
+  ].filter(entry => {
+    return (ledgerFilters.clientName === 'All' || entry.clientName === ledgerFilters.clientName) &&
+           (ledgerFilters.month === 'All' || entry.month === ledgerFilters.month) &&
+           (ledgerFilters.year === 'All' || entry.year === ledgerFilters.year);
+  }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+  const totalLedgerIncome = ledgerEntries.filter(e => e.type === 'Income').reduce((sum, e) => sum + e.amount, 0);
+  const totalLedgerIncomeGst = ledgerEntries.filter(e => e.type === 'Income').reduce((sum, e) => sum + (e.gstAmount || 0), 0);
+  const totalLedgerExpense = ledgerEntries.filter(e => e.type === 'Expense').reduce((sum, e) => sum + e.amount, 0);
+  const totalLedgerExpenseGst = ledgerEntries.filter(e => e.type === 'Expense').reduce((sum, e) => sum + (e.gstAmount || 0), 0);
+
   // Overview Totals
   const overviewIncomes = incomes.filter(inc => 
     (overviewFilters.month === 'All' || inc.month === overviewFilters.month) &&
@@ -578,6 +616,11 @@ const AdminAccountsPage = () => {
       tableData = data.map(row => [
         formatDate(row.date), row.bank || '-', row.type, row.type === 'Cheque' ? `${row.chequeNo} (${row.bankName})` : '-', row.month, row.year, row.remarks || '-', row.amount
       ]);
+    } else if (title === 'Client Ledger Records') {
+      headers = ['Date', 'Type', 'Client Name', 'Category', 'Remarks', 'Amount', 'GST'];
+      tableData = data.map(row => [
+        formatDate(row.date), row.type, row.clientName, row.category, row.remarks, row.amount, row.gstAmount ? `₹${row.gstAmount}` : '-'
+      ]);
     }
 
     setPdfPreviewData({ title, headers, tableData });
@@ -609,11 +652,12 @@ const AdminAccountsPage = () => {
       </div>
 
       <Tabs defaultValue="income" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-5 max-w-3xl mb-4 h-auto">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-6 max-w-4xl mb-4 h-auto">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="income">Income</TabsTrigger>
           <TabsTrigger value="expense">Expense</TabsTrigger>
           <TabsTrigger value="bank-deposit">Bank Deposit</TabsTrigger>
+          <TabsTrigger value="ledger">Ledger</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
 
@@ -1263,6 +1307,150 @@ const AdminAccountsPage = () => {
                       <TableRow>
                         <TableCell colSpan={8} className="text-center py-4 text-muted-foreground">No bank deposit records found</TableCell>
                       </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </GlassCard>
+        </TabsContent>
+
+        {/* LEDGER TAB */}
+        <TabsContent value="ledger" className="space-y-4 mt-4">
+          {/* Summary Cards Top */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+            <GlassCard className="p-4 bg-green-50/80 dark:bg-green-950/30 border-green-200 dark:border-green-800">
+              <p className="text-xs font-semibold text-green-700 dark:text-green-400 uppercase tracking-wider">Total Income</p>
+              <p className="text-2xl font-bold text-green-900 dark:text-green-100 mt-1">₹{totalLedgerIncome.toLocaleString()}</p>
+              <p className="text-xs text-green-700 dark:text-green-400 mt-1">GST Included: ₹{totalLedgerIncomeGst.toLocaleString()}</p>
+            </GlassCard>
+
+            <GlassCard className="p-4 bg-red-50/80 dark:bg-red-950/30 border-red-200 dark:border-red-800">
+              <p className="text-xs font-semibold text-red-700 dark:text-red-400 uppercase tracking-wider">Total Expense</p>
+              <p className="text-2xl font-bold text-red-900 dark:text-red-100 mt-1">₹{totalLedgerExpense.toLocaleString()}</p>
+              <p className="text-xs text-red-700 dark:text-red-400 mt-1">GST Included: ₹{totalLedgerExpenseGst.toLocaleString()}</p>
+            </GlassCard>
+
+            <GlassCard className="p-4 bg-blue-50/80 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800">
+              <p className="text-xs font-semibold text-blue-700 dark:text-blue-400 uppercase tracking-wider">Net Balance</p>
+              <p className={`text-2xl font-bold mt-1 ${totalLedgerIncome - totalLedgerExpense >= 0 ? 'text-green-800 dark:text-green-300' : 'text-red-800 dark:text-red-300'}`}>
+                ₹{(totalLedgerIncome - totalLedgerExpense).toLocaleString()}
+              </p>
+              <p className="text-xs text-blue-700 dark:text-blue-400 mt-1">Income minus Expense</p>
+            </GlassCard>
+
+            <GlassCard className="p-4 bg-amber-50/80 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800">
+              <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider">Net GST</p>
+              <p className="text-2xl font-bold text-amber-900 dark:text-amber-100 mt-1">
+                ₹{(totalLedgerIncomeGst - totalLedgerExpenseGst).toLocaleString()}
+              </p>
+              <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">Income GST - Expense GST</p>
+            </GlassCard>
+          </div>
+
+          {/* Ledger Table Section */}
+          <GlassCard>
+            <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between pb-4 gap-4">
+              <div>
+                <CardTitle className="text-xl font-bold">Client Ledger Records</CardTitle>
+                <CardDescription>Comprehensive client-wise breakdown of both Income and Expense transactions</CardDescription>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePreviewPDF('Client Ledger Records', ledgerEntries)}
+                className="flex items-center gap-2 border-primary/20 hover:bg-primary/5"
+              >
+                <FileText className="h-4 w-4 text-primary" />
+                <span>Download PDF</span>
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {/* Filters */}
+              <div className="flex flex-wrap gap-3 mb-6 bg-muted/30 p-3 rounded-lg border border-border/50">
+                <Select value={ledgerFilters.clientName} onValueChange={v => setLedgerFilters({ ...ledgerFilters, clientName: v })}>
+                  <SelectTrigger className="w-[220px]"><SelectValue placeholder="All Clients" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="All">All Clients</SelectItem>
+                    {getUniqueValues([...incomes, ...expenses], 'clientName').map((c: any) => c && <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+
+                <Select value={ledgerFilters.month} onValueChange={v => setLedgerFilters({ ...ledgerFilters, month: v })}>
+                  <SelectTrigger className="w-[140px]"><SelectValue placeholder="Month" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="All">All Months</SelectItem>
+                    {getUniqueValues([...incomes, ...expenses], 'month').map((m: any) => m && <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+
+                <Select value={ledgerFilters.year} onValueChange={v => setLedgerFilters({ ...ledgerFilters, year: v })}>
+                  <SelectTrigger className="w-[120px]"><SelectValue placeholder="Year" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="All">All Years</SelectItem>
+                    {getUniqueValues([...incomes, ...expenses], 'year').map((y: any) => y && <SelectItem key={y} value={y}>{y}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+
+                {(ledgerFilters.clientName !== 'All' || ledgerFilters.month !== 'All' || ledgerFilters.year !== 'All') && (
+                  <Button variant="ghost" size="sm" onClick={() => setLedgerFilters({ clientName: 'All', month: 'All', year: 'All' })} className="text-muted-foreground">
+                    Reset
+                  </Button>
+                )}
+              </div>
+
+              {/* Ledger Table */}
+              <div className="rounded-md border overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/60">
+                      <TableHead className="font-semibold">Date</TableHead>
+                      <TableHead className="font-semibold">Type</TableHead>
+                      <TableHead className="font-semibold">Client Name</TableHead>
+                      <TableHead className="font-semibold">Category</TableHead>
+                      <TableHead className="font-semibold">Remarks</TableHead>
+                      <TableHead className="text-right font-semibold">Amount</TableHead>
+                      <TableHead className="text-right font-semibold">GST</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {ledgerEntries.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                          No ledger records found matching the filters.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      ledgerEntries.map((item) => (
+                        <TableRow
+                          key={`${item.type}-${item.id}`}
+                          className={
+                            item.type === 'Income'
+                              ? 'bg-green-100/70 hover:bg-green-200/80 dark:bg-green-950/30 dark:hover:bg-green-900/40 text-green-950 dark:text-green-200 border-l-4 border-l-green-600'
+                              : 'bg-red-100/70 hover:bg-red-200/80 dark:bg-red-950/30 dark:hover:bg-red-900/40 text-red-950 dark:text-red-200 border-l-4 border-l-red-600'
+                          }
+                        >
+                          <TableCell className="font-medium">{formatDate(item.date)}</TableCell>
+                          <TableCell>
+                            <span
+                              className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ${
+                                item.type === 'Income'
+                                  ? 'bg-green-600 text-white dark:bg-green-500 dark:text-green-950'
+                                  : 'bg-red-600 text-white dark:bg-red-500 dark:text-red-950'
+                              }`}
+                            >
+                              {item.type}
+                            </span>
+                          </TableCell>
+                          <TableCell className="font-semibold">{item.clientName}</TableCell>
+                          <TableCell>{item.category}</TableCell>
+                          <TableCell className="max-w-[200px] truncate" title={item.remarks}>{item.remarks}</TableCell>
+                          <TableCell className="text-right font-bold">₹{item.amount.toLocaleString()}</TableCell>
+                          <TableCell className="text-right font-medium">
+                            {item.gstAmount ? `₹${item.gstAmount.toLocaleString()}` : '-'}
+                          </TableCell>
+                        </TableRow>
+                      ))
                     )}
                   </TableBody>
                 </Table>
