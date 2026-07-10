@@ -1358,7 +1358,7 @@ const AdminAccountsPage = () => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => handlePreviewPDF('Client Ledger Records', ledgerEntries)}
+                onClick={() => handlePreviewPDF(ledgerEntries, 'Client Ledger Records')}
                 className="flex items-center gap-2 border-primary/20 hover:bg-primary/5"
               >
                 <FileText className="h-4 w-4 text-primary" />
