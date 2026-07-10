@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { GlassCard, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { GlassCard, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -536,37 +536,37 @@ const AdminAccountsPage = () => {
   const ledgerEntries = [
     ...incomes.map(inc => ({
       id: inc.id,
-      date: inc.date,
+      date: inc.date || '',
       clientName: inc.clientName || '-',
       category: inc.category || '-',
-      amount: inc.amount,
-      gstAmount: inc.gstAmount || 0,
+      amount: Number(inc.amount) || 0,
+      gstAmount: Number(inc.gstAmount) || 0,
       remarks: inc.remarks || '-',
       type: 'Income' as const,
-      month: inc.month,
-      year: inc.year
+      month: inc.month || '',
+      year: inc.year || ''
     })),
     ...expenses.map(exp => ({
       id: exp.id,
-      date: exp.date,
+      date: exp.date || '',
       clientName: exp.clientName || '-',
       category: exp.category || '-',
-      amount: exp.amount,
-      gstAmount: exp.gstAmount || 0,
+      amount: Number(exp.amount) || 0,
+      gstAmount: Number(exp.gstAmount) || 0,
       remarks: exp.remarks || '-',
       type: 'Expense' as const,
-      month: exp.month,
-      year: exp.year
+      month: exp.month || '',
+      year: exp.year || ''
     }))
   ].filter(entry => {
     return (ledgerFilters.clientName === 'All' || entry.clientName === ledgerFilters.clientName) &&
            (ledgerFilters.month === 'All' || entry.month === ledgerFilters.month) &&
            (ledgerFilters.year === 'All' || entry.year === ledgerFilters.year);
-  }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }).sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime());
 
-  const totalLedgerIncome = ledgerEntries.filter(e => e.type === 'Income').reduce((sum, e) => sum + e.amount, 0);
+  const totalLedgerIncome = ledgerEntries.filter(e => e.type === 'Income').reduce((sum, e) => sum + (e.amount || 0), 0);
   const totalLedgerIncomeGst = ledgerEntries.filter(e => e.type === 'Income').reduce((sum, e) => sum + (e.gstAmount || 0), 0);
-  const totalLedgerExpense = ledgerEntries.filter(e => e.type === 'Expense').reduce((sum, e) => sum + e.amount, 0);
+  const totalLedgerExpense = ledgerEntries.filter(e => e.type === 'Expense').reduce((sum, e) => sum + (e.amount || 0), 0);
   const totalLedgerExpenseGst = ledgerEntries.filter(e => e.type === 'Expense').reduce((sum, e) => sum + (e.gstAmount || 0), 0);
 
   // Overview Totals
