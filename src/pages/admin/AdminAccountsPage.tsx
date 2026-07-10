@@ -179,7 +179,7 @@ const AdminAccountsPage = () => {
   const [bankDeposits, setBankDeposits] = useState<BankDeposit[]>([]);
 
   // Income Form State
-  const [incomeForm, setIncomeForm] = useState({ date: '', clientName: '', paymentMethod: '', bank: '', amount: '', remarks: '', invoicePrefix: 'INV', invoiceNumber: '', rfNo: '', isGst: false });
+  const [incomeForm, setIncomeForm] = useState({ date: '', clientName: '', category: '', paymentMethod: '', bank: '', amount: '', remarks: '', invoicePrefix: 'INV', invoiceNumber: '', rfNo: '', isGst: false });
   
   // Expense Form State
   const [expenseForm, setExpenseForm] = useState({ date: '', category: '', bank: '', clientName: '', amount: '', remarks: '', rfNo: '', isGst: false });
@@ -217,7 +217,7 @@ const AdminAccountsPage = () => {
   const [showBankDepositForm, setShowBankDepositForm] = useState(true);
 
   // Filters
-  const [incomeFilters, setIncomeFilters] = useState({ clientName: 'All', paymentMethod: 'All', bank: 'All', month: 'All', year: 'All', invoiceNumber: '', startDate: '', endDate: '' });
+  const [incomeFilters, setIncomeFilters] = useState({ clientName: 'All', category: 'All', paymentMethod: 'All', bank: 'All', month: 'All', year: 'All', invoiceNumber: '', startDate: '', endDate: '' });
   const [expenseFilters, setExpenseFilters] = useState({ category: 'All', clientName: 'All', month: 'All', year: 'All', startDate: '', endDate: '' });
   const [bankDepositFilters, setBankDepositFilters] = useState({ type: 'All', month: 'All', year: 'All', startDate: '', endDate: '' });
   const [overviewFilters, setOverviewFilters] = useState({ month: 'All', year: 'All' });
@@ -319,6 +319,7 @@ const AdminAccountsPage = () => {
       await accountService.createIncome({
         date: incomeForm.date,
         clientName: incomeForm.clientName,
+        category: incomeForm.category,
         paymentMethod: incomeForm.paymentMethod,
         bank: incomeForm.bank,
         amount: amountVal,
@@ -332,7 +333,7 @@ const AdminAccountsPage = () => {
         rfNo: incomeForm.rfNo || undefined
       });
       toast({ title: 'Income added successfully' });
-      setIncomeForm({ date: '', clientName: '', paymentMethod: '', bank: '', amount: '', remarks: '', invoicePrefix: 'INV', invoiceNumber: '', rfNo: '', isGst: false });
+      setIncomeForm({ date: '', clientName: '', category: '', paymentMethod: '', bank: '', amount: '', remarks: '', invoicePrefix: 'INV', invoiceNumber: '', rfNo: '', isGst: false });
       loadData();
     } catch (err) {
       toast({ title: 'Failed to add income', variant: 'destructive' });
@@ -507,6 +508,7 @@ const AdminAccountsPage = () => {
     const matchInvoice = !incomeFilters.invoiceNumber || (inc.invoiceNumber && inc.invoiceNumber.toLowerCase().includes(incomeFilters.invoiceNumber.toLowerCase()));
     const matchDateRange = isDateInRange(inc.date, incomeFilters.startDate, incomeFilters.endDate);
     return matchDateRange && (incomeFilters.clientName === 'All' || inc.clientName === incomeFilters.clientName) &&
+           (incomeFilters.category === 'All' || inc.category === incomeFilters.category) &&
            (incomeFilters.paymentMethod === 'All' || inc.paymentMethod === incomeFilters.paymentMethod) &&
            (incomeFilters.bank === 'All' || inc.bank === incomeFilters.bank) &&
            (incomeFilters.month === 'All' || inc.month === incomeFilters.month) &&
@@ -562,9 +564,9 @@ const AdminAccountsPage = () => {
     let tableData: any[][] = [];
 
     if (title === 'Income Records') {
-      headers = ['Date', 'Client Name', 'Mode of Payment', 'Deposited Bank', 'Ref No.', 'Month', 'Year', 'Invoice No.', 'Remarks', 'Amount', 'GST'];
+      headers = ['Date', 'Client Name', 'Category', 'Mode of Payment', 'Deposited Bank', 'Ref No.', 'Month', 'Year', 'Invoice No.', 'Remarks', 'Amount', 'GST'];
       tableData = data.map(row => [
-        formatDate(row.date), row.clientName, row.paymentMethod, row.bank, row.rfNo || '-', row.month, row.year, row.invoiceNumber || '-', row.remarks || '-', row.amount, row.gstAmount ? `₹${row.gstAmount}` : '-'
+        formatDate(row.date), row.clientName, row.category || '-', row.paymentMethod, row.bank, row.rfNo || '-', row.month, row.year, row.invoiceNumber || '-', row.remarks || '-', row.amount, row.gstAmount ? `₹${row.gstAmount}` : '-'
       ]);
     } else if (title === 'Expense Records') {
       headers = ['Date', 'Client Name', 'Category', 'Bank', 'Ref No.', 'Month', 'Year', 'Remarks', 'Amount', 'GST'];
@@ -683,6 +685,15 @@ const AdminAccountsPage = () => {
                       onChange={v => setIncomeForm({ ...incomeForm, clientName: v })}
                       suggestions={clients}
                       placeholder="Type client name..."
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Category</Label>
+                    <Autocomplete
+                      value={incomeForm.category}
+                      onChange={v => setIncomeForm({ ...incomeForm, category: v })}
+                      suggestions={categories}
+                      placeholder="Type category..."
                     />
                   </div>
                   <div className="space-y-2">
@@ -856,6 +867,7 @@ const AdminAccountsPage = () => {
                     <TableRow className="bg-green-100 hover:bg-green-200 text-green-900">
                       <TableHead className="text-green-900 font-semibold">Date</TableHead>
                       <TableHead className="text-green-900 font-semibold">Client Name</TableHead>
+                      <TableHead className="text-green-900 font-semibold">Category</TableHead>
                       <TableHead className="text-green-900 font-semibold">Mode of Payment</TableHead>
                       <TableHead className="text-green-900 font-semibold">Deposited Bank</TableHead>
                       <TableHead className="text-green-900 font-semibold">Ref No.</TableHead>
@@ -873,6 +885,7 @@ const AdminAccountsPage = () => {
                       <TableRow key={inc.id}>
                         <TableCell>{formatDate(inc.date)}</TableCell>
                         <TableCell className="font-medium">{inc.clientName}</TableCell>
+                        <TableCell>{inc.category || '-'}</TableCell>
                         <TableCell>{inc.paymentMethod}</TableCell>
                         <TableCell>{inc.bank}</TableCell>
                         <TableCell>{inc.rfNo || '-'}</TableCell>
@@ -1418,6 +1431,15 @@ const AdminAccountsPage = () => {
                     onChange={v => setEditingIncome({ ...editingIncome, clientName: v })}
                     suggestions={clients}
                     placeholder="Type client name..."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Category</Label>
+                  <Autocomplete
+                    value={editingIncome.category || ''}
+                    onChange={v => setEditingIncome({ ...editingIncome, category: v })}
+                    suggestions={categories}
+                    placeholder="Type category..."
                   />
                 </div>
                 <div className="space-y-2">

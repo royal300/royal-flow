@@ -94,6 +94,7 @@ export interface Income {
   id: string;
   date: string;
   clientName: string;
+  category?: string;
   paymentMethod: string;
   bank: string;
   amount: number;

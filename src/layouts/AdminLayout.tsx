@@ -12,7 +12,10 @@ import {
   LogOut,
   Menu,
   X,
-  Wallet
+  Wallet,
+  ChevronLeft,
+  PanelLeftClose,
+  PanelLeftOpen
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -34,6 +37,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -52,80 +56,98 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
 
       {/* Sidebar */}
       <aside className={cn(
-        "fixed lg:static inset-y-0 left-0 z-50 w-64 bg-card border-r border-border flex flex-col transition-transform duration-300",
-        sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+        "fixed lg:static inset-y-0 left-0 z-50 bg-card border-r border-border flex flex-col transition-all duration-300 ease-in-out overflow-hidden shrink-0",
+        sidebarOpen ? "translate-x-0 w-64" : "-translate-x-full lg:translate-x-0",
+        isCollapsed ? "lg:w-0 lg:border-r-0" : "lg:w-64"
       )}>
-        {/* Logo */}
-        <div className="h-16 flex items-center justify-between px-4 border-b border-border">
-          <Link to="/admin" className="flex items-center">
-            <img src="/logo.png" alt="Royal 300" className="h-10" />
-          </Link>
-          <button
-            onClick={() => setSidebarOpen(false)}
-            className="lg:hidden p-1 text-muted-foreground hover:text-foreground"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Navigation */}
-        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-          {navItems.map((item) => {
-            const isActive = location.pathname === item.path;
-            return (
-              <Link
-                key={item.path}
-                to={item.path}
-                onClick={() => setSidebarOpen(false)}
-                className={cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
-                  isActive
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                )}
+        <div className="w-64 flex flex-col h-full">
+          {/* Logo */}
+          <div className="h-16 flex items-center justify-between px-4 border-b border-border shrink-0">
+            <Link to="/admin" className="flex items-center">
+              <img src="/logo.png" alt="Royal 300" className="h-10" />
+            </Link>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setIsCollapsed(true)}
+                className="hidden lg:flex p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                title="Collapse Sidebar"
               >
-                <item.icon className="w-5 h-5" />
-                {item.label}
-              </Link>
-            );
-          })}
-        </nav>
-
-        {/* User section */}
-        <div className="p-4 border-t border-border">
-          <div className="flex items-center gap-3 mb-3 px-2">
-            <div className="w-9 h-9 rounded-full bg-destructive/10 flex items-center justify-center">
-              <span className="text-destructive font-semibold text-sm">A</span>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{session?.name}</p>
-              <p className="text-xs text-muted-foreground truncate">Administrator</p>
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => setSidebarOpen(false)}
+                className="lg:hidden p-1 text-muted-foreground hover:text-foreground"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-full justify-start text-muted-foreground hover:text-destructive"
-            onClick={handleLogout}
-          >
-            <LogOut className="w-4 h-4 mr-2" />
-            Sign Out
-          </Button>
+
+          {/* Navigation */}
+          <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+            {navItems.map((item) => {
+              const isActive = location.pathname === item.path;
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  onClick={() => setSidebarOpen(false)}
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
+                    isActive
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  )}
+                >
+                  <item.icon className="w-5 h-5" />
+                  {item.label}
+                </Link>
+              );
+            })}
+          </nav>
+
+          {/* User section */}
+          <div className="p-4 border-t border-border">
+            <div className="flex items-center gap-3 mb-3 px-2">
+              <div className="w-9 h-9 rounded-full bg-destructive/10 flex items-center justify-center">
+                <span className="text-destructive font-semibold text-sm">A</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">{session?.name}</p>
+                <p className="text-xs text-muted-foreground truncate">Administrator</p>
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full justify-start text-muted-foreground hover:text-destructive"
+              onClick={handleLogout}
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Sign Out
+            </Button>
+          </div>
         </div>
       </aside>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col min-h-screen w-full">
+      <div className="flex-1 flex flex-col min-h-screen w-full min-w-0">
         {/* Top bar */}
         <header className="h-16 bg-card border-b border-border flex items-center justify-between px-4 lg:px-6 sticky top-0 z-30">
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="lg:hidden p-2 text-muted-foreground hover:text-foreground"
-          >
-            <Menu className="w-5 h-5" />
-          </button>
-
-          <div className="flex-1 lg:ml-0">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="lg:hidden p-2 text-muted-foreground hover:text-foreground"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => setIsCollapsed(!isCollapsed)}
+              className="hidden lg:flex items-center justify-center p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+            >
+              {isCollapsed ? <PanelLeftOpen className="w-5 h-5" /> : <PanelLeftClose className="w-5 h-5" />}
+            </button>
             <h1 className="text-lg font-semibold">
               {navItems.find(item => item.path === location.pathname)?.label || 'Dashboard'}
             </h1>

@@ -84,6 +84,7 @@ const incomeSchema = new mongoose.Schema({
   id: { type: String, required: true, unique: true },
   date: String,
   clientName: String,
+  category: String,
   paymentMethod: String,
   bank: String,
   amount: Number,
