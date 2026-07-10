@@ -29,6 +29,14 @@ const Autocomplete = ({ value, onChange, suggestions, placeholder = "Type to sea
   const containerRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
+  const cleanSuggestions = Array.from(
+    new Set(
+      suggestions
+        .filter(s => s !== undefined && s !== null && s !== '')
+        .map(String)
+    )
+  );
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
@@ -53,27 +61,27 @@ const Autocomplete = ({ value, onChange, suggestions, placeholder = "Type to sea
     onChange(val);
     setActiveIndex(-1);
     if (val.trim().length >= 1) {
-      const filtered = suggestions.filter(s =>
+      const filtered = cleanSuggestions.filter(s =>
         s.toLowerCase().includes(val.toLowerCase())
       );
       setFilteredSuggestions(filtered);
       setIsOpen(true);
     } else {
-      setFilteredSuggestions([]);
-      setIsOpen(false);
+      setFilteredSuggestions(cleanSuggestions);
+      setIsOpen(true);
     }
   };
 
-  const handleFocus = () => {
+  const handleOpenDropdown = () => {
     setActiveIndex(-1);
     if (value.trim().length >= 1) {
-      const filtered = suggestions.filter(s =>
+      const filtered = cleanSuggestions.filter(s =>
         s.toLowerCase().includes(value.toLowerCase())
       );
-      setFilteredSuggestions(filtered);
+      setFilteredSuggestions(filtered.length > 0 ? filtered : cleanSuggestions);
       setIsOpen(true);
-    } else if (suggestions.length > 0) {
-      setFilteredSuggestions(suggestions);
+    } else {
+      setFilteredSuggestions(cleanSuggestions);
       setIsOpen(true);
     }
   };
@@ -86,10 +94,10 @@ const Autocomplete = ({ value, onChange, suggestions, placeholder = "Type to sea
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (!isOpen) {
-      if ((e.key === "ArrowDown" || e.key === "ArrowUp") && suggestions.length > 0) {
+      if ((e.key === "ArrowDown" || e.key === "ArrowUp") && cleanSuggestions.length > 0) {
         const filtered = value.trim().length >= 1
-          ? suggestions.filter(s => s.toLowerCase().includes(value.toLowerCase()))
-          : suggestions;
+          ? cleanSuggestions.filter(s => s.toLowerCase().includes(value.toLowerCase()))
+          : cleanSuggestions;
         if (filtered.length > 0) {
           e.preventDefault();
           setFilteredSuggestions(filtered);
@@ -129,11 +137,24 @@ const Autocomplete = ({ value, onChange, suggestions, placeholder = "Type to sea
         type="text"
         value={value}
         onChange={handleInputChange}
-        onFocus={handleFocus}
+        onFocus={handleOpenDropdown}
+        onClick={handleOpenDropdown}
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
-        className="w-full bg-background border border-input rounded-md shadow-sm h-10"
+        className="w-full bg-background border border-input rounded-md shadow-sm h-10 pr-8"
       />
+      <div
+        onClick={() => {
+          if (!isOpen) {
+            handleOpenDropdown();
+          } else {
+            setIsOpen(false);
+          }
+        }}
+        className="absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer p-1 text-muted-foreground hover:text-foreground"
+      >
+        <ChevronDown className="w-4 h-4" />
+      </div>
       {isOpen && filteredSuggestions.length > 0 && (
         <div ref={listRef} className="absolute z-50 w-full mt-1 bg-popover text-popover-foreground border rounded-md shadow-md max-h-60 overflow-auto">
           {filteredSuggestions.map((s, idx) => (
@@ -881,25 +902,25 @@ const AdminAccountsPage = () => {
                     placeholder="Filter Client..."
                     value={incomeFilters.clientName === 'All' ? '' : incomeFilters.clientName}
                     onChange={v => setIncomeFilters({ ...incomeFilters, clientName: v || 'All' })}
-                    suggestions={getUniqueValues(incomes, 'clientName')}
+                    suggestions={[...clients, ...getUniqueValues(incomes, 'clientName')]}
                   />
                   <Autocomplete
                     placeholder="Filter Category..."
                     value={incomeFilters.category === 'All' ? '' : incomeFilters.category}
                     onChange={v => setIncomeFilters({ ...incomeFilters, category: v || 'All' })}
-                    suggestions={getUniqueValues(incomes, 'category')}
+                    suggestions={[...categories, ...getUniqueValues(incomes, 'category')]}
                   />
                   <Autocomplete
                     placeholder="Filter Mode..."
                     value={incomeFilters.paymentMethod === 'All' ? '' : incomeFilters.paymentMethod}
                     onChange={v => setIncomeFilters({ ...incomeFilters, paymentMethod: v || 'All' })}
-                    suggestions={getUniqueValues(incomes, 'paymentMethod')}
+                    suggestions={[...paymentMethods, ...getUniqueValues(incomes, 'paymentMethod')]}
                   />
                   <Autocomplete
                     placeholder="Filter Bank..."
                     value={incomeFilters.bank === 'All' ? '' : incomeFilters.bank}
                     onChange={v => setIncomeFilters({ ...incomeFilters, bank: v || 'All' })}
-                    suggestions={getUniqueValues(incomes, 'bank')}
+                    suggestions={[...banks, ...getUniqueValues(incomes, 'bank')]}
                   />
                   <Autocomplete
                     placeholder="Filter Month..."
@@ -1100,13 +1121,13 @@ const AdminAccountsPage = () => {
                     placeholder="Filter Category..."
                     value={expenseFilters.category === 'All' ? '' : expenseFilters.category}
                     onChange={v => setExpenseFilters({ ...expenseFilters, category: v || 'All' })}
-                    suggestions={getUniqueValues(expenses, 'category')}
+                    suggestions={[...categories, ...getUniqueValues(expenses, 'category')]}
                   />
                   <Autocomplete
                     placeholder="Filter Client..."
                     value={expenseFilters.clientName === 'All' ? '' : expenseFilters.clientName}
                     onChange={v => setExpenseFilters({ ...expenseFilters, clientName: v || 'All' })}
-                    suggestions={getUniqueValues(expenses, 'clientName').filter(Boolean)}
+                    suggestions={[...clients, ...getUniqueValues(expenses, 'clientName')]}
                   />
                   <Autocomplete
                     placeholder="Filter Month..."
@@ -1395,7 +1416,7 @@ const AdminAccountsPage = () => {
                     placeholder="Search Client..."
                     value={ledgerFilters.clientName === 'All' ? '' : ledgerFilters.clientName}
                     onChange={v => setLedgerFilters({ ...ledgerFilters, clientName: v || 'All' })}
-                    suggestions={getUniqueValues([...incomes, ...expenses], 'clientName').filter(Boolean)}
+                    suggestions={[...clients, ...getUniqueValues([...incomes, ...expenses], 'clientName')]}
                   />
                 </div>
 
