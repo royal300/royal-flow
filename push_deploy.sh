@@ -24,8 +24,13 @@ echo "🖥️  Triggering remote deployment on VPS..."
 VPS_HOST="staff.royal300.com"
 SSH_USER="root"
 
-# Run the remote deploy script
-ssh $SSH_USER@$VPS_HOST "cd /var/www/royal300_staff_management && chmod +x deploy.sh && ./deploy.sh"
+# Run the remote deploy script using expect automation
+if [ -f "./deploy.exp" ]; then
+    chmod +x deploy.exp
+    /usr/bin/expect -f deploy.exp
+else
+    ssh $SSH_USER@$VPS_HOST "cd /var/www/royal300_staff_management && chmod +x deploy.sh && ./deploy.sh"
+fi
 
 if [ $? -eq 0 ]; then
     echo "✅ Success! Deployment complete."
