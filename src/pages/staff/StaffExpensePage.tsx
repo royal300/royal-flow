@@ -19,6 +19,7 @@ const StaffExpensePage = () => {
   const [categories, setCategories] = useState<string[]>([]);
   const [banks, setBanks] = useState<string[]>([]);
   const [clients, setClients] = useState<string[]>([]);
+  const [paymentMethods, setPaymentMethods] = useState<string[]>([]);
 
   // Expense Form State
   const [showExpenseForm, setShowExpenseForm] = useState(true);
@@ -27,6 +28,7 @@ const StaffExpensePage = () => {
     category: '',
     bank: '',
     clientName: '',
+    paymentMethod: '',
     amount: '',
     remarks: '',
     rfNo: '',
@@ -42,27 +44,32 @@ const StaffExpensePage = () => {
 
   const fetchData = async () => {
     try {
-      const [pendingData, categoriesData, banksData, clientsData, allExpenses] = await Promise.all([
+      const [pendingData, categoriesSetting, banksSetting, clientsSetting, methodsSetting, allExpenses] = await Promise.all([
         session?.id ? accountService.getPendingExpenses(session.id) : accountService.getPendingExpenses(),
-        settingsService.getCategories(),
-        settingsService.getBanks(),
-        settingsService.getClients(),
+        settingsService.get('accountCategories'),
+        settingsService.get('accountBanks'),
+        settingsService.get('accountClients'),
+        settingsService.get('accountPaymentMethods'),
         accountService.getExpenses()
       ]);
 
       setPendingExpenses(pendingData || []);
       
-      const masterCats = categoriesData ? categoriesData.map(c => c.name) : [];
+      const masterCats = Array.isArray(categoriesSetting?.value) ? categoriesSetting.value : [];
       const expCats = Array.from(new Set(allExpenses.map(e => e.category).filter(Boolean) as string[]));
       setCategories(Array.from(new Set([...masterCats, ...expCats])));
 
-      const masterBanks = banksData ? banksData.map(b => b.name) : [];
+      const masterBanks = Array.isArray(banksSetting?.value) ? banksSetting.value : [];
       const expBanks = Array.from(new Set(allExpenses.map(e => e.bank).filter(Boolean) as string[]));
       setBanks(Array.from(new Set([...masterBanks, ...expBanks])));
 
-      const masterClients = clientsData ? clientsData.map(c => c.name) : [];
+      const masterClients = Array.isArray(clientsSetting?.value) ? clientsSetting.value : [];
       const expClients = Array.from(new Set(allExpenses.map(e => e.clientName).filter(Boolean) as string[]));
       setClients(Array.from(new Set([...masterClients, ...expClients])));
+
+      const masterMethods = Array.isArray(methodsSetting?.value) ? methodsSetting.value : [];
+      const expMethods = Array.from(new Set(allExpenses.map(e => e.paymentMethod).filter(Boolean) as string[]));
+      setPaymentMethods(Array.from(new Set([...masterMethods, ...expMethods])));
     } catch (error) {
       console.error("Error loading staff expense data:", error);
       toast({ title: "Failed to load expense data", variant: "destructive" });
@@ -92,6 +99,7 @@ const StaffExpensePage = () => {
         category: expenseForm.category,
         bank: expenseForm.bank || undefined,
         clientName: expenseForm.clientName || undefined,
+        paymentMethod: expenseForm.paymentMethod || undefined,
         rfNo: expenseForm.rfNo || undefined,
         amount: amountVal,
         isGst: expenseForm.isGst,
@@ -103,7 +111,7 @@ const StaffExpensePage = () => {
       });
 
       toast({ title: 'Expense submitted for admin approval successfully' });
-      setExpenseForm({ date: '', category: '', bank: '', clientName: '', amount: '', remarks: '', rfNo: '', isGst: false });
+      setExpenseForm({ date: '', category: '', bank: '', clientName: '', paymentMethod: '', amount: '', remarks: '', rfNo: '', isGst: false });
       fetchData();
     } catch (error) {
       console.error('Error adding expense:', error);
@@ -207,6 +215,15 @@ const StaffExpensePage = () => {
                 />
               </div>
               <div className="space-y-2">
+                <Label>Payment Mode</Label>
+                <Autocomplete
+                  value={expenseForm.paymentMethod}
+                  onChange={v => setExpenseForm({ ...expenseForm, paymentMethod: v })}
+                  suggestions={paymentMethods}
+                  placeholder="Type payment mode..."
+                />
+              </div>
+              <div className="space-y-2">
                 <Label>Bank</Label>
                 <Autocomplete
                   value={expenseForm.bank}
@@ -278,6 +295,7 @@ const StaffExpensePage = () => {
                   <TableHead>Date</TableHead>
                   <TableHead>Client Name</TableHead>
                   <TableHead>Category</TableHead>
+                  <TableHead>Payment Mode</TableHead>
                   <TableHead>Bank</TableHead>
                   <TableHead>Ref No.</TableHead>
                   <TableHead>Remarks</TableHead>
@@ -290,7 +308,7 @@ const StaffExpensePage = () => {
               <TableBody>
                 {pendingExpenses.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
                       No pending expenses found. Submit your first expense using the form above.
                     </TableCell>
                   </TableRow>
@@ -330,6 +348,17 @@ const StaffExpensePage = () => {
                               className="w-[150px]"
                             />
                           ) : item.category}
+                        </TableCell>
+                        <TableCell>
+                          {isEditing ? (
+                            <Autocomplete
+                              value={editingExpense.paymentMethod || ''}
+                              onChange={v => setEditingExpense({ ...editingExpense, paymentMethod: v })}
+                              suggestions={paymentMethods}
+                              placeholder="Mode..."
+                              className="w-[140px]"
+                            />
+                          ) : (item.paymentMethod || '-')}
                         </TableCell>
                         <TableCell>
                           {isEditing ? (

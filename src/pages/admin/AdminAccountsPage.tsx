@@ -204,7 +204,7 @@ const AdminAccountsPage = () => {
   const [incomeForm, setIncomeForm] = useState({ date: '', clientName: '', category: '', paymentMethod: '', bank: '', amount: '', remarks: '', invoicePrefix: 'INV', invoiceNumber: '', rfNo: '', chequeNo: '', isGst: false });
   
   // Expense Form State
-  const [expenseForm, setExpenseForm] = useState({ date: '', category: '', bank: '', clientName: '', amount: '', remarks: '', rfNo: '', isGst: false });
+  const [expenseForm, setExpenseForm] = useState({ date: '', category: '', bank: '', clientName: '', paymentMethod: '', amount: '', remarks: '', rfNo: '', isGst: false });
 
   // Bank Deposit Form State
   const [bankDepositForm, setBankDepositForm] = useState({ date: '', type: 'Cash', bank: '', amount: '', chequeNo: '', bankName: '', remarks: '' });
@@ -385,6 +385,7 @@ const AdminAccountsPage = () => {
       await accountService.createExpense({
         date: expenseForm.date,
         category: expenseForm.category,
+        paymentMethod: expenseForm.paymentMethod || undefined,
         bank: expenseForm.bank,
         clientName: expenseForm.clientName || undefined,
         rfNo: expenseForm.rfNo || undefined,
@@ -397,7 +398,7 @@ const AdminAccountsPage = () => {
         remarks: expenseForm.remarks
       });
       toast({ title: 'Expense added successfully' });
-      setExpenseForm({ date: '', category: '', bank: '', clientName: '', amount: '', remarks: '', rfNo: '', isGst: false });
+      setExpenseForm({ date: '', category: '', bank: '', clientName: '', paymentMethod: '', amount: '', remarks: '', rfNo: '', isGst: false });
       loadData();
     } catch (err) {
       toast({ title: 'Failed to add expense', variant: 'destructive' });
@@ -1111,6 +1112,15 @@ const AdminAccountsPage = () => {
                     />
                   </div>
                   <div className="space-y-2">
+                    <Label>Payment Mode</Label>
+                    <Autocomplete
+                      value={expenseForm.paymentMethod}
+                      onChange={v => setExpenseForm({ ...expenseForm, paymentMethod: v })}
+                      suggestions={paymentMethods}
+                      placeholder="Type payment mode..."
+                    />
+                  </div>
+                  <div className="space-y-2">
                     <Label>Bank</Label>
                     <Autocomplete
                       value={expenseForm.bank}
@@ -1603,6 +1613,7 @@ const AdminAccountsPage = () => {
                       <TableHead>Date</TableHead>
                       <TableHead>Client Name</TableHead>
                       <TableHead>Category</TableHead>
+                      <TableHead>Payment Mode</TableHead>
                       <TableHead>Bank</TableHead>
                       <TableHead>Ref No.</TableHead>
                       <TableHead>Remarks</TableHead>
@@ -1614,7 +1625,7 @@ const AdminAccountsPage = () => {
                   <TableBody>
                     {pendingExpenses.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={10} className="text-center py-12 text-muted-foreground">
+                        <TableCell colSpan={11} className="text-center py-12 text-muted-foreground">
                           No pending expenses found. All staff submissions have been approved.
                         </TableCell>
                       </TableRow>
@@ -1657,6 +1668,17 @@ const AdminAccountsPage = () => {
                                   className="w-[140px]"
                                 />
                               ) : item.category}
+                            </TableCell>
+                            <TableCell>
+                              {isEditing ? (
+                                <Autocomplete
+                                  value={editingPendingExpense.paymentMethod || ''}
+                                  onChange={v => setEditingPendingExpense({ ...editingPendingExpense, paymentMethod: v })}
+                                  suggestions={paymentMethods}
+                                  placeholder="Mode..."
+                                  className="w-[130px]"
+                                />
+                              ) : (item.paymentMethod || '-')}
                             </TableCell>
                             <TableCell>
                               {isEditing ? (

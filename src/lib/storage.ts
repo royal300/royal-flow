@@ -114,6 +114,7 @@ export interface Expense {
   id: string;
   date: string;
   category: string;
+  paymentMethod?: string;
   bank?: string;
   clientName?: string;
   rfNo?: string;
