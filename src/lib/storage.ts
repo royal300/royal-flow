@@ -127,6 +127,12 @@ export interface Expense {
   createdAt: string;
 }
 
+export interface PendingExpense extends Expense {
+  staffId?: string;
+  staffName?: string;
+  updatedAt?: string;
+}
+
 export interface BankDeposit {
   id: string;
   date: string;
@@ -443,6 +449,24 @@ export const accountService = {
   },
   updateExpense: async (id: string, data: Partial<Expense>) => {
     return await api.put<Expense>(`/expense/${id}`, data);
+  },
+
+  // Pending Expense Methods
+  getPendingExpenses: async (staffId?: string): Promise<PendingExpense[]> => {
+    const query = staffId ? `?staffId=${encodeURIComponent(staffId)}` : '';
+    return api.get<PendingExpense[]>(`/pending-expense${query}`);
+  },
+  createPendingExpense: async (expense: Omit<PendingExpense, 'id' | 'createdAt'>): Promise<PendingExpense> => {
+    return await api.post<PendingExpense>('/pending-expense', expense);
+  },
+  deletePendingExpense: async (id: string) => {
+    return await api.delete(`/pending-expense/${id}`);
+  },
+  updatePendingExpense: async (id: string, data: Partial<PendingExpense>) => {
+    return await api.put<PendingExpense>(`/pending-expense/${id}`, data);
+  },
+  approveAllPendingExpenses: async (): Promise<{ success: boolean; count: number }> => {
+    return await api.post<{ success: boolean; count: number }>('/pending-expense/approve-all', {});
   },
 
   // Bank Deposit Methods

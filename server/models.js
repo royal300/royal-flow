@@ -117,6 +117,26 @@ const expenseSchema = new mongoose.Schema({
   createdAt: String
 });
 
+const pendingExpenseSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true },
+  staffId: String,
+  staffName: String,
+  date: String,
+  category: String,
+  bank: String,
+  clientName: String,
+  rfNo: String,
+  amount: Number,
+  isGst: Boolean,
+  gstAmount: Number,
+  withoutGstAmount: Number,
+  month: String,
+  year: String,
+  remarks: String,
+  createdAt: String,
+  updatedAt: String
+});
+
 const bankDepositSchema = new mongoose.Schema({
   id: { type: String, required: true, unique: true },
   date: String,
@@ -139,5 +159,6 @@ module.exports = {
   DailyReport: mongoose.model('DailyReport', dailyReportSchema),
   Income: mongoose.model('Income', incomeSchema),
   Expense: mongoose.model('Expense', expenseSchema),
+  PendingExpense: mongoose.model('PendingExpense', pendingExpenseSchema),
   BankDeposit: mongoose.model('BankDeposit', bankDepositSchema)
 };

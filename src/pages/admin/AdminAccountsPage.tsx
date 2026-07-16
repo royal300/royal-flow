@@ -9,8 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Checkbox } from '@/components/ui/checkbox';
-import { accountService, settingsService, Income, Expense, BankDeposit } from '@/lib/storage';
-import { Trash2, Download, Pencil, ChevronUp, ChevronDown, FileText } from 'lucide-react';
+import { accountService, settingsService, Income, Expense, PendingExpense, BankDeposit } from '@/lib/storage';
+import { Trash2, Download, Pencil, ChevronUp, ChevronDown, FileText, Check, X } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -197,6 +197,7 @@ const AdminAccountsPage = () => {
   // Data State
   const [incomes, setIncomes] = useState<Income[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [pendingExpenses, setPendingExpenses] = useState<PendingExpense[]>([]);
   const [bankDeposits, setBankDeposits] = useState<BankDeposit[]>([]);
 
   // Income Form State
@@ -230,6 +231,7 @@ const AdminAccountsPage = () => {
   // Edit Modals State
   const [editingIncome, setEditingIncome] = useState<Income | null>(null);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+  const [editingPendingExpense, setEditingPendingExpense] = useState<PendingExpense | null>(null);
   const [editingBankDeposit, setEditingBankDeposit] = useState<BankDeposit | null>(null);
 
   // Form Collapse States
@@ -248,7 +250,7 @@ const AdminAccountsPage = () => {
     try {
       const [
         clientsData, methodsData, banksData, categoriesData,
-        incomesData, expensesData, bankDepositsData
+        incomesData, expensesData, bankDepositsData, pendingExpensesData
       ] = await Promise.all([
         settingsService.get('accountClients'),
         settingsService.get('accountPaymentMethods'),
@@ -256,7 +258,8 @@ const AdminAccountsPage = () => {
         settingsService.get('accountCategories'),
         accountService.getIncomes(),
         accountService.getExpenses(),
-        accountService.getBankDeposits()
+        accountService.getBankDeposits(),
+        accountService.getPendingExpenses()
       ]);
 
       setClients(clientsData?.value || []);
@@ -266,6 +269,7 @@ const AdminAccountsPage = () => {
       
       setIncomes(incomesData || []);
       setExpenses(expensesData || []);
+      setPendingExpenses(pendingExpensesData || []);
       setBankDeposits(bankDepositsData || []);
     } catch (error) {
       console.error('Failed to load accounts data', error);
@@ -513,6 +517,58 @@ const AdminAccountsPage = () => {
     }
   };
 
+  const handleApproveAllPendingExpenses = async () => {
+    if (pendingExpenses.length === 0) return;
+    if (!confirm(`Are you sure you want to approve all ${pendingExpenses.length} pending expenses and move them to main expenses?`)) return;
+    try {
+      const result = await accountService.approveAllPendingExpenses();
+      toast({ title: 'Success', description: `All ${result.count || pendingExpenses.length} pending expenses approved and moved to main expenses.` });
+      loadData();
+    } catch (err) {
+      toast({ title: 'Error', description: 'Failed to approve pending expenses', variant: 'destructive' });
+    }
+  };
+
+  const handleDeletePendingExpense = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this pending expense?')) return;
+    try {
+      await accountService.deletePendingExpense(id);
+      toast({ title: 'Pending expense deleted successfully' });
+      loadData();
+    } catch (err) {
+      toast({ title: 'Error', description: 'Failed to delete pending expense', variant: 'destructive' });
+    }
+  };
+
+  const handleUpdatePendingExpense = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingPendingExpense) return;
+    try {
+      const amountVal = Number(editingPendingExpense.amount);
+      const withoutGstVal = editingPendingExpense.isGst ? Number((amountVal / 1.18).toFixed(2)) : amountVal;
+      const gstVal = editingPendingExpense.isGst ? Number((amountVal - withoutGstVal).toFixed(2)) : 0;
+
+      const dateObj = new Date(editingPendingExpense.date);
+      const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+      const month = !isNaN(dateObj.getMonth()) ? monthNames[dateObj.getMonth()] : editingPendingExpense.month;
+      const year = !isNaN(dateObj.getFullYear()) ? dateObj.getFullYear().toString() : editingPendingExpense.year;
+
+      await accountService.updatePendingExpense(editingPendingExpense.id, {
+        ...editingPendingExpense,
+        amount: amountVal,
+        withoutGstAmount: withoutGstVal,
+        gstAmount: gstVal,
+        month,
+        year
+      });
+      toast({ title: 'Pending expense updated successfully' });
+      setEditingPendingExpense(null);
+      loadData();
+    } catch (err) {
+      toast({ title: 'Failed to update pending expense', variant: 'destructive' });
+    }
+  };
+
   const isDateInRange = (dateStr: string, startStr: string, endStr: string) => {
     if (!startStr && !endStr) return true;
     const date = new Date(dateStr);
@@ -677,12 +733,20 @@ const AdminAccountsPage = () => {
       </div>
 
       <Tabs defaultValue="income" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-6 max-w-4xl mb-4 h-auto">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-7 max-w-5xl mb-4 h-auto">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="income">Income</TabsTrigger>
           <TabsTrigger value="expense">Expense</TabsTrigger>
           <TabsTrigger value="bank-deposit">Bank Deposit</TabsTrigger>
           <TabsTrigger value="ledger">Ledger</TabsTrigger>
+          <TabsTrigger value="pending-expense" className="flex items-center gap-1.5">
+            Pending Expense
+            {pendingExpenses.length > 0 && (
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-amber-500 text-white font-bold">
+                {pendingExpenses.length}
+              </span>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
 
@@ -1497,6 +1561,179 @@ const AdminAccountsPage = () => {
                           </TableCell>
                         </TableRow>
                       ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </GlassCard>
+        </TabsContent>
+
+        {/* PENDING EXPENSE TAB */}
+        <TabsContent value="pending-expense" className="space-y-4 mt-4">
+          <GlassCard>
+            <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-4 gap-4">
+              <div>
+                <CardTitle className="text-xl font-bold flex items-center gap-2">
+                  Pending Staff Expenses
+                  {pendingExpenses.length > 0 && (
+                    <span className="px-2.5 py-0.5 rounded-full text-xs bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                      {pendingExpenses.length} Pending
+                    </span>
+                  )}
+                </CardTitle>
+                <CardDescription>Review and edit expenses submitted by staff before approving them into main accounts.</CardDescription>
+              </div>
+              {pendingExpenses.length > 0 && (
+                <Button
+                  onClick={handleApproveAllPendingExpenses}
+                  className="bg-success hover:bg-success/90 text-success-foreground font-semibold flex items-center gap-2 shadow-sm"
+                >
+                  <Check className="h-4 w-4" />
+                  Approve All ({pendingExpenses.length})
+                </Button>
+              )}
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Submitted By</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Client Name</TableHead>
+                      <TableHead>Category</TableHead>
+                      <TableHead>Bank</TableHead>
+                      <TableHead>Ref No.</TableHead>
+                      <TableHead>Remarks</TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead>GST</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {pendingExpenses.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={10} className="text-center py-12 text-muted-foreground">
+                          No pending expenses found. All staff submissions have been approved.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      pendingExpenses.map(item => {
+                        const isEditing = editingPendingExpense?.id === item.id;
+                        return (
+                          <TableRow key={item.id} className="hover:bg-muted/50">
+                            <TableCell className="font-medium text-primary">
+                              {item.staffName || 'Staff Member'}
+                            </TableCell>
+                            <TableCell>
+                              {isEditing ? (
+                                <Input
+                                  type="date"
+                                  className="[&::-webkit-calendar-picker-indicator]:block w-[135px] text-xs h-8"
+                                  value={editingPendingExpense.date}
+                                  onChange={e => setEditingPendingExpense({ ...editingPendingExpense, date: e.target.value })}
+                                />
+                              ) : formatDate(item.date)}
+                            </TableCell>
+                            <TableCell>
+                              {isEditing ? (
+                                <Autocomplete
+                                  value={editingPendingExpense.clientName || ''}
+                                  onChange={v => setEditingPendingExpense({ ...editingPendingExpense, clientName: v })}
+                                  suggestions={clients}
+                                  placeholder="Client..."
+                                  className="w-[140px]"
+                                />
+                              ) : (item.clientName || '-')}
+                            </TableCell>
+                            <TableCell className="font-medium">
+                              {isEditing ? (
+                                <Autocomplete
+                                  value={editingPendingExpense.category}
+                                  onChange={v => setEditingPendingExpense({ ...editingPendingExpense, category: v })}
+                                  suggestions={categories}
+                                  placeholder="Category..."
+                                  className="w-[140px]"
+                                />
+                              ) : item.category}
+                            </TableCell>
+                            <TableCell>
+                              {isEditing ? (
+                                <Autocomplete
+                                  value={editingPendingExpense.bank || ''}
+                                  onChange={v => setEditingPendingExpense({ ...editingPendingExpense, bank: v })}
+                                  suggestions={banks}
+                                  placeholder="Bank..."
+                                  className="w-[130px]"
+                                />
+                              ) : (item.bank || '-')}
+                            </TableCell>
+                            <TableCell>
+                              {isEditing ? (
+                                <Input
+                                  className="w-[100px] text-xs h-8"
+                                  value={editingPendingExpense.rfNo || ''}
+                                  onChange={e => setEditingPendingExpense({ ...editingPendingExpense, rfNo: e.target.value })}
+                                />
+                              ) : (item.rfNo || '-')}
+                            </TableCell>
+                            <TableCell>
+                              {isEditing ? (
+                                <Input
+                                  className="w-[150px] text-xs h-8"
+                                  value={editingPendingExpense.remarks || ''}
+                                  onChange={e => setEditingPendingExpense({ ...editingPendingExpense, remarks: e.target.value })}
+                                />
+                              ) : (item.remarks || '-')}
+                            </TableCell>
+                            <TableCell className="font-semibold text-destructive">
+                              {isEditing ? (
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  className="w-[100px] text-xs h-8"
+                                  value={editingPendingExpense.amount}
+                                  onChange={e => setEditingPendingExpense({ ...editingPendingExpense, amount: Number(e.target.value) || 0 })}
+                                />
+                              ) : `₹${item.amount.toLocaleString()}`}
+                            </TableCell>
+                            <TableCell>
+                              {isEditing ? (
+                                <div className="flex items-center gap-1">
+                                  <Checkbox
+                                    id={`admin-edit-gst-${item.id}`}
+                                    checked={editingPendingExpense.isGst}
+                                    onCheckedChange={(checked) => setEditingPendingExpense({ ...editingPendingExpense, isGst: checked === true })}
+                                  />
+                                  <Label htmlFor={`admin-edit-gst-${item.id}`} className="text-xs">GST</Label>
+                                </div>
+                              ) : (item.isGst && item.gstAmount ? `₹${item.gstAmount}` : '-')}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {isEditing ? (
+                                <div className="flex justify-end gap-1">
+                                  <Button size="sm" variant="ghost" onClick={handleUpdatePendingExpense} className="h-8 w-8 p-0 text-success hover:text-success/80">
+                                    <Check className="h-4 w-4" />
+                                  </Button>
+                                  <Button size="sm" variant="ghost" onClick={() => setEditingPendingExpense(null)} className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground">
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              ) : (
+                                <div className="flex justify-end gap-1">
+                                  <Button size="sm" variant="ghost" onClick={() => setEditingPendingExpense({ ...item })} className="h-8 w-8 p-0 text-muted-foreground hover:text-primary" title="Edit row">
+                                    <Pencil className="h-4 w-4" />
+                                  </Button>
+                                  <Button size="sm" variant="ghost" onClick={() => handleDeletePendingExpense(item.id)} className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive" title="Delete row">
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
                     )}
                   </TableBody>
                 </Table>

@@ -5,11 +5,12 @@
 echo "🚀 Starting deployment process..."
 
 # 1. Commit changes
+COMMIT_MSG="${1:-"Update system features and fixes"}"
 if [[ -n $(git status -s) ]]; then
     echo "📦 Staging changes..."
     git add .
-    echo "💾 Committing changes..."
-    git commit -m "Enhance task form with multiple times and UI improvements (square cards, 4-column layout)"
+    echo "💾 Committing changes: $COMMIT_MSG..."
+    git commit -m "$COMMIT_MSG"
 else
     echo "✨ No new local changes to commit."
 fi

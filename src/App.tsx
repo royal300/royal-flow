@@ -27,6 +27,7 @@ import StaffLayout from "@/layouts/StaffLayout";
 import StaffTasksPage from "@/pages/staff/StaffTasksPage";
 import StaffProfilePage from "@/pages/staff/StaffProfilePage";
 import StaffDailyReportPage from "@/pages/staff/StaffDailyReportPage";
+import StaffExpensePage from "@/pages/staff/StaffExpensePage";
 
 // Public Pages
 import AttendancePage from "@/pages/AttendancePage";
@@ -152,6 +153,17 @@ const App = () => {
                   <ProtectedRoute allowedRole="staff">
                     <StaffLayout>
                       <StaffDailyReportPage />
+                    </StaffLayout>
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/staff/expense"
+                element={
+                  <ProtectedRoute allowedRole="staff">
+                    <StaffLayout>
+                      <StaffExpensePage />
                     </StaffLayout>
                   </ProtectedRoute>
                 }

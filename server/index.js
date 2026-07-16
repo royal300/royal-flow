@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
-const { Staff, Task, Attendance, DailyReport, Income, Expense, BankDeposit } = require('./models');
+const { Staff, Task, Attendance, DailyReport, Income, Expense, PendingExpense, BankDeposit } = require('./models');
 const Settings = require('./settings');
 const { validateLocation } = require('./utils/locationValidator');
 const crypto = require('crypto');
@@ -539,6 +539,83 @@ app.put('/api/expense/:id', async (req, res) => {
         res.json(updated);
     } catch (e) {
         res.status(500).json({ error: 'Failed' });
+    }
+});
+
+// --- Pending Expense Endpoints ---
+app.get('/api/pending-expense', async (req, res) => {
+    try {
+        const query = req.query.staffId ? { staffId: req.query.staffId } : {};
+        const records = await PendingExpense.find(query).sort({ date: -1 });
+        res.json(records);
+    } catch (error) {
+        console.error('Error fetching pending expenses:', error);
+        res.status(500).json({ error: 'Failed to fetch pending expenses' });
+    }
+});
+
+app.post('/api/pending-expense', async (req, res) => {
+    try {
+        const newRecord = new PendingExpense({
+            ...req.body,
+            id: crypto.randomUUID(),
+            createdAt: new Date().toISOString()
+        });
+        await newRecord.save();
+        res.json(newRecord);
+    } catch (error) {
+        console.error('Error creating pending expense:', error);
+        res.status(500).json({ error: 'Failed to create pending expense' });
+    }
+});
+
+app.delete('/api/pending-expense/:id', async (req, res) => {
+    try {
+        await PendingExpense.deleteOne({ id: req.params.id });
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: 'Failed' });
+    }
+});
+
+app.put('/api/pending-expense/:id', async (req, res) => {
+    try {
+        const data = { ...req.body, updatedAt: new Date().toISOString() };
+        const updated = await PendingExpense.findOneAndUpdate({ id: req.params.id }, data, { new: true });
+        res.json(updated);
+    } catch (e) {
+        res.status(500).json({ error: 'Failed' });
+    }
+});
+
+app.post('/api/pending-expense/approve-all', async (req, res) => {
+    try {
+        const records = await PendingExpense.find();
+        if (!records || records.length === 0) {
+            return res.json({ success: true, count: 0 });
+        }
+        const expensesToCreate = records.map(record => ({
+            id: crypto.randomUUID(),
+            date: record.date,
+            category: record.category,
+            bank: record.bank,
+            clientName: record.clientName,
+            rfNo: record.rfNo,
+            amount: record.amount,
+            isGst: record.isGst,
+            gstAmount: record.gstAmount,
+            withoutGstAmount: record.withoutGstAmount,
+            month: record.month,
+            year: record.year,
+            remarks: record.remarks,
+            createdAt: new Date().toISOString()
+        }));
+        await Expense.insertMany(expensesToCreate);
+        await PendingExpense.deleteMany({});
+        res.json({ success: true, count: expensesToCreate.length });
+    } catch (error) {
+        console.error('Error approving all pending expenses:', error);
+        res.status(500).json({ error: 'Failed to approve all pending expenses' });
     }
 });
 

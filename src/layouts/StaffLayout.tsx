@@ -9,7 +9,8 @@ import {
   LogOut,
   Menu,
   X,
-  FileText
+  FileText,
+  DollarSign
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -20,6 +21,7 @@ interface StaffLayoutProps {
 const navItems = [
   { icon: CheckSquare, label: 'My Tasks', path: '/staff' },
   { icon: FileText, label: 'Daily Reports', path: '/staff/reports' },
+  { icon: DollarSign, label: 'Expenses', path: '/staff/expense' },
   { icon: User, label: 'Profile', path: '/staff/profile' },
 ];
 
