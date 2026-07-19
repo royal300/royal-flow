@@ -28,7 +28,7 @@ const navItems = [
   { icon: Users, label: 'Staff', path: '/admin/staff' },
   { icon: CheckSquare, label: 'Tasks', path: '/admin/tasks' },
   { icon: Calendar, label: 'Attendance', path: '/admin/attendance' },
-  { icon: BarChart3, label: 'Reports', path: '/admin/reports' },
+  { icon: BarChart3, label: 'Daily Report', path: '/admin/reports' },
   { icon: Wallet, label: 'Accounts', path: '/admin/accounts' },
 ];
 

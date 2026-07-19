@@ -99,7 +99,7 @@ const AdminReportsPage = () => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `video-creative-records-${new Date().toISOString().split('T')[0]}.csv`;
+      a.download = `daily-report-records-${new Date().toISOString().split('T')[0]}.csv`;
       a.click();
     } else {
       const headers = ['Date', 'Staff Name', 'Remarks/Summary', 'Submitted At'];
@@ -124,8 +124,8 @@ const AdminReportsPage = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold">Reports & Records</h2>
-          <p className="text-muted-foreground">Review daily work summaries and video/creative submissions</p>
+          <h2 className="text-2xl font-bold">Daily Report</h2>
+          <p className="text-muted-foreground">Review daily work summaries and daily report submissions</p>
         </div>
         <Button variant="outline" onClick={exportReport}>
           <Download className="w-4 h-4 mr-2" />
@@ -141,7 +141,7 @@ const AdminReportsPage = () => {
           </TabsTrigger>
           <TabsTrigger value="creative-reports" className="flex items-center gap-2">
             <Video className="w-4 h-4" />
-            Video/Creative Records
+            Daily Report Records
           </TabsTrigger>
         </TabsList>
 
@@ -290,7 +290,7 @@ const AdminReportsPage = () => {
                     {filteredCreativeReports.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                          No Video/Creative records found.
+                          No Daily Report records found.
                         </TableCell>
                       </TableRow>
                     ) : (

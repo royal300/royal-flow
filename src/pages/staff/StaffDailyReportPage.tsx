@@ -129,7 +129,7 @@ const StaffDailyReportPage = () => {
                 creativeType: creativeForm.creativeType,
                 itemCount: needsItemCount ? countVal : undefined
             });
-            toast({ title: 'Video/Creative report submitted successfully' });
+            toast({ title: 'Daily report submitted successfully' });
             setCreativeForm({ clientName: '', creativeType: '', itemCount: '', remarks: '' });
             loadReports();
         } catch (error) {
@@ -176,7 +176,7 @@ const StaffDailyReportPage = () => {
                             </TabsTrigger>
                             <TabsTrigger value="creative" className="flex items-center gap-2">
                                 <Video className="w-4 h-4" />
-                                Video/Creative Report
+                                Daily Report
                             </TabsTrigger>
                         </TabsList>
 
@@ -224,7 +224,7 @@ const StaffDailyReportPage = () => {
                                 <CardHeader>
                                     <CardTitle className="flex items-center gap-2">
                                         <Film className="w-5 h-5 text-primary" />
-                                        Video / Creative Report Entry
+                                        Daily Report Entry
                                     </CardTitle>
                                     <CardDescription>
                                         Record details for videos, reels, creative tasks, or shooting.
@@ -323,7 +323,7 @@ const StaffDailyReportPage = () => {
                                                     day: 'numeric',
                                                 })}
                                                 {report.reportType === 'creative' ? (
-                                                    <Badge className="ml-2 bg-indigo-600 text-white text-[10px]">Video/Creative</Badge>
+                                                    <Badge className="ml-2 bg-indigo-600 text-white text-[10px]">Daily Report</Badge>
                                                 ) : (
                                                     <Badge variant="secondary" className="ml-2 text-[10px]">General</Badge>
                                                 )}

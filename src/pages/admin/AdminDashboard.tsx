@@ -213,7 +213,7 @@ const AdminDashboard = () => {
             <Button variant="outline" className="w-full justify-start" asChild>
               <Link to="/admin/reports">
                 <TrendingUp className="w-4 h-4 mr-2" />
-                View Reports
+                View Daily Report
               </Link>
             </Button>
           </CardContent>
