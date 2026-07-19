@@ -41,13 +41,16 @@ const StaffExpensePage = () => {
 
   useEffect(() => {
     fetchData();
-  }, [session?.id]);
+  }, [session?.userId]);
 
   const fetchData = async () => {
     try {
+      const currentStaffId = session?.userId || (session as any)?.id;
+      const currentStaffName = (session?.name || '').trim().toLowerCase();
+
       const [pendingData, approvedData, categoriesSetting, banksSetting, clientsSetting, methodsSetting, allExpenses] = await Promise.all([
-        session?.id ? accountService.getPendingExpenses(session.id) : accountService.getPendingExpenses(),
-        session?.id ? accountService.getExpenses(session.id) : accountService.getExpenses(),
+        currentStaffId ? accountService.getPendingExpenses(currentStaffId) : accountService.getPendingExpenses(),
+        currentStaffId ? accountService.getExpenses(currentStaffId) : accountService.getExpenses(),
         settingsService.get('accountCategories'),
         settingsService.get('accountBanks'),
         settingsService.get('accountClients'),
@@ -55,8 +58,22 @@ const StaffExpensePage = () => {
         accountService.getExpenses()
       ]);
 
-      const pendingList = (pendingData || []).map(p => ({ ...p, status: p.status || 'Pending' }));
-      const approvedList = (approvedData || []).map(a => ({ ...a, status: a.status || 'Approved' }));
+      const myPending = (pendingData || []).filter(p => {
+        if (!currentStaffId && !currentStaffName) return true;
+        if (p.staffId && p.staffId === currentStaffId) return true;
+        if (p.staffName && p.staffName.trim().toLowerCase() === currentStaffName) return true;
+        return false;
+      });
+
+      const myApproved = (approvedData || []).filter(a => {
+        if (!currentStaffId && !currentStaffName) return true;
+        if (a.staffId && a.staffId === currentStaffId) return true;
+        if (a.staffName && a.staffName.trim().toLowerCase() === currentStaffName) return true;
+        return false;
+      });
+
+      const pendingList = myPending.map(p => ({ ...p, status: p.status || 'Pending' }));
+      const approvedList = myApproved.map(a => ({ ...a, status: a.status || 'Approved' }));
       const combined = [...pendingList, ...approvedList].sort((a, b) => b.date.localeCompare(a.date));
 
       setPendingExpenses(pendingList);
@@ -100,7 +117,7 @@ const StaffExpensePage = () => {
 
     try {
       await accountService.createPendingExpense({
-        staffId: session?.id || '',
+        staffId: session?.userId || (session as any)?.id || '',
         staffName: session?.name || 'Staff Member',
         date: expenseForm.date,
         category: expenseForm.category,

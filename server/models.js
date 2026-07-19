@@ -76,9 +76,13 @@ const dailyReportSchema = new mongoose.Schema({
   staffName: String,
   date: String,
   content: String,
+  reportType: String,
+  clientName: String,
+  creativeType: String,
+  itemCount: Number,
   createdAt: String,
   updatedAt: String
-});
+}, { strict: false });
 
 const incomeSchema = new mongoose.Schema({
   id: { type: String, required: true, unique: true },

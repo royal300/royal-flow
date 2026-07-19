@@ -86,6 +86,10 @@ export interface DailyReport {
   staffName: string;
   date: string;
   content: string;
+  reportType?: 'general' | 'creative';
+  clientName?: string;
+  creativeType?: string;
+  itemCount?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -353,8 +357,8 @@ export const dailyReportService = {
     return api.post<DailyReport>('/daily-reports', report);
   },
 
-  async update(id: string, content: string): Promise<DailyReport> {
-    return api.put<DailyReport>(`/daily-reports/${id}`, { content });
+  async update(id: string, content: string, data?: Partial<DailyReport>): Promise<DailyReport> {
+    return api.put<DailyReport>(`/daily-reports/${id}`, { content, ...data });
   },
 
   async delete(id: string): Promise<void> {

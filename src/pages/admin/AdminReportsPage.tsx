@@ -14,7 +14,9 @@ import {
   FileText,
   Calendar,
   Filter,
-  X
+  X,
+  Video,
+  Film
 } from 'lucide-react';
 import {
   Staff,
@@ -34,6 +36,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 
 interface StaffStats {
   staff: Staff;
@@ -155,6 +165,9 @@ const AdminReportsPage = () => {
     return matchesStaff && matchesDate;
   });
 
+  const filteredCreativeReports = filteredReports.filter(r => r.reportType === 'creative');
+  const filteredGeneralReports = filteredReports.filter(r => !r.reportType || r.reportType === 'general');
+
   const getScoreColor = (score: number) => {
     if (score >= 80) return 'text-success';
     if (score >= 60) return 'text-primary';
@@ -191,7 +204,11 @@ const AdminReportsPage = () => {
           </TabsTrigger>
           <TabsTrigger value="daily-reports" className="flex items-center gap-2">
             <FileText className="w-4 h-4" />
-            Daily Reports
+            General Work Reports
+          </TabsTrigger>
+          <TabsTrigger value="creative-reports" className="flex items-center gap-2">
+            <Video className="w-4 h-4" />
+            Video/Creative Records
           </TabsTrigger>
         </TabsList>
 
@@ -367,18 +384,18 @@ const AdminReportsPage = () => {
             </div>
 
             <div className="ml-auto text-sm text-muted-foreground">
-              Showing {filteredReports.length} report{filteredReports.length !== 1 && 's'}
+              Showing {filteredGeneralReports.length} report{filteredGeneralReports.length !== 1 && 's'}
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredReports.length === 0 ? (
+            {filteredGeneralReports.length === 0 ? (
               <div className="col-span-full text-center py-12 text-muted-foreground">
                 <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p>No daily reports found {selectedDate && `for ${new Date(selectedDate).toLocaleDateString()}`}.</p>
+                <p>No general work reports found {selectedDate && `for ${new Date(selectedDate).toLocaleDateString()}`}.</p>
               </div>
             ) : (
-              filteredReports.map((report) => (
+              filteredGeneralReports.map((report) => (
                 <GlassCard key={report.id} className="h-full hover:-translate-y-1 transition-transform">
                   <CardContent className="p-5 flex flex-col h-full">
                     <div className="flex items-start justify-between mb-4">
@@ -409,6 +426,97 @@ const AdminReportsPage = () => {
               ))
             )}
           </div>
+        </TabsContent>
+
+        <TabsContent value="creative-reports" className="space-y-6">
+          <div className="flex flex-col md:flex-row items-center gap-4 mb-6">
+            <Select value={selectedStaffDate} onValueChange={setSelectedStaffDate}>
+              <SelectTrigger className="w-[200px]">
+                <Users className="w-4 h-4 mr-2" />
+                <SelectValue placeholder="Filter by Staff" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Staff</SelectItem>
+                {staffList.map((staff) => (
+                  <SelectItem key={staff.id} value={staff.id}>{staff.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="pl-9 w-[180px]"
+                />
+              </div>
+              {selectedDate && (
+                <Button variant="ghost" size="icon" onClick={() => setSelectedDate('')}>
+                  <X className="w-4 h-4" />
+                </Button>
+              )}
+            </div>
+
+            <div className="ml-auto text-sm text-muted-foreground">
+              Showing {filteredCreativeReports.length} record{filteredCreativeReports.length !== 1 && 's'}
+            </div>
+          </div>
+
+          <GlassCard>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Staff Name</TableHead>
+                      <TableHead>Client Name</TableHead>
+                      <TableHead>Creative Type</TableHead>
+                      <TableHead>No. of Items</TableHead>
+                      <TableHead>Remarks / Summary</TableHead>
+                      <TableHead>Submitted At</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredCreativeReports.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                          No Video/Creative records found.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredCreativeReports.map((report) => (
+                        <TableRow key={report.id}>
+                          <TableCell className="font-medium whitespace-nowrap">
+                            {new Date(report.date).toLocaleDateString()}
+                          </TableCell>
+                          <TableCell className="font-semibold">{report.staffName}</TableCell>
+                          <TableCell>{report.clientName || '-'}</TableCell>
+                          <TableCell>
+                            <Badge className="bg-indigo-600 text-white hover:bg-indigo-700">
+                              {report.creativeType || 'Creative'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-center font-bold">
+                            {report.itemCount !== undefined ? report.itemCount : '-'}
+                          </TableCell>
+                          <TableCell className="max-w-md whitespace-pre-wrap text-xs">
+                            {report.content}
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                            {new Date(report.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </GlassCard>
         </TabsContent>
       </Tabs>
     </div>

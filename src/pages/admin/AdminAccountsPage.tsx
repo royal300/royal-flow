@@ -741,6 +741,48 @@ const AdminAccountsPage = () => {
   const totalAdExpenseGst = filteredAdExpenses.reduce((acc, curr) => acc + (curr.gstAmount || 0), 0);
   const totalBankDeposit = filteredBankDeposits.reduce((acc, curr) => acc + curr.amount, 0);
 
+  const handleExportAdExpensePDF = () => {
+    try {
+      if (filteredAdExpenses.length === 0) {
+        return toast({ title: 'No Ad Expense records to export' });
+      }
+      const doc = new jsPDF();
+      doc.setFontSize(16);
+      doc.text('Ad Expense Records', 14, 15);
+      doc.setFontSize(10);
+      doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 22);
+
+      const headers = [['Date', 'Client Name', 'Category', 'Staff Name', 'Payment Mode', 'Bank', 'Ref No.', 'Remarks', 'Amount', 'GST']];
+      const tableData = filteredAdExpenses.map(item => [
+        formatDate(item.date) || '-',
+        item.clientName || '-',
+        item.category || '-',
+        item.staffName || '-',
+        item.paymentMethod || '-',
+        item.bank || '-',
+        item.rfNo || '-',
+        item.remarks || '-',
+        `Rs. ${item.amount?.toLocaleString('en-IN') || '0'}`,
+        item.isGst ? `Rs. ${item.gstAmount?.toLocaleString('en-IN') || '0'}` : '-'
+      ]);
+
+      autoTable(doc, {
+        head: headers,
+        body: tableData,
+        startY: 28,
+        styles: { fontSize: 8 },
+        headStyles: { fillColor: [63, 81, 181] }
+      });
+
+      const fileName = `ad_expense_records_${new Date().toISOString().split('T')[0]}.pdf`;
+      doc.save(fileName);
+      toast({ title: 'Ad Expense PDF exported successfully' });
+    } catch (err) {
+      console.error('Error generating PDF:', err);
+      toast({ title: 'Failed to export PDF', variant: 'destructive' });
+    }
+  };
+
   const handlePreviewPDF = (data: any[], title: string) => {
     if (data.length === 0) return toast({ title: 'No data to download' });
     let headers: string[] = [];
@@ -765,6 +807,11 @@ const AdminAccountsPage = () => {
       headers = ['Date', 'Type', 'Client Name', 'Category', 'Remarks', 'Amount', 'GST'];
       tableData = data.map(row => [
         formatDate(row.date), row.type, row.clientName, row.category, row.remarks, row.amount, row.gstAmount ? `₹${row.gstAmount}` : '-'
+      ]);
+    } else if (title === 'Ad Expense Records') {
+      headers = ['Date', 'Client Name', 'Category', 'Staff Name', 'Payment Mode', 'Bank', 'Ref No.', 'Remarks', 'Amount', 'GST'];
+      tableData = data.map(row => [
+        formatDate(row.date), row.clientName || '-', row.category || '-', row.staffName || '-', row.paymentMethod || '-', row.bank || '-', row.rfNo || '-', row.remarks || '-', row.amount, row.gstAmount ? `₹${row.gstAmount}` : '-'
       ]);
     }
 
@@ -1417,10 +1464,7 @@ const AdminAccountsPage = () => {
                 <span className="text-sm font-semibold text-amber-600 px-3 py-1 bg-amber-50 dark:bg-amber-950/40 rounded-full">
                   Total GST: ₹{totalAdExpenseGst.toLocaleString()}
                 </span>
-                <Button variant="outline" size="sm" onClick={() => handlePreviewPDF(filteredAdExpenses, 'Ad Expense Records')}>
-                  <FileText className="w-4 h-4 mr-1" /> Preview PDF
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => exportToPDF(filteredAdExpenses, 'Ad Expense Records')}>
+                <Button variant="outline" size="sm" onClick={() => handleExportAdExpensePDF()}>
                   <FileText className="w-4 h-4 mr-1" /> Export PDF
                 </Button>
               </div>
