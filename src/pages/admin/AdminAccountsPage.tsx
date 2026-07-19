@@ -13,169 +13,7 @@ import { accountService, settingsService, Income, Expense, PendingExpense, BankD
 import { Trash2, Download, Pencil, ChevronUp, ChevronDown, FileText, Check, X } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-
-interface AutocompleteProps {
-  value: string;
-  onChange: (val: string) => void;
-  suggestions: string[];
-  placeholder?: string;
-  className?: string;
-}
-
-const Autocomplete = ({ value, onChange, suggestions, placeholder = "Type to search...", className = "" }: AutocompleteProps) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [filteredSuggestions, setFilteredSuggestions] = useState<string[]>([]);
-  const [activeIndex, setActiveIndex] = useState<number>(-1);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const listRef = useRef<HTMLDivElement>(null);
-
-  const cleanSuggestions = Array.from(
-    new Set(
-      suggestions
-        .filter(s => s !== undefined && s !== null && s !== '')
-        .map(String)
-    )
-  );
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  useEffect(() => {
-    if (isOpen && activeIndex >= 0 && listRef.current) {
-      const activeElement = listRef.current.children[activeIndex] as HTMLElement;
-      if (activeElement) {
-        activeElement.scrollIntoView({ block: 'nearest' });
-      }
-    }
-  }, [activeIndex, isOpen]);
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    onChange(val);
-    setActiveIndex(-1);
-    if (val.trim().length >= 1) {
-      const filtered = cleanSuggestions.filter(s =>
-        s.toLowerCase().includes(val.toLowerCase())
-      );
-      setFilteredSuggestions(filtered);
-      setIsOpen(true);
-    } else {
-      setFilteredSuggestions(cleanSuggestions);
-      setIsOpen(true);
-    }
-  };
-
-  const handleOpenDropdown = () => {
-    setActiveIndex(-1);
-    if (value.trim().length >= 1) {
-      const filtered = cleanSuggestions.filter(s =>
-        s.toLowerCase().includes(value.toLowerCase())
-      );
-      setFilteredSuggestions(filtered.length > 0 ? filtered : cleanSuggestions);
-      setIsOpen(true);
-    } else {
-      setFilteredSuggestions(cleanSuggestions);
-      setIsOpen(true);
-    }
-  };
-
-  const selectSuggestion = (suggestion: string) => {
-    onChange(suggestion);
-    setIsOpen(false);
-    setActiveIndex(-1);
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (!isOpen) {
-      if ((e.key === "ArrowDown" || e.key === "ArrowUp") && cleanSuggestions.length > 0) {
-        const filtered = value.trim().length >= 1
-          ? cleanSuggestions.filter(s => s.toLowerCase().includes(value.toLowerCase()))
-          : cleanSuggestions;
-        if (filtered.length > 0) {
-          e.preventDefault();
-          setFilteredSuggestions(filtered);
-          setIsOpen(true);
-          setActiveIndex(e.key === "ArrowDown" ? 0 : filtered.length - 1);
-        }
-      }
-      return;
-    }
-
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
-      setActiveIndex(prev => (prev < filteredSuggestions.length - 1 ? prev + 1 : 0));
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault();
-      setActiveIndex(prev => (prev > 0 ? prev - 1 : filteredSuggestions.length - 1));
-    } else if (e.key === "Enter") {
-      if (activeIndex >= 0 && activeIndex < filteredSuggestions.length) {
-        e.preventDefault();
-        selectSuggestion(filteredSuggestions[activeIndex]);
-      } else {
-        setIsOpen(false);
-      }
-    } else if (e.key === "Escape") {
-      e.preventDefault();
-      setIsOpen(false);
-      setActiveIndex(-1);
-    } else if (e.key === "Tab") {
-      setIsOpen(false);
-      setActiveIndex(-1);
-    }
-  };
-
-  return (
-    <div ref={containerRef} className={`relative w-full ${className}`}>
-      <Input
-        type="text"
-        value={value}
-        onChange={handleInputChange}
-        onFocus={handleOpenDropdown}
-        onClick={handleOpenDropdown}
-        onKeyDown={handleKeyDown}
-        placeholder={placeholder}
-        className="w-full bg-background border border-input rounded-md shadow-sm h-10 pr-8"
-      />
-      <div
-        onClick={() => {
-          if (!isOpen) {
-            handleOpenDropdown();
-          } else {
-            setIsOpen(false);
-          }
-        }}
-        className="absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer p-1 text-muted-foreground hover:text-foreground"
-      >
-        <ChevronDown className="w-4 h-4" />
-      </div>
-      {isOpen && filteredSuggestions.length > 0 && (
-        <div ref={listRef} className="absolute z-50 w-full mt-1 bg-popover text-popover-foreground border rounded-md shadow-md max-h-60 overflow-auto">
-          {filteredSuggestions.map((s, idx) => (
-            <div
-              key={idx}
-              onClick={() => selectSuggestion(s)}
-              onMouseEnter={() => setActiveIndex(idx)}
-              className={`px-3 py-2 text-sm cursor-pointer text-left transition-colors ${
-                idx === activeIndex
-                  ? "bg-accent text-accent-foreground font-medium"
-                  : "hover:bg-accent hover:text-accent-foreground"
-              }`}
-            >
-              {s}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
+import { Autocomplete } from '@/components/ui/autocomplete';
 
 const AdminAccountsPage = () => {
   const { toast } = useToast();
@@ -637,7 +475,6 @@ const AdminAccountsPage = () => {
   };
 
   const filteredExpenses = expenses.filter(exp => {
-    if (isMetaAd(exp.category)) return false;
     const recMonth = getRecordMonth(exp.date, exp.month);
     const recYear = getRecordYear(exp.date, exp.year);
     const matchDateRange = isDateInRange(exp.date, expenseFilters.startDate, expenseFilters.endDate);
@@ -746,18 +583,17 @@ const AdminAccountsPage = () => {
       if (filteredAdExpenses.length === 0) {
         return toast({ title: 'No Ad Expense records to export' });
       }
-      const doc = new jsPDF();
+      const doc = new jsPDF('landscape');
       doc.setFontSize(16);
       doc.text('Ad Expense Records', 14, 15);
       doc.setFontSize(10);
       doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 22);
 
-      const headers = [['Date', 'Client Name', 'Category', 'Staff Name', 'Payment Mode', 'Bank', 'Ref No.', 'Remarks', 'Amount', 'GST']];
+      const headers = [['Date', 'Client Name', 'Category', 'Payment Mode', 'Bank', 'Ref No.', 'Remarks', 'Amount', 'GST']];
       const tableData = filteredAdExpenses.map(item => [
         formatDate(item.date) || '-',
         item.clientName || '-',
         item.category || '-',
-        item.staffName || '-',
         item.paymentMethod || '-',
         item.bank || '-',
         item.rfNo || '-',
@@ -809,9 +645,9 @@ const AdminAccountsPage = () => {
         formatDate(row.date), row.type, row.clientName, row.category, row.remarks, row.amount, row.gstAmount ? `₹${row.gstAmount}` : '-'
       ]);
     } else if (title === 'Ad Expense Records') {
-      headers = ['Date', 'Client Name', 'Category', 'Staff Name', 'Payment Mode', 'Bank', 'Ref No.', 'Remarks', 'Amount', 'GST'];
+      headers = ['Date', 'Client Name', 'Category', 'Payment Mode', 'Bank', 'Ref No.', 'Remarks', 'Amount', 'GST'];
       tableData = data.map(row => [
-        formatDate(row.date), row.clientName || '-', row.category || '-', row.staffName || '-', row.paymentMethod || '-', row.bank || '-', row.rfNo || '-', row.remarks || '-', row.amount, row.gstAmount ? `₹${row.gstAmount}` : '-'
+        formatDate(row.date), row.clientName || '-', row.category || '-', row.paymentMethod || '-', row.bank || '-', row.rfNo || '-', row.remarks || '-', row.amount, row.gstAmount ? `₹${row.gstAmount}` : '-'
       ]);
     }
 
@@ -820,7 +656,7 @@ const AdminAccountsPage = () => {
 
   const downloadGeneratedPDF = () => {
     if (!pdfPreviewData) return;
-    const doc = new jsPDF();
+    const doc = new jsPDF('landscape');
     doc.text(pdfPreviewData.title, 14, 15);
     autoTable(doc, {
       head: [pdfPreviewData.headers],
@@ -872,20 +708,22 @@ const AdminAccountsPage = () => {
             <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between pb-2">
               <CardTitle className="text-2xl font-bold">Total Overview</CardTitle>
               <div className="flex gap-2 mt-2 md:mt-0">
-                <Select value={overviewFilters.month} onValueChange={v => setOverviewFilters({ ...overviewFilters, month: v })}>
-                  <SelectTrigger className="w-[120px]"><SelectValue placeholder="Month" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="All">All Months</SelectItem>
-                    {getUniqueValues([...incomes, ...expenses, ...bankDeposits], 'month').map((m: any) => m && <SelectItem key={m} value={m}>{m}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                <Select value={overviewFilters.year} onValueChange={v => setOverviewFilters({ ...overviewFilters, year: v })}>
-                  <SelectTrigger className="w-[120px]"><SelectValue placeholder="Year" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="All">All Years</SelectItem>
-                    {getUniqueValues([...incomes, ...expenses, ...bankDeposits], 'year').map((y: any) => y && <SelectItem key={y} value={y}>{y}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <div className="w-[140px]">
+                  <Autocomplete
+                    value={overviewFilters.month === 'All' ? '' : overviewFilters.month}
+                    onChange={v => setOverviewFilters({ ...overviewFilters, month: v || 'All' })}
+                    suggestions={['All', ...Array.from(new Set(getUniqueValues([...incomes, ...expenses, ...bankDeposits], 'month').filter(Boolean))).map(String)]}
+                    placeholder="All Months"
+                  />
+                </div>
+                <div className="w-[140px]">
+                  <Autocomplete
+                    value={overviewFilters.year === 'All' ? '' : overviewFilters.year}
+                    onChange={v => setOverviewFilters({ ...overviewFilters, year: v || 'All' })}
+                    suggestions={['All', ...Array.from(new Set(getUniqueValues([...incomes, ...expenses, ...bankDeposits], 'year').filter(Boolean))).map(String)]}
+                    placeholder="All Years"
+                  />
+                </div>
               </div>
             </CardHeader>
             <CardContent>
@@ -1081,66 +919,42 @@ const AdminAccountsPage = () => {
                     onChange={e => setIncomeFilters({ ...incomeFilters, invoiceNumber: e.target.value })}
                     className="h-10"
                   />
-                  <Select
-                    value={incomeFilters.clientName === 'All' ? 'All' : incomeFilters.clientName}
-                    onValueChange={v => setIncomeFilters({ ...incomeFilters, clientName: v })}
-                  >
-                    <SelectTrigger className="h-10"><SelectValue placeholder="All Clients" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="All">All Clients</SelectItem>
-                      {[...new Set([...clients, ...getUniqueValues(incomes, 'clientName')])].map(c => c && <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  <Select
-                    value={incomeFilters.category === 'All' ? 'All' : incomeFilters.category}
-                    onValueChange={v => setIncomeFilters({ ...incomeFilters, category: v })}
-                  >
-                    <SelectTrigger className="h-10"><SelectValue placeholder="All Categories" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="All">All Categories</SelectItem>
-                      {[...new Set([...categories, ...getUniqueValues(incomes, 'category')])].map(c => c && <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  <Select
-                    value={incomeFilters.paymentMethod === 'All' ? 'All' : incomeFilters.paymentMethod}
-                    onValueChange={v => setIncomeFilters({ ...incomeFilters, paymentMethod: v })}
-                  >
-                    <SelectTrigger className="h-10"><SelectValue placeholder="All Modes" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="All">All Modes</SelectItem>
-                      {[...new Set([...paymentMethods, ...getUniqueValues(incomes, 'paymentMethod')])].map(p => p && <SelectItem key={p} value={p}>{p}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  <Select
-                    value={incomeFilters.bank === 'All' ? 'All' : incomeFilters.bank}
-                    onValueChange={v => setIncomeFilters({ ...incomeFilters, bank: v })}
-                  >
-                    <SelectTrigger className="h-10"><SelectValue placeholder="All Banks" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="All">All Banks</SelectItem>
-                      {[...new Set([...banks, ...getUniqueValues(incomes, 'bank')])].map(b => b && <SelectItem key={b} value={b}>{b}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  <Select
-                    value={incomeFilters.month === 'All' ? 'All' : incomeFilters.month}
-                    onValueChange={v => setIncomeFilters({ ...incomeFilters, month: v })}
-                  >
-                    <SelectTrigger className="h-10"><SelectValue placeholder="All Months" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="All">All Months</SelectItem>
-                      {getUniqueValues(incomes, 'month').map(m => m && <SelectItem key={m} value={m}>{m}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  <Select
-                    value={incomeFilters.year === 'All' ? 'All' : incomeFilters.year}
-                    onValueChange={v => setIncomeFilters({ ...incomeFilters, year: v })}
-                  >
-                    <SelectTrigger className="h-10"><SelectValue placeholder="All Years" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="All">All Years</SelectItem>
-                      {getUniqueValues(incomes, 'year').map(y => y && <SelectItem key={y.toString()} value={y.toString()}>{y}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <Autocomplete
+                    value={incomeFilters.clientName === 'All' ? '' : incomeFilters.clientName}
+                    onChange={v => setIncomeFilters({ ...incomeFilters, clientName: v || 'All' })}
+                    suggestions={['All', ...Array.from(new Set([...clients, ...getUniqueValues(incomes, 'clientName')].filter(Boolean))).map(String)]}
+                    placeholder="All Clients"
+                  />
+                  <Autocomplete
+                    value={incomeFilters.category === 'All' ? '' : incomeFilters.category}
+                    onChange={v => setIncomeFilters({ ...incomeFilters, category: v || 'All' })}
+                    suggestions={['All', ...Array.from(new Set([...categories, ...getUniqueValues(incomes, 'category')].filter(Boolean))).map(String)]}
+                    placeholder="All Categories"
+                  />
+                  <Autocomplete
+                    value={incomeFilters.paymentMethod === 'All' ? '' : incomeFilters.paymentMethod}
+                    onChange={v => setIncomeFilters({ ...incomeFilters, paymentMethod: v || 'All' })}
+                    suggestions={['All', ...Array.from(new Set([...paymentMethods, ...getUniqueValues(incomes, 'paymentMethod')].filter(Boolean))).map(String)]}
+                    placeholder="All Modes"
+                  />
+                  <Autocomplete
+                    value={incomeFilters.bank === 'All' ? '' : incomeFilters.bank}
+                    onChange={v => setIncomeFilters({ ...incomeFilters, bank: v || 'All' })}
+                    suggestions={['All', ...Array.from(new Set([...banks, ...getUniqueValues(incomes, 'bank')].filter(Boolean))).map(String)]}
+                    placeholder="All Banks"
+                  />
+                  <Autocomplete
+                    value={incomeFilters.month === 'All' ? '' : incomeFilters.month}
+                    onChange={v => setIncomeFilters({ ...incomeFilters, month: v || 'All' })}
+                    suggestions={['All', ...Array.from(new Set(getUniqueValues(incomes, 'month').filter(Boolean))).map(String)]}
+                    placeholder="All Months"
+                  />
+                  <Autocomplete
+                    value={incomeFilters.year === 'All' ? '' : incomeFilters.year}
+                    onChange={v => setIncomeFilters({ ...incomeFilters, year: v || 'All' })}
+                    suggestions={['All', ...Array.from(new Set(getUniqueValues(incomes, 'year').filter(Boolean))).map(String)]}
+                    placeholder="All Years"
+                  />
                 </div>
                 <div className="flex flex-wrap gap-2 shrink-0">
                   <div className="bg-success/10 text-success px-4 py-2 rounded-lg border border-success/20 shadow-sm flex items-center justify-center gap-3">
@@ -1339,46 +1153,30 @@ const AdminAccountsPage = () => {
             <CardContent>
               <div className="flex flex-col md:flex-row gap-4 justify-between mb-4">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 flex-1">
-                  <Select
-                    value={expenseFilters.category === 'All' ? 'All' : expenseFilters.category}
-                    onValueChange={v => setExpenseFilters({ ...expenseFilters, category: v })}
-                  >
-                    <SelectTrigger className="h-10"><SelectValue placeholder="All Categories" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="All">All Categories</SelectItem>
-                      {[...new Set([...categories, ...getUniqueValues(expenses, 'category')])].map(c => c && <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  <Select
-                    value={expenseFilters.clientName === 'All' ? 'All' : expenseFilters.clientName}
-                    onValueChange={v => setExpenseFilters({ ...expenseFilters, clientName: v })}
-                  >
-                    <SelectTrigger className="h-10"><SelectValue placeholder="All Clients" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="All">All Clients</SelectItem>
-                      {[...new Set([...clients, ...getUniqueValues(expenses, 'clientName')])].map(c => c && <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  <Select
-                    value={expenseFilters.month === 'All' ? 'All' : expenseFilters.month}
-                    onValueChange={v => setExpenseFilters({ ...expenseFilters, month: v })}
-                  >
-                    <SelectTrigger className="h-10"><SelectValue placeholder="All Months" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="All">All Months</SelectItem>
-                      {getUniqueValues(expenses, 'month').map(m => m && <SelectItem key={m} value={m}>{m}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  <Select
-                    value={expenseFilters.year === 'All' ? 'All' : expenseFilters.year}
-                    onValueChange={v => setExpenseFilters({ ...expenseFilters, year: v })}
-                  >
-                    <SelectTrigger className="h-10"><SelectValue placeholder="All Years" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="All">All Years</SelectItem>
-                      {getUniqueValues(expenses, 'year').map(y => y && <SelectItem key={y.toString()} value={y.toString()}>{y}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <Autocomplete
+                    value={expenseFilters.category === 'All' ? '' : expenseFilters.category}
+                    onChange={v => setExpenseFilters({ ...expenseFilters, category: v || 'All' })}
+                    suggestions={['All', ...Array.from(new Set([...categories, ...getUniqueValues(expenses, 'category')].filter(Boolean))).map(String)]}
+                    placeholder="All Categories"
+                  />
+                  <Autocomplete
+                    value={expenseFilters.clientName === 'All' ? '' : expenseFilters.clientName}
+                    onChange={v => setExpenseFilters({ ...expenseFilters, clientName: v || 'All' })}
+                    suggestions={['All', ...Array.from(new Set([...clients, ...getUniqueValues(expenses, 'clientName')].filter(Boolean))).map(String)]}
+                    placeholder="All Clients"
+                  />
+                  <Autocomplete
+                    value={expenseFilters.month === 'All' ? '' : expenseFilters.month}
+                    onChange={v => setExpenseFilters({ ...expenseFilters, month: v || 'All' })}
+                    suggestions={['All', ...Array.from(new Set(getUniqueValues(expenses, 'month').filter(Boolean))).map(String)]}
+                    placeholder="All Months"
+                  />
+                  <Autocomplete
+                    value={expenseFilters.year === 'All' ? '' : expenseFilters.year}
+                    onChange={v => setExpenseFilters({ ...expenseFilters, year: v || 'All' })}
+                    suggestions={['All', ...Array.from(new Set(getUniqueValues(expenses, 'year').filter(Boolean))).map(String)]}
+                    placeholder="All Years"
+                  />
                 </div>
                 <div className="flex flex-wrap gap-2 shrink-0">
                   <div className="bg-destructive/10 text-destructive px-4 py-2 rounded-lg border border-destructive/20 shadow-sm flex items-center justify-center gap-3">
@@ -1473,42 +1271,30 @@ const AdminAccountsPage = () => {
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4 bg-muted/30 p-3 rounded-lg border">
                 <div>
                   <Label className="text-xs mb-1 block">Client Name</Label>
-                  <Select
-                    value={adExpenseFilters.clientName === 'All' ? 'All' : adExpenseFilters.clientName}
-                    onValueChange={v => setAdExpenseFilters({ ...adExpenseFilters, clientName: v })}
-                  >
-                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="All Clients" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="All">All Clients</SelectItem>
-                      {getUniqueValues(expenses.filter(e => isMetaAd(e.category)), 'clientName').map(c => c && <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <Autocomplete
+                    value={adExpenseFilters.clientName === 'All' ? '' : adExpenseFilters.clientName}
+                    onChange={v => setAdExpenseFilters({ ...adExpenseFilters, clientName: v || 'All' })}
+                    suggestions={['All', ...Array.from(new Set(getUniqueValues(expenses.filter(e => isMetaAd(e.category)), 'clientName').filter(Boolean))).map(String)]}
+                    placeholder="All Clients"
+                  />
                 </div>
                 <div>
                   <Label className="text-xs mb-1 block">Month</Label>
-                  <Select
-                    value={adExpenseFilters.month === 'All' ? 'All' : adExpenseFilters.month}
-                    onValueChange={v => setAdExpenseFilters({ ...adExpenseFilters, month: v })}
-                  >
-                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="All Months" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="All">All Months</SelectItem>
-                      {getUniqueValues(expenses.filter(e => isMetaAd(e.category)), 'month').map(m => m && <SelectItem key={m} value={m}>{m}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <Autocomplete
+                    value={adExpenseFilters.month === 'All' ? '' : adExpenseFilters.month}
+                    onChange={v => setAdExpenseFilters({ ...adExpenseFilters, month: v || 'All' })}
+                    suggestions={['All', ...Array.from(new Set(getUniqueValues(expenses.filter(e => isMetaAd(e.category)), 'month').filter(Boolean))).map(String)]}
+                    placeholder="All Months"
+                  />
                 </div>
                 <div>
                   <Label className="text-xs mb-1 block">Year</Label>
-                  <Select
-                    value={adExpenseFilters.year === 'All' ? 'All' : adExpenseFilters.year}
-                    onValueChange={v => setAdExpenseFilters({ ...adExpenseFilters, year: v })}
-                  >
-                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="All Years" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="All">All Years</SelectItem>
-                      {getUniqueValues(expenses.filter(e => isMetaAd(e.category)), 'year').map(y => y && <SelectItem key={y.toString()} value={y.toString()}>{y}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <Autocomplete
+                    value={adExpenseFilters.year === 'All' ? '' : adExpenseFilters.year}
+                    onChange={v => setAdExpenseFilters({ ...adExpenseFilters, year: v || 'All' })}
+                    suggestions={['All', ...Array.from(new Set(getUniqueValues(expenses.filter(e => isMetaAd(e.category)), 'year').filter(Boolean))).map(String)]}
+                    placeholder="All Years"
+                  />
                 </div>
                 <div className="flex items-end">
                   <Button variant="ghost" size="sm" onClick={() => setAdExpenseFilters({ clientName: 'All', month: 'All', year: 'All' })} className="h-8 text-xs text-muted-foreground hover:text-foreground">
@@ -1524,7 +1310,6 @@ const AdminAccountsPage = () => {
                       <TableHead>Date</TableHead>
                       <TableHead>Client Name</TableHead>
                       <TableHead>Category</TableHead>
-                      <TableHead>Staff Name</TableHead>
                       <TableHead>Payment Mode</TableHead>
                       <TableHead>Bank</TableHead>
                       <TableHead>Ref No.</TableHead>
@@ -1540,7 +1325,6 @@ const AdminAccountsPage = () => {
                         <TableCell>{formatDate(exp.date)}</TableCell>
                         <TableCell className="font-semibold text-primary">{exp.clientName || '-'}</TableCell>
                         <TableCell className="font-medium text-purple-600 dark:text-purple-400">{exp.category}</TableCell>
-                        <TableCell className="text-muted-foreground text-xs">{exp.staffName || '-'}</TableCell>
                         <TableCell>{exp.paymentMethod || '-'}</TableCell>
                         <TableCell>{exp.bank || '-'}</TableCell>
                         <TableCell>{exp.rfNo || '-'}</TableCell>
@@ -1650,37 +1434,24 @@ const AdminAccountsPage = () => {
                 <div className="grid grid-cols-2 md:grid-cols-6 gap-3 flex-1 items-center">
                   <Input type="date" className="h-10 [&::-webkit-calendar-picker-indicator]:block" value={bankDepositFilters.startDate} onChange={e => setBankDepositFilters({ ...bankDepositFilters, startDate: e.target.value })} placeholder="Start Date" />
                   <Input type="date" className="h-10 [&::-webkit-calendar-picker-indicator]:block" value={bankDepositFilters.endDate} onChange={e => setBankDepositFilters({ ...bankDepositFilters, endDate: e.target.value })} placeholder="End Date" />
-                  <Select
-                    value={bankDepositFilters.type === 'All' ? 'All' : bankDepositFilters.type}
-                    onValueChange={v => setBankDepositFilters({ ...bankDepositFilters, type: v })}
-                  >
-                    <SelectTrigger className="h-10"><SelectValue placeholder="All Types" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="All">All Types</SelectItem>
-                      <SelectItem value="Cash">Cash</SelectItem>
-                      <SelectItem value="Cheque">Cheque</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Select
-                    value={bankDepositFilters.month === 'All' ? 'All' : bankDepositFilters.month}
-                    onValueChange={v => setBankDepositFilters({ ...bankDepositFilters, month: v })}
-                  >
-                    <SelectTrigger className="h-10"><SelectValue placeholder="All Months" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="All">All Months</SelectItem>
-                      {getUniqueValues(bankDeposits, 'month').map(m => m && <SelectItem key={m} value={m}>{m}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  <Select
-                    value={bankDepositFilters.year === 'All' ? 'All' : bankDepositFilters.year}
-                    onValueChange={v => setBankDepositFilters({ ...bankDepositFilters, year: v })}
-                  >
-                    <SelectTrigger className="h-10"><SelectValue placeholder="All Years" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="All">All Years</SelectItem>
-                      {getUniqueValues(bankDeposits, 'year').map(y => y && <SelectItem key={y.toString()} value={y.toString()}>{y}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <Autocomplete
+                    value={bankDepositFilters.type === 'All' ? '' : bankDepositFilters.type}
+                    onChange={v => setBankDepositFilters({ ...bankDepositFilters, type: v || 'All' })}
+                    suggestions={['All', 'Cash', 'Cheque']}
+                    placeholder="All Types"
+                  />
+                  <Autocomplete
+                    value={bankDepositFilters.month === 'All' ? '' : bankDepositFilters.month}
+                    onChange={v => setBankDepositFilters({ ...bankDepositFilters, month: v || 'All' })}
+                    suggestions={['All', ...Array.from(new Set(getUniqueValues(bankDeposits, 'month').filter(Boolean))).map(String)]}
+                    placeholder="All Months"
+                  />
+                  <Autocomplete
+                    value={bankDepositFilters.year === 'All' ? '' : bankDepositFilters.year}
+                    onChange={v => setBankDepositFilters({ ...bankDepositFilters, year: v || 'All' })}
+                    suggestions={['All', ...Array.from(new Set(getUniqueValues(bankDeposits, 'year').filter(Boolean))).map(String)]}
+                    placeholder="All Years"
+                  />
                   <Button variant="outline" size="sm" onClick={() => setBankDepositFilters({ type: 'All', month: 'All', year: 'All', startDate: '', endDate: '' })} className="h-10">
                     Reset Filters
                   </Button>
@@ -1793,42 +1564,30 @@ const AdminAccountsPage = () => {
               {/* Filters */}
               <div className="flex flex-wrap items-center gap-3 mb-6 bg-muted/30 p-3 rounded-lg border border-border/50">
                 <div className="w-[240px]">
-                  <Select
-                    value={ledgerFilters.clientName === 'All' ? 'All' : ledgerFilters.clientName}
-                    onValueChange={v => setLedgerFilters({ ...ledgerFilters, clientName: v })}
-                  >
-                    <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="All Clients" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="All">All Clients</SelectItem>
-                      {[...new Set([...clients, ...getUniqueValues([...incomes, ...expenses], 'clientName')])].map(c => c && <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <Autocomplete
+                    value={ledgerFilters.clientName === 'All' ? '' : ledgerFilters.clientName}
+                    onChange={v => setLedgerFilters({ ...ledgerFilters, clientName: v || 'All' })}
+                    suggestions={['All', ...Array.from(new Set([...clients, ...getUniqueValues([...incomes, ...expenses], 'clientName')].filter(Boolean))).map(String)]}
+                    placeholder="All Clients"
+                  />
                 </div>
 
                 <div className="w-[160px]">
-                  <Select
-                    value={ledgerFilters.month === 'All' ? 'All' : ledgerFilters.month}
-                    onValueChange={v => setLedgerFilters({ ...ledgerFilters, month: v })}
-                  >
-                    <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="All Months" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="All">All Months</SelectItem>
-                      {getUniqueValues([...incomes, ...expenses], 'month').map(m => m && <SelectItem key={m} value={m}>{m}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <Autocomplete
+                    value={ledgerFilters.month === 'All' ? '' : ledgerFilters.month}
+                    onChange={v => setLedgerFilters({ ...ledgerFilters, month: v || 'All' })}
+                    suggestions={['All', ...Array.from(new Set(getUniqueValues([...incomes, ...expenses], 'month').filter(Boolean))).map(String)]}
+                    placeholder="All Months"
+                  />
                 </div>
 
                 <div className="w-[140px]">
-                  <Select
-                    value={ledgerFilters.year === 'All' ? 'All' : ledgerFilters.year}
-                    onValueChange={v => setLedgerFilters({ ...ledgerFilters, year: v })}
-                  >
-                    <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="All Years" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="All">All Years</SelectItem>
-                      {getUniqueValues([...incomes, ...expenses], 'year').map(y => y && <SelectItem key={y.toString()} value={y.toString()}>{y}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <Autocomplete
+                    value={ledgerFilters.year === 'All' ? '' : ledgerFilters.year}
+                    onChange={v => setLedgerFilters({ ...ledgerFilters, year: v || 'All' })}
+                    suggestions={['All', ...Array.from(new Set(getUniqueValues([...incomes, ...expenses], 'year').filter(Boolean))).map(String)]}
+                    placeholder="All Years"
+                  />
                 </div>
 
                 {(ledgerFilters.clientName !== 'All' || ledgerFilters.month !== 'All' || ledgerFilters.year !== 'All') && (

@@ -500,7 +500,10 @@ app.put('/api/income/:id', async (req, res) => {
 // --- Expense Endpoints ---
 app.get('/api/expense', async (req, res) => {
     try {
-        const query = req.query.staffId ? { staffId: req.query.staffId } : {};
+        const conditions = [];
+        if (req.query.staffId) conditions.push({ staffId: req.query.staffId });
+        if (req.query.staffName) conditions.push({ staffName: new RegExp(`^${req.query.staffName.trim()}$`, 'i') });
+        const query = conditions.length > 0 ? { $or: conditions } : {};
         const expenseRecords = await Expense.find(query).sort({ date: -1 });
         res.json(expenseRecords);
     } catch (error) {
@@ -547,7 +550,10 @@ app.put('/api/expense/:id', async (req, res) => {
 // --- Pending Expense Endpoints ---
 app.get('/api/pending-expense', async (req, res) => {
     try {
-        const query = req.query.staffId ? { staffId: req.query.staffId } : {};
+        const conditions = [];
+        if (req.query.staffId) conditions.push({ staffId: req.query.staffId });
+        if (req.query.staffName) conditions.push({ staffName: new RegExp(`^${req.query.staffName.trim()}$`, 'i') });
+        const query = conditions.length > 0 ? { $or: conditions } : {};
         const records = await PendingExpense.find(query).sort({ date: -1 });
         res.json(records);
     } catch (error) {

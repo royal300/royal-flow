@@ -49,8 +49,8 @@ const StaffExpensePage = () => {
       const currentStaffName = (session?.name || '').trim().toLowerCase();
 
       const [pendingData, approvedData, categoriesSetting, banksSetting, clientsSetting, methodsSetting, allExpenses] = await Promise.all([
-        currentStaffId ? accountService.getPendingExpenses(currentStaffId) : accountService.getPendingExpenses(),
-        currentStaffId ? accountService.getExpenses(currentStaffId) : accountService.getExpenses(),
+        (currentStaffId || currentStaffName) ? accountService.getPendingExpenses(currentStaffId, currentStaffName) : accountService.getPendingExpenses(),
+        (currentStaffId || currentStaffName) ? accountService.getExpenses(currentStaffId, currentStaffName) : accountService.getExpenses(),
         settingsService.get('accountCategories'),
         settingsService.get('accountBanks'),
         settingsService.get('accountClients'),
@@ -59,14 +59,14 @@ const StaffExpensePage = () => {
       ]);
 
       const myPending = (pendingData || []).filter(p => {
-        if (!currentStaffId && !currentStaffName) return true;
+        if (!currentStaffId && !currentStaffName) return false;
         if (p.staffId && p.staffId === currentStaffId) return true;
         if (p.staffName && p.staffName.trim().toLowerCase() === currentStaffName) return true;
         return false;
       });
 
       const myApproved = (approvedData || []).filter(a => {
-        if (!currentStaffId && !currentStaffName) return true;
+        if (!currentStaffId && !currentStaffName) return false;
         if (a.staffId && a.staffId === currentStaffId) return true;
         if (a.staffName && a.staffName.trim().toLowerCase() === currentStaffName) return true;
         return false;

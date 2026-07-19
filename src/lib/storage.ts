@@ -444,8 +444,11 @@ export const accountService = {
   },
 
   // Expense Methods
-  getExpenses: async (staffId?: string): Promise<Expense[]> => {
-    const query = staffId ? `?staffId=${encodeURIComponent(staffId)}` : '';
+  getExpenses: async (staffId?: string, staffName?: string): Promise<Expense[]> => {
+    const params = new URLSearchParams();
+    if (staffId) params.append('staffId', staffId);
+    if (staffName) params.append('staffName', staffName);
+    const query = params.toString() ? `?${params.toString()}` : '';
     return api.get<Expense[]>(`/expense${query}`);
   },
   async createExpense(expense: Omit<Expense, 'id' | 'createdAt'>): Promise<Expense> {
@@ -459,8 +462,11 @@ export const accountService = {
   },
 
   // Pending Expense Methods
-  getPendingExpenses: async (staffId?: string): Promise<PendingExpense[]> => {
-    const query = staffId ? `?staffId=${encodeURIComponent(staffId)}` : '';
+  getPendingExpenses: async (staffId?: string, staffName?: string): Promise<PendingExpense[]> => {
+    const params = new URLSearchParams();
+    if (staffId) params.append('staffId', staffId);
+    if (staffName) params.append('staffName', staffName);
+    const query = params.toString() ? `?${params.toString()}` : '';
     return api.get<PendingExpense[]>(`/pending-expense${query}`);
   },
   createPendingExpense: async (expense: Omit<PendingExpense, 'id' | 'createdAt'>): Promise<PendingExpense> => {

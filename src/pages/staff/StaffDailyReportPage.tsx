@@ -17,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Autocomplete } from '@/components/ui/autocomplete';
 
 const StaffDailyReportPage = () => {
     const { session } = useAuth();
@@ -233,37 +234,22 @@ const StaffDailyReportPage = () => {
                                     <form onSubmit={handleCreativeSubmit} className="space-y-4">
                                         <div>
                                             <Label className="text-xs font-medium mb-1.5 block">Client Name</Label>
-                                            <Select
+                                            <Autocomplete
                                                 value={creativeForm.clientName}
-                                                onValueChange={v => setCreativeForm({ ...creativeForm, clientName: v })}
-                                            >
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder="Select Client (Fetched from Admin)" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    {clients.map(client => (
-                                                        <SelectItem key={client} value={client}>{client}</SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
+                                                onChange={v => setCreativeForm({ ...creativeForm, clientName: v })}
+                                                suggestions={clients}
+                                                placeholder="Type or select client name..."
+                                            />
                                         </div>
 
                                         <div>
                                             <Label className="text-xs font-medium mb-1.5 block">Report Type</Label>
-                                            <Select
+                                            <Autocomplete
                                                 value={creativeForm.creativeType}
-                                                onValueChange={v => setCreativeForm({ ...creativeForm, creativeType: v, itemCount: ['Long Video', 'Creative', 'Reels'].includes(v) ? creativeForm.itemCount : '' })}
-                                            >
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder="Select Type" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="Long Video">Long Video</SelectItem>
-                                                    <SelectItem value="Creative">Creative</SelectItem>
-                                                    <SelectItem value="Reels">Reels</SelectItem>
-                                                    <SelectItem value="Shooting">Shooting</SelectItem>
-                                                </SelectContent>
-                                            </Select>
+                                                onChange={v => setCreativeForm({ ...creativeForm, creativeType: v, itemCount: ['Long Video', 'Creative', 'Reels'].includes(v) ? creativeForm.itemCount : '' })}
+                                                suggestions={['Long Video', 'Creative', 'Reels', 'Shooting']}
+                                                placeholder="Type or select report type..."
+                                            />
                                         </div>
 
                                         {showItemCountField && (
