@@ -242,6 +242,7 @@ const AdminAccountsPage = () => {
   // Filters
   const [incomeFilters, setIncomeFilters] = useState({ clientName: 'All', category: 'All', paymentMethod: 'All', bank: 'All', month: 'All', year: 'All', invoiceNumber: '', startDate: '', endDate: '' });
   const [expenseFilters, setExpenseFilters] = useState({ category: 'All', clientName: 'All', month: 'All', year: 'All', startDate: '', endDate: '' });
+  const [adExpenseFilters, setAdExpenseFilters] = useState({ clientName: 'All', month: 'All', year: 'All' });
   const [bankDepositFilters, setBankDepositFilters] = useState({ type: 'All', month: 'All', year: 'All', startDate: '', endDate: '' });
   const [overviewFilters, setOverviewFilters] = useState({ month: 'All', year: 'All' });
   const [ledgerFilters, setLedgerFilters] = useState({ clientName: 'All', month: 'All', year: 'All' });
@@ -265,7 +266,10 @@ const AdminAccountsPage = () => {
       setClients(clientsData?.value || []);
       setPaymentMethods(methodsData?.value || []);
       setBanks(banksData?.value || []);
-      setCategories(categoriesData?.value || []);
+      
+      const loadedCats = categoriesData?.value || [];
+      const expCats = (expensesData || []).map(e => e.category).filter(Boolean);
+      setCategories(Array.from(new Set(['Meta Ad', ...loadedCats, ...expCats])));
       
       setIncomes(incomesData || []);
       setExpenses(expensesData || []);
@@ -530,6 +534,16 @@ const AdminAccountsPage = () => {
     }
   };
 
+  const handleApprovePendingExpense = async (id: string) => {
+    try {
+      await accountService.approvePendingExpense(id);
+      toast({ title: 'Success', description: 'Pending expense approved and moved to main accounts.' });
+      loadData();
+    } catch (err) {
+      toast({ title: 'Error', description: 'Failed to approve pending expense', variant: 'destructive' });
+    }
+  };
+
   const handleDeletePendingExpense = async (id: string) => {
     if (!confirm('Are you sure you want to delete this pending expense?')) return;
     try {
@@ -596,13 +610,28 @@ const AdminAccountsPage = () => {
     return matchDateRange && matchClient && matchCategory && matchPayment && matchBank && matchMonth && matchYear && matchInvoice;
   });
 
+  const isMetaAd = (category?: string) => {
+    if (!category) return false;
+    const lower = category.toLowerCase().trim();
+    return lower === 'meta ad' || lower === 'meta ads' || lower.includes('meta ad');
+  };
+
   const filteredExpenses = expenses.filter(exp => {
+    if (isMetaAd(exp.category)) return false;
     const matchDateRange = isDateInRange(exp.date, expenseFilters.startDate, expenseFilters.endDate);
     const matchCategory = expenseFilters.category === 'All' || !expenseFilters.category || (exp.category && exp.category.toLowerCase().includes(expenseFilters.category.toLowerCase()));
     const matchClient = expenseFilters.clientName === 'All' || !expenseFilters.clientName || (exp.clientName && exp.clientName.toLowerCase().includes(expenseFilters.clientName.toLowerCase()));
     const matchMonth = expenseFilters.month === 'All' || !expenseFilters.month || (exp.month && exp.month.toLowerCase().includes(expenseFilters.month.toLowerCase()));
     const matchYear = expenseFilters.year === 'All' || !expenseFilters.year || (exp.year && exp.year.toString().toLowerCase().includes(expenseFilters.year.toString().toLowerCase()));
     return matchDateRange && matchCategory && matchClient && matchMonth && matchYear;
+  });
+
+  const filteredAdExpenses = expenses.filter(exp => {
+    if (!isMetaAd(exp.category)) return false;
+    const matchClient = adExpenseFilters.clientName === 'All' || !adExpenseFilters.clientName || (exp.clientName && exp.clientName.toLowerCase().includes(adExpenseFilters.clientName.toLowerCase()));
+    const matchMonth = adExpenseFilters.month === 'All' || !adExpenseFilters.month || (exp.month && exp.month.toLowerCase().includes(adExpenseFilters.month.toLowerCase()));
+    const matchYear = adExpenseFilters.year === 'All' || !adExpenseFilters.year || (exp.year && exp.year.toString().toLowerCase().includes(adExpenseFilters.year.toString().toLowerCase()));
+    return matchClient && matchMonth && matchYear;
   });
 
   const filteredBankDeposits = bankDeposits.filter(dep => {
@@ -676,6 +705,8 @@ const AdminAccountsPage = () => {
   const totalIncomeGst = filteredIncomes.reduce((acc, curr) => acc + (curr.gstAmount || 0), 0);
   const totalExpense = filteredExpenses.reduce((acc, curr) => acc + curr.amount, 0);
   const totalExpenseGst = filteredExpenses.reduce((acc, curr) => acc + (curr.gstAmount || 0), 0);
+  const totalAdExpense = filteredAdExpenses.reduce((acc, curr) => acc + curr.amount, 0);
+  const totalAdExpenseGst = filteredAdExpenses.reduce((acc, curr) => acc + (curr.gstAmount || 0), 0);
   const totalBankDeposit = filteredBankDeposits.reduce((acc, curr) => acc + curr.amount, 0);
 
   const handlePreviewPDF = (data: any[], title: string) => {
@@ -734,10 +765,11 @@ const AdminAccountsPage = () => {
       </div>
 
       <Tabs defaultValue="income" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-7 max-w-5xl mb-4 h-auto">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-8 max-w-6xl mb-4 h-auto">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="income">Income</TabsTrigger>
           <TabsTrigger value="expense">Expense</TabsTrigger>
+          <TabsTrigger value="ad-expense">Ad Expense</TabsTrigger>
           <TabsTrigger value="bank-deposit">Bank Deposit</TabsTrigger>
           <TabsTrigger value="ledger">Ledger</TabsTrigger>
           <TabsTrigger value="pending-expense" className="flex items-center gap-1.5">
@@ -1280,6 +1312,136 @@ const AdminAccountsPage = () => {
           </GlassCard>
         </TabsContent>
 
+        {/* AD EXPENSE TAB */}
+        <TabsContent value="ad-expense" className="space-y-4 mt-4">
+          <GlassCard>
+            <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 gap-4">
+              <div>
+                <CardTitle className="text-xl font-bold flex items-center gap-2">
+                  Ad Expense Records
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300">
+                    Meta Ad
+                  </span>
+                </CardTitle>
+                <CardDescription>Filtered view of all approved Meta Ad expenses.</CardDescription>
+              </div>
+              <div className="flex gap-2 items-center flex-wrap">
+                <span className="text-sm font-semibold text-primary px-3 py-1 bg-primary/10 rounded-full">
+                  Total Ad Expense: ₹{totalAdExpense.toLocaleString()}
+                </span>
+                <span className="text-sm font-semibold text-amber-600 px-3 py-1 bg-amber-50 dark:bg-amber-950/40 rounded-full">
+                  Total GST: ₹{totalAdExpenseGst.toLocaleString()}
+                </span>
+                <Button variant="outline" size="sm" onClick={() => handlePreviewPDF(filteredAdExpenses, 'Ad Expense Records')}>
+                  <FileText className="w-4 h-4 mr-1" /> Preview PDF
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => exportToPDF(filteredAdExpenses, 'Ad Expense Records')}>
+                  <FileText className="w-4 h-4 mr-1" /> Export PDF
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4 bg-muted/30 p-3 rounded-lg border">
+                <div>
+                  <Label className="text-xs mb-1 block">Client Name</Label>
+                  <Select
+                    value={adExpenseFilters.clientName === 'All' ? '' : adExpenseFilters.clientName}
+                    onValueChange={v => setAdExpenseFilters({ ...adExpenseFilters, clientName: v || 'All' })}
+                  >
+                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="All Clients" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="All">All Clients</SelectItem>
+                      {getUniqueValues(expenses.filter(e => isMetaAd(e.category)), 'clientName').map(c => c && <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs mb-1 block">Month</Label>
+                  <Select
+                    value={adExpenseFilters.month === 'All' ? '' : adExpenseFilters.month}
+                    onValueChange={v => setAdExpenseFilters({ ...adExpenseFilters, month: v || 'All' })}
+                  >
+                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="All Months" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="All">All Months</SelectItem>
+                      {getUniqueValues(expenses.filter(e => isMetaAd(e.category)), 'month').map(m => m && <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs mb-1 block">Year</Label>
+                  <Select
+                    value={adExpenseFilters.year === 'All' ? '' : adExpenseFilters.year}
+                    onValueChange={v => setAdExpenseFilters({ ...adExpenseFilters, year: v || 'All' })}
+                  >
+                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="All Years" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="All">All Years</SelectItem>
+                      {getUniqueValues(expenses.filter(e => isMetaAd(e.category)), 'year').map(y => y && <SelectItem key={y.toString()} value={y.toString()}>{y}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-end">
+                  <Button variant="ghost" size="sm" onClick={() => setAdExpenseFilters({ clientName: 'All', month: 'All', year: 'All' })} className="h-8 text-xs text-muted-foreground hover:text-foreground">
+                    Reset Filters
+                  </Button>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Client Name</TableHead>
+                      <TableHead>Category</TableHead>
+                      <TableHead>Staff Name</TableHead>
+                      <TableHead>Payment Mode</TableHead>
+                      <TableHead>Bank</TableHead>
+                      <TableHead>Ref No.</TableHead>
+                      <TableHead>Remarks</TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead>GST</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredAdExpenses.map((exp) => (
+                      <TableRow key={exp.id}>
+                        <TableCell>{formatDate(exp.date)}</TableCell>
+                        <TableCell className="font-semibold text-primary">{exp.clientName || '-'}</TableCell>
+                        <TableCell className="font-medium text-purple-600 dark:text-purple-400">{exp.category}</TableCell>
+                        <TableCell className="text-muted-foreground text-xs">{exp.staffName || '-'}</TableCell>
+                        <TableCell>{exp.paymentMethod || '-'}</TableCell>
+                        <TableCell>{exp.bank || '-'}</TableCell>
+                        <TableCell>{exp.rfNo || '-'}</TableCell>
+                        <TableCell>{exp.remarks || '-'}</TableCell>
+                        <TableCell className="font-semibold text-destructive">₹{exp.amount.toLocaleString()}</TableCell>
+                        <TableCell>{exp.isGst && exp.gstAmount ? `₹${exp.gstAmount}` : '-'}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-1">
+                            <Button variant="ghost" size="sm" onClick={() => setEditingExpense({ ...exp })} className="p-1 h-7 w-7 text-blue-500 hover:text-blue-700">
+                              <Pencil className="w-4 h-4" />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => handleDeleteExpense(exp.id)} className="p-1 h-7 w-7 text-red-500 hover:text-red-700">
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {filteredAdExpenses.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">No Ad expense records found</TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </GlassCard>
+        </TabsContent>
+
         {/* BANK DEPOSIT TAB */}
         <TabsContent value="bank-deposit" className="space-y-4 mt-4">
           <GlassCard>
@@ -1744,6 +1906,9 @@ const AdminAccountsPage = () => {
                                 </div>
                               ) : (
                                 <div className="flex justify-end gap-1">
+                                  <Button size="sm" variant="ghost" onClick={() => handleApprovePendingExpense(item.id)} className="h-8 w-8 p-0 text-success hover:text-success hover:bg-success/10" title="Approve this expense">
+                                    <Check className="h-4 w-4" />
+                                  </Button>
                                   <Button size="sm" variant="ghost" onClick={() => setEditingPendingExpense({ ...item })} className="h-8 w-8 p-0 text-muted-foreground hover:text-primary" title="Edit row">
                                     <Pencil className="h-4 w-4" />
                                   </Button>

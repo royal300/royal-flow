@@ -112,6 +112,9 @@ export interface Income {
 
 export interface Expense {
   id: string;
+  staffId?: string;
+  staffName?: string;
+  status?: string;
   date: string;
   category: string;
   paymentMethod?: string;
@@ -129,8 +132,6 @@ export interface Expense {
 }
 
 export interface PendingExpense extends Expense {
-  staffId?: string;
-  staffName?: string;
   updatedAt?: string;
 }
 
@@ -439,8 +440,9 @@ export const accountService = {
   },
 
   // Expense Methods
-  getExpenses: async (): Promise<Expense[]> => {
-    return api.get<Expense[]>('/expense');
+  getExpenses: async (staffId?: string): Promise<Expense[]> => {
+    const query = staffId ? `?staffId=${encodeURIComponent(staffId)}` : '';
+    return api.get<Expense[]>(`/expense${query}`);
   },
   async createExpense(expense: Omit<Expense, 'id' | 'createdAt'>): Promise<Expense> {
     return await api.post<Expense>('/expense', expense);
@@ -465,6 +467,9 @@ export const accountService = {
   },
   updatePendingExpense: async (id: string, data: Partial<PendingExpense>) => {
     return await api.put<PendingExpense>(`/pending-expense/${id}`, data);
+  },
+  approvePendingExpense: async (id: string): Promise<{ success: boolean; expense: Expense }> => {
+    return await api.post<{ success: boolean; expense: Expense }>(`/pending-expense/${id}/approve`, {});
   },
   approveAllPendingExpenses: async (): Promise<{ success: boolean; count: number }> => {
     return await api.post<{ success: boolean; count: number }>('/pending-expense/approve-all', {});

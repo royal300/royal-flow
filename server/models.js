@@ -102,6 +102,9 @@ const incomeSchema = new mongoose.Schema({
 
 const expenseSchema = new mongoose.Schema({
   id: { type: String, required: true, unique: true },
+  staffId: String,
+  staffName: String,
+  status: { type: String, default: 'Approved' },
   date: String,
   category: String,
   paymentMethod: String,
@@ -122,6 +125,7 @@ const pendingExpenseSchema = new mongoose.Schema({
   id: { type: String, required: true, unique: true },
   staffId: String,
   staffName: String,
+  status: { type: String, default: 'Pending' },
   date: String,
   category: String,
   paymentMethod: String,

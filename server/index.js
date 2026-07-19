@@ -500,7 +500,8 @@ app.put('/api/income/:id', async (req, res) => {
 // --- Expense Endpoints ---
 app.get('/api/expense', async (req, res) => {
     try {
-        const expenseRecords = await Expense.find().sort({ date: -1 });
+        const query = req.query.staffId ? { staffId: req.query.staffId } : {};
+        const expenseRecords = await Expense.find(query).sort({ date: -1 });
         res.json(expenseRecords);
     } catch (error) {
         console.error('Error fetching expense:', error);
@@ -513,6 +514,7 @@ app.post('/api/expense', async (req, res) => {
         const newExpense = new Expense({
             ...req.body,
             id: crypto.randomUUID(),
+            status: req.body.status || 'Approved',
             createdAt: new Date().toISOString()
         });
         await newExpense.save();
@@ -559,6 +561,7 @@ app.post('/api/pending-expense', async (req, res) => {
         const newRecord = new PendingExpense({
             ...req.body,
             id: crypto.randomUUID(),
+            status: req.body.status || 'Pending',
             createdAt: new Date().toISOString()
         });
         await newRecord.save();
@@ -588,6 +591,41 @@ app.put('/api/pending-expense/:id', async (req, res) => {
     }
 });
 
+app.post('/api/pending-expense/:id/approve', async (req, res) => {
+    try {
+        const record = await PendingExpense.findOne({ id: req.params.id });
+        if (!record) {
+            return res.status(404).json({ error: 'Pending expense not found' });
+        }
+        const newExpense = new Expense({
+            id: crypto.randomUUID(),
+            staffId: record.staffId,
+            staffName: record.staffName,
+            status: 'Approved',
+            date: record.date,
+            category: record.category,
+            bank: record.bank,
+            clientName: record.clientName,
+            paymentMethod: record.paymentMethod,
+            rfNo: record.rfNo,
+            amount: record.amount,
+            isGst: record.isGst,
+            gstAmount: record.gstAmount,
+            withoutGstAmount: record.withoutGstAmount,
+            month: record.month,
+            year: record.year,
+            remarks: record.remarks,
+            createdAt: new Date().toISOString()
+        });
+        await newExpense.save();
+        await PendingExpense.deleteOne({ id: req.params.id });
+        res.json({ success: true, expense: newExpense });
+    } catch (error) {
+        console.error('Error approving pending expense:', error);
+        res.status(500).json({ error: 'Failed to approve pending expense' });
+    }
+});
+
 app.post('/api/pending-expense/approve-all', async (req, res) => {
     try {
         const records = await PendingExpense.find();
@@ -596,10 +634,14 @@ app.post('/api/pending-expense/approve-all', async (req, res) => {
         }
         const expensesToCreate = records.map(record => ({
             id: crypto.randomUUID(),
+            staffId: record.staffId,
+            staffName: record.staffName,
+            status: 'Approved',
             date: record.date,
             category: record.category,
             bank: record.bank,
             clientName: record.clientName,
+            paymentMethod: record.paymentMethod,
             rfNo: record.rfNo,
             amount: record.amount,
             isGst: record.isGst,

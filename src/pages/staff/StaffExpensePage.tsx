@@ -16,6 +16,7 @@ const StaffExpensePage = () => {
   const { toast } = useToast();
 
   const [pendingExpenses, setPendingExpenses] = useState<PendingExpense[]>([]);
+  const [allSubmittedExpenses, setAllSubmittedExpenses] = useState<PendingExpense[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [banks, setBanks] = useState<string[]>([]);
   const [clients, setClients] = useState<string[]>([]);
@@ -44,8 +45,9 @@ const StaffExpensePage = () => {
 
   const fetchData = async () => {
     try {
-      const [pendingData, categoriesSetting, banksSetting, clientsSetting, methodsSetting, allExpenses] = await Promise.all([
+      const [pendingData, approvedData, categoriesSetting, banksSetting, clientsSetting, methodsSetting, allExpenses] = await Promise.all([
         session?.id ? accountService.getPendingExpenses(session.id) : accountService.getPendingExpenses(),
+        session?.id ? accountService.getExpenses(session.id) : accountService.getExpenses(),
         settingsService.get('accountCategories'),
         settingsService.get('accountBanks'),
         settingsService.get('accountClients'),
@@ -53,11 +55,16 @@ const StaffExpensePage = () => {
         accountService.getExpenses()
       ]);
 
-      setPendingExpenses(pendingData || []);
+      const pendingList = (pendingData || []).map(p => ({ ...p, status: p.status || 'Pending' }));
+      const approvedList = (approvedData || []).map(a => ({ ...a, status: a.status || 'Approved' }));
+      const combined = [...pendingList, ...approvedList].sort((a, b) => b.date.localeCompare(a.date));
+
+      setPendingExpenses(pendingList);
+      setAllSubmittedExpenses(combined);
       
       const masterCats = Array.isArray(categoriesSetting?.value) ? categoriesSetting.value : [];
       const expCats = Array.from(new Set(allExpenses.map(e => e.category).filter(Boolean) as string[]));
-      setCategories(Array.from(new Set([...masterCats, ...expCats])));
+      setCategories(Array.from(new Set(['Meta Ad', ...masterCats, ...expCats])));
 
       const masterBanks = Array.isArray(banksSetting?.value) ? banksSetting.value : [];
       const expBanks = Array.from(new Set(allExpenses.map(e => e.bank).filter(Boolean) as string[]));
@@ -284,8 +291,8 @@ const StaffExpensePage = () => {
 
       <GlassCard>
         <CardHeader>
-          <CardTitle>My Submitted Pending Expenses ({pendingExpenses.length})</CardTitle>
-          <CardDescription>These rows can be edited by you until the admin approves them.</CardDescription>
+          <CardTitle>My Submitted Expenses ({allSubmittedExpenses.length})</CardTitle>
+          <CardDescription>View all your submitted expense records. Pending records can be edited until approved by admin.</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto rounded-md border">
@@ -306,17 +313,18 @@ const StaffExpensePage = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {pendingExpenses.length === 0 ? (
+                {allSubmittedExpenses.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
-                      No pending expenses found. Submit your first expense using the form above.
+                      No expenses found. Submit your first expense using the form above.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  pendingExpenses.map(item => {
+                  allSubmittedExpenses.map(item => {
                     const isEditing = editingExpense?.id === item.id;
+                    const isApproved = item.status === 'Approved';
                     return (
-                      <TableRow key={item.id}>
+                      <TableRow key={item.id} className={isApproved ? "bg-muted/30" : ""}>
                         <TableCell>
                           {isEditing ? (
                             <Input
@@ -413,9 +421,15 @@ const StaffExpensePage = () => {
                           ) : (item.isGst && item.gstAmount ? `₹${item.gstAmount}` : '-')}
                         </TableCell>
                         <TableCell>
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
-                            Pending Approval
-                          </span>
+                          {isApproved ? (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">
+                              Approved
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                              Pending Approval
+                            </span>
+                          )}
                         </TableCell>
                         <TableCell className="text-right">
                           {isEditing ? (
@@ -427,12 +441,14 @@ const StaffExpensePage = () => {
                                 <X className="h-4 w-4" />
                               </Button>
                             </div>
+                          ) : isApproved ? (
+                            <span className="text-xs text-muted-foreground italic px-2">Approved</span>
                           ) : (
                             <div className="flex justify-end gap-1">
-                              <Button size="sm" variant="ghost" onClick={() => setEditingExpense({ ...item })} className="h-8 w-8 p-0 text-muted-foreground hover:text-primary">
+                              <Button size="sm" variant="ghost" onClick={() => setEditingExpense({ ...item })} className="h-8 w-8 p-0 text-muted-foreground hover:text-primary" title="Edit pending record">
                                 <Pencil className="h-4 w-4" />
                               </Button>
-                              <Button size="sm" variant="ghost" onClick={() => handleDeleteExpense(item.id)} className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive">
+                              <Button size="sm" variant="ghost" onClick={() => handleDeleteExpense(item.id)} className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive" title="Delete pending record">
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             </div>
