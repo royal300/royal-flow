@@ -589,8 +589,9 @@ const AdminAccountsPage = () => {
       doc.setFontSize(10);
       doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 22);
 
-      const headers = [['Date', 'Client Name', 'Category', 'Payment Mode', 'Bank', 'Ref No.', 'Remarks', 'Amount', 'GST']];
+      const headers = [['Submitted By', 'Date', 'Client Name', 'Category', 'Payment Mode', 'Bank', 'Ref No.', 'Remarks', 'Amount', 'GST']];
       const tableData = filteredAdExpenses.map(item => [
+        item.staffName || '-',
         formatDate(item.date) || '-',
         item.clientName || '-',
         item.category || '-',
@@ -630,9 +631,9 @@ const AdminAccountsPage = () => {
         formatDate(row.date), row.clientName, row.category || '-', row.paymentMethod && row.paymentMethod.toLowerCase() === 'cheque' && row.chequeNo ? `Cheque\nNo. : ${row.chequeNo}` : row.paymentMethod, row.bank, row.rfNo || '-', row.month, row.year, row.invoiceNumber || '-', row.remarks || '-', row.amount, row.gstAmount ? `₹${row.gstAmount}` : '-'
       ]);
     } else if (title === 'Expense Records') {
-      headers = ['Date', 'Client Name', 'Category', 'Bank', 'Ref No.', 'Month', 'Year', 'Remarks', 'Amount', 'GST'];
+      headers = ['Submitted By', 'Date', 'Client Name', 'Category', 'Bank', 'Ref No.', 'Month', 'Year', 'Remarks', 'Amount', 'GST'];
       tableData = data.map(row => [
-        formatDate(row.date), row.clientName || '-', row.category, row.bank || '-', row.rfNo || '-', row.month, row.year, row.remarks || '-', row.amount, row.gstAmount ? `₹${row.gstAmount}` : '-'
+        row.staffName || '-', formatDate(row.date), row.clientName || '-', row.category, row.bank || '-', row.rfNo || '-', row.month, row.year, row.remarks || '-', row.amount, row.gstAmount ? `₹${row.gstAmount}` : '-'
       ]);
     } else if (title === 'Bank Deposits') {
       headers = ['Date', 'Deposited Bank', 'Type', 'Cheque Details', 'Month', 'Year', 'Remarks', 'Amount'];
@@ -645,9 +646,9 @@ const AdminAccountsPage = () => {
         formatDate(row.date), row.type, row.clientName, row.category, row.remarks, row.amount, row.gstAmount ? `₹${row.gstAmount}` : '-'
       ]);
     } else if (title === 'Ad Expense Records') {
-      headers = ['Date', 'Client Name', 'Category', 'Payment Mode', 'Bank', 'Ref No.', 'Remarks', 'Amount', 'GST'];
+      headers = ['Submitted By', 'Date', 'Client Name', 'Category', 'Payment Mode', 'Bank', 'Ref No.', 'Remarks', 'Amount', 'GST'];
       tableData = data.map(row => [
-        formatDate(row.date), row.clientName || '-', row.category || '-', row.paymentMethod || '-', row.bank || '-', row.rfNo || '-', row.remarks || '-', row.amount, row.gstAmount ? `₹${row.gstAmount}` : '-'
+        row.staffName || '-', formatDate(row.date), row.clientName || '-', row.category || '-', row.paymentMethod || '-', row.bank || '-', row.rfNo || '-', row.remarks || '-', row.amount, row.gstAmount ? `₹${row.gstAmount}` : '-'
       ]);
     }
 
@@ -1194,6 +1195,7 @@ const AdminAccountsPage = () => {
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-destructive/10 hover:bg-destructive/10">
+                      <TableHead>Submitted By</TableHead>
                       <TableHead>Date</TableHead>
                       <TableHead>Client Name</TableHead>
                       <TableHead>Category</TableHead>
@@ -1210,6 +1212,7 @@ const AdminAccountsPage = () => {
                   <TableBody>
                     {filteredExpenses.map((exp) => (
                       <TableRow key={exp.id}>
+                        <TableCell className="font-medium text-primary">{exp.staffName || '-'}</TableCell>
                         <TableCell>{formatDate(exp.date)}</TableCell>
                         <TableCell>{exp.clientName || '-'}</TableCell>
                         <TableCell className="font-medium">{exp.category}</TableCell>
@@ -1232,7 +1235,7 @@ const AdminAccountsPage = () => {
                     ))}
                     {filteredExpenses.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={11} className="text-center py-4 text-muted-foreground">No expense records found</TableCell>
+                        <TableCell colSpan={12} className="text-center py-4 text-muted-foreground">No expense records found</TableCell>
                       </TableRow>
                     )}
                   </TableBody>
@@ -1307,6 +1310,7 @@ const AdminAccountsPage = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead>Submitted By</TableHead>
                       <TableHead>Date</TableHead>
                       <TableHead>Client Name</TableHead>
                       <TableHead>Category</TableHead>
@@ -1322,6 +1326,7 @@ const AdminAccountsPage = () => {
                   <TableBody>
                     {filteredAdExpenses.map((exp) => (
                       <TableRow key={exp.id}>
+                        <TableCell className="font-medium text-primary">{exp.staffName || '-'}</TableCell>
                         <TableCell>{formatDate(exp.date)}</TableCell>
                         <TableCell className="font-semibold text-primary">{exp.clientName || '-'}</TableCell>
                         <TableCell className="font-medium text-purple-600 dark:text-purple-400">{exp.category}</TableCell>
@@ -1345,7 +1350,7 @@ const AdminAccountsPage = () => {
                     ))}
                     {filteredAdExpenses.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">No Ad expense records found</TableCell>
+                        <TableCell colSpan={12} className="text-center py-8 text-muted-foreground">No Ad expense records found</TableCell>
                       </TableRow>
                     )}
                   </TableBody>
