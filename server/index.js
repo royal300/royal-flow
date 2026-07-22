@@ -547,6 +547,83 @@ app.put('/api/expense/:id', async (req, res) => {
     }
 });
 
+// --- External Website Expense Endpoint (for xyz.com) ---
+app.post('/api/external/add-expense', async (req, res) => {
+    try {
+        const {
+            date,
+            clientName,
+            category,
+            amount,
+            gst = false,
+            isGst = false,
+            bank = 'HDFC',
+            paymentMethod = 'GPay',
+            remarks = ''
+        } = req.body;
+
+        if (!date || !clientName || !category || amount === undefined || amount === null || amount === '') {
+            return res.status(400).json({ error: 'Please provide date, clientName, category, and amount' });
+        }
+
+        // 1. Format date cleanly as YYYY-MM-DD
+        const dateObj = new Date(date);
+        if (isNaN(dateObj.getTime())) {
+            return res.status(400).json({ error: 'Invalid date format provided' });
+        }
+        const formattedDate = dateObj.toISOString().split('T')[0];
+
+        // 2. Extract full month name and year matching existing system convention
+        const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+        const month = monthNames[dateObj.getMonth()];
+        const year = dateObj.getFullYear().toString();
+
+        // 3. GST Calculation (18% inclusive check)
+        const amountVal = Number(amount);
+        if (isNaN(amountVal)) {
+            return res.status(400).json({ error: 'Amount must be a valid number' });
+        }
+        const hasGst = Boolean(gst || isGst || gst === 'true' || isGst === 'true');
+        const withoutGstVal = hasGst ? Number((amountVal / 1.18).toFixed(2)) : amountVal;
+        const gstVal = hasGst ? Number((amountVal - withoutGstVal).toFixed(2)) : 0;
+
+        // 4. Create and save Expense directly (keeping rfNo blank, bank HDFC by default)
+        const newExpense = new Expense({
+            id: crypto.randomUUID(),
+            staffId: 'website_user',
+            staffName: 'Website Portal (xyz.com)',
+            status: 'Approved',
+            date: formattedDate,
+            category: category.trim(),
+            paymentMethod: paymentMethod.trim(),
+            bank: (bank || 'HDFC').trim(),
+            clientName: clientName.trim(),
+            rfNo: '', // Kept blank as requested so admin can update later
+            amount: amountVal,
+            isGst: hasGst,
+            gstAmount: gstVal,
+            withoutGstAmount: withoutGstVal,
+            month: month,
+            year: year,
+            remarks: remarks ? remarks.trim() : '',
+            createdAt: new Date().toISOString()
+        });
+
+        await newExpense.save();
+        console.log(`✅ External Expense Added: ₹${amountVal} | Client: ${clientName} | Bank: ${newExpense.bank} | GST: ${hasGst ? `₹${gstVal}` : 'No'}`);
+
+        res.json({
+            success: true,
+            message: 'Expense added successfully from external website!',
+            expenseId: newExpense.id,
+            expense: newExpense
+        });
+    } catch (error) {
+        console.error('❌ Error in /api/external/add-expense:', error);
+        res.status(500).json({ error: 'Failed to add external expense record' });
+    }
+});
+
 // --- Pending Expense Endpoints ---
 app.get('/api/pending-expense', async (req, res) => {
     try {
