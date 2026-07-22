@@ -624,6 +624,92 @@ app.post('/api/external/add-expense', async (req, res) => {
     }
 });
 
+// --- External Website Pending Expense Endpoint (for 3rd party websites) ---
+app.post('/api/external/add-pending-expense', async (req, res) => {
+    try {
+        const {
+            submittedBy,
+            submitBy,
+            staffName,
+            date,
+            clientName,
+            category = 'Meta AD',
+            amount,
+            gst = false,
+            isGst = false,
+            bank = 'HDFC',
+            paymentMethod = 'GPay',
+            paymentMode,
+            remarks = '',
+            rfNo = ''
+        } = req.body;
+
+        if (!date || !clientName || amount === undefined || amount === null || amount === '') {
+            return res.status(400).json({ error: 'Please provide date, clientName, and amount' });
+        }
+
+        // 1. Format date cleanly as YYYY-MM-DD
+        const dateObj = new Date(date);
+        if (isNaN(dateObj.getTime())) {
+            return res.status(400).json({ error: 'Invalid date format provided' });
+        }
+        const formattedDate = dateObj.toISOString().split('T')[0];
+
+        // 2. Extract full month name and year matching existing system convention
+        const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+        const month = monthNames[dateObj.getMonth()];
+        const year = dateObj.getFullYear().toString();
+
+        // 3. GST Calculation (18% inclusive check)
+        const amountVal = Number(amount);
+        if (isNaN(amountVal)) {
+            return res.status(400).json({ error: 'Amount must be a valid number' });
+        }
+        const hasGst = Boolean(gst || isGst || gst === 'true' || isGst === 'true');
+        const withoutGstVal = hasGst ? Number((amountVal / 1.18).toFixed(2)) : amountVal;
+        const gstVal = hasGst ? Number((amountVal - withoutGstVal).toFixed(2)) : 0;
+
+        // 4. Determine submitted by name and payment mode
+        const submitterName = (submittedBy || submitBy || staffName || '3rd Party Portal').trim();
+        const mode = (paymentMode || paymentMethod || 'GPay').trim();
+
+        // 5. Create and save PendingExpense
+        const newPendingExpense = new PendingExpense({
+            id: crypto.randomUUID(),
+            staffId: 'external_user',
+            staffName: submitterName,
+            status: 'Pending',
+            date: formattedDate,
+            category: (category || 'Meta AD').trim(),
+            paymentMethod: mode,
+            bank: (bank || 'HDFC').trim(),
+            clientName: clientName.trim(),
+            rfNo: rfNo ? rfNo.trim() : '',
+            amount: amountVal,
+            isGst: hasGst,
+            gstAmount: gstVal,
+            withoutGstAmount: withoutGstVal,
+            month: month,
+            year: year,
+            remarks: remarks ? remarks.trim() : '',
+            createdAt: new Date().toISOString()
+        });
+
+        await newPendingExpense.save();
+        console.log(`✅ External Pending Expense Added: ₹${amountVal} | Client: ${clientName} | Submitter: ${submitterName} | Category: ${newPendingExpense.category}`);
+
+        res.json({
+            success: true,
+            message: 'Pending expense added successfully from 3rd party website!',
+            pendingExpenseId: newPendingExpense.id,
+            pendingExpense: newPendingExpense
+        });
+    } catch (error) {
+        console.error('❌ Error in /api/external/add-pending-expense:', error);
+        res.status(500).json({ error: 'Failed to add external pending expense record' });
+    }
+});
+
 // --- Pending Expense Endpoints ---
 app.get('/api/pending-expense', async (req, res) => {
     try {
