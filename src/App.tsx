@@ -35,26 +35,10 @@ import AttendancePage from "@/pages/AttendancePage";
 const queryClient = new QueryClient();
 
 const App = () => {
-  const [modelsLoaded, setModelsLoaded] = useState(false);
-
   useEffect(() => {
-    const initModels = async () => {
-      await loadModels();
-      setModelsLoaded(true);
-    };
-    initModels();
+    loadModels();
   }, []);
 
-  if (!modelsLoaded) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading AI Models...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <QueryClientProvider client={queryClient}>

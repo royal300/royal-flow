@@ -14,22 +14,29 @@ export interface RegisteredUser {
     descriptor: number[];
 }
 
+let modelsPromise: Promise<boolean> | null = null;
+
 /**
  * Load face-api.js models from public/models directory
  */
 export const loadModels = async (): Promise<boolean> => {
-    try {
-        await Promise.all([
-            faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
-            faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-            faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
-        ]);
-        console.log('Face recognition models loaded successfully');
-        return true;
-    } catch (error) {
-        console.error('Failed to load face recognition models:', error);
-        return false;
-    }
+    if (modelsPromise) return modelsPromise;
+    modelsPromise = (async () => {
+        try {
+            await Promise.all([
+                faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
+                faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+                faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
+            ]);
+            console.log('Face recognition models loaded successfully');
+            return true;
+        } catch (error) {
+            console.error('Failed to load face recognition models:', error);
+            modelsPromise = null;
+            return false;
+        }
+    })();
+    return modelsPromise;
 };
 
 /**
@@ -41,6 +48,7 @@ export const detectFace = async (
     imageElement: HTMLVideoElement | HTMLImageElement
 ): Promise<FaceDetection | null> => {
     if (!imageElement) return null;
+    await loadModels();
 
     try {
         const detection = await faceapi

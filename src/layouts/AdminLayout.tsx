@@ -56,29 +56,29 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
 
       {/* Sidebar */}
       <aside className={cn(
-        "fixed lg:static inset-y-0 left-0 z-50 bg-card border-r border-border flex flex-col transition-all duration-300 ease-in-out overflow-hidden shrink-0",
+        "fixed lg:static inset-y-0 left-0 z-50 bg-[#FACC15] border-r border-yellow-500/40 text-black flex flex-col transition-all duration-300 ease-in-out overflow-hidden shrink-0 shadow-lg",
         sidebarOpen ? "translate-x-0 w-64" : "-translate-x-full lg:translate-x-0",
         isCollapsed ? "lg:w-0 lg:border-r-0" : "lg:w-64"
       )}>
         <div className="w-64 flex flex-col h-full">
           {/* Logo */}
-          <div className="h-16 flex items-center justify-between px-4 border-b border-border shrink-0">
+          <div className="h-16 flex items-center justify-between px-4 border-b border-yellow-500/40 shrink-0">
             <Link to="/admin" className="flex items-center">
               <img src="/logo.png" alt="Royal 300" className="h-10" />
             </Link>
             <div className="flex items-center gap-1">
               <button
                 onClick={() => setIsCollapsed(true)}
-                className="hidden lg:flex p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                className="hidden lg:flex p-1.5 rounded-md text-black/80 hover:text-black hover:bg-yellow-300/60 transition-colors"
                 title="Collapse Sidebar"
               >
-                <ChevronLeft className="w-5 h-5" />
+                <ChevronLeft className="w-5 h-5 text-black" />
               </button>
               <button
                 onClick={() => setSidebarOpen(false)}
-                className="lg:hidden p-1 text-muted-foreground hover:text-foreground"
+                className="lg:hidden p-1 text-black/80 hover:text-black"
               >
-                <X className="w-5 h-5" />
+                <X className="w-5 h-5 text-black" />
               </button>
             </div>
           </div>
@@ -93,13 +93,13 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
                   to={item.path}
                   onClick={() => setSidebarOpen(false)}
                   className={cn(
-                    "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
+                    "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200",
                     isActive
-                      ? "bg-primary text-primary-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                      ? "bg-white text-black font-bold shadow-md"
+                      : "text-black/85 hover:text-black hover:bg-white/60 font-semibold"
                   )}
                 >
-                  <item.icon className="w-5 h-5" />
+                  <item.icon className="w-5 h-5 text-black shrink-0" />
                   {item.label}
                 </Link>
               );
@@ -107,23 +107,23 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
           </nav>
 
           {/* User section */}
-          <div className="p-4 border-t border-border">
+          <div className="p-4 border-t border-yellow-500/40">
             <div className="flex items-center gap-3 mb-3 px-2">
-              <div className="w-9 h-9 rounded-full bg-destructive/10 flex items-center justify-center">
-                <span className="text-destructive font-semibold text-sm">A</span>
+              <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center shadow-sm">
+                <span className="text-black font-bold text-sm">A</span>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{session?.name}</p>
-                <p className="text-xs text-muted-foreground truncate">Administrator</p>
+                <p className="text-sm font-bold text-black truncate">{session?.name || 'Administrator'}</p>
+                <p className="text-xs text-black/80 font-medium truncate">Administrator</p>
               </div>
             </div>
             <Button
               variant="ghost"
               size="sm"
-              className="w-full justify-start text-muted-foreground hover:text-destructive"
+              className="w-full justify-start text-black/85 hover:text-black hover:bg-white/60 font-semibold"
               onClick={handleLogout}
             >
-              <LogOut className="w-4 h-4 mr-2" />
+              <LogOut className="w-4 h-4 mr-2 text-black" />
               Sign Out
             </Button>
           </div>
