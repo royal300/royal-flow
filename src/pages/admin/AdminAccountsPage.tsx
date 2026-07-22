@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { useToast } from '@/hooks/use-toast';
 import { Checkbox } from '@/components/ui/checkbox';
 import { accountService, settingsService, Income, Expense, PendingExpense, BankDeposit } from '@/lib/storage';
-import { Trash2, Download, Pencil, ChevronUp, ChevronDown, FileText, Check, X } from 'lucide-react';
+import { Trash2, Download, Pencil, ChevronUp, ChevronDown, FileText, Check, X, TrendingUp, TrendingDown, Landmark, Wallet, AlertCircle, PieChart, Sparkles, Settings, ArrowUpRight, ArrowDownRight, ShieldCheck, DollarSign } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Autocomplete } from '@/components/ui/autocomplete';
@@ -565,7 +565,9 @@ const AdminAccountsPage = () => {
 
   const totalOverviewIncome = overviewIncomes.reduce((sum, item) => sum + item.amount, 0);
   const totalOverviewExpense = overviewExpenses.reduce((sum, item) => sum + item.amount, 0);
+  const totalOverviewAdExpense = overviewExpenses.filter(item => item.category?.toLowerCase() === 'meta ad').reduce((sum, item) => sum + item.amount, 0);
   const totalOverviewDeposit = overviewDeposits.reduce((sum, item) => sum + item.amount, 0);
+  const totalOverviewBalance = totalOverviewIncome - totalOverviewExpense;
 
   const totalCashIncome = overviewIncomes.filter(inc => inc.paymentMethod?.toLowerCase().includes('cash')).reduce((sum, item) => sum + item.amount, 0);
   const totalInHand = totalCashIncome - totalOverviewDeposit;
@@ -679,71 +681,235 @@ const AdminAccountsPage = () => {
   };
 
   return (
-    <div className="space-y-6 animate-fade-up">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight">Accounts Management</h1>
+    <div className="space-y-8 animate-fade-up pb-12">
+      {/* Executive Financial Dashboard Header Bar */}
+      <div className="bg-gradient-to-r from-slate-900/90 via-slate-900/80 to-slate-900/90 backdrop-blur-2xl border border-amber-500/20 rounded-3xl p-6 md:p-8 shadow-2xl relative overflow-hidden">
+        <div className="absolute -right-20 -top-20 w-80 h-80 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -left-20 -bottom-20 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+        
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative z-10">
+          <div className="flex items-center gap-5">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-500/20 via-amber-500/10 to-transparent border border-amber-500/40 flex items-center justify-center shadow-[0_0_25px_rgba(245,158,11,0.2)] shrink-0 group">
+              <Landmark className="w-8 h-8 text-amber-400 group-hover:scale-110 transition-transform duration-300" />
+            </div>
+            <div>
+              <div className="flex items-center gap-3 flex-wrap">
+                <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-white flex items-center gap-2">
+                  Royal 300 <span className="text-gradient-gold">Finance Pro</span>
+                </h1>
+                <span className="executive-badge bg-emerald-500/15 text-emerald-400 border-emerald-500/30 shadow-[0_0_12px_rgba(16,185,129,0.2)]">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> Live Ledger Sync
+                </span>
+              </div>
+              <p className="text-sm md:text-base text-slate-300 mt-1 font-medium">
+                Executive Control Center • Real-time synthesis of revenue inflow, campaign expenditure, and liquid assets.
+              </p>
+            </div>
+          </div>
+
+          {/* Global Executive Date Filter & Status */}
+          <div className="flex items-center gap-3 bg-slate-950/60 backdrop-blur-xl border border-white/10 p-2 rounded-2xl shadow-inner w-full md:w-auto">
+            <div className="w-[140px]">
+              <Autocomplete
+                value={overviewFilters.month === 'All' ? '' : overviewFilters.month}
+                onChange={v => setOverviewFilters({ ...overviewFilters, month: v || 'All' })}
+                suggestions={['All', ...Array.from(new Set(getUniqueValues([...incomes, ...expenses, ...bankDeposits], 'month').filter(Boolean))).map(String)]}
+                placeholder="All Months"
+              />
+            </div>
+            <div className="w-[120px]">
+              <Autocomplete
+                value={overviewFilters.year === 'All' ? '' : overviewFilters.year}
+                onChange={v => setOverviewFilters({ ...overviewFilters, year: v || 'All' })}
+                suggestions={['All', ...Array.from(new Set(getUniqueValues([...incomes, ...expenses, ...bankDeposits], 'year').filter(Boolean))).map(String)]}
+                placeholder="All Years"
+              />
+            </div>
+            {(overviewFilters.month !== 'All' || overviewFilters.year !== 'All') && (
+              <Button size="sm" variant="ghost" onClick={() => setOverviewFilters({ month: 'All', year: 'All' })} className="h-8 px-2 text-xs text-amber-400 hover:bg-amber-500/10">
+                Reset
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* 5-Card Luminous KPI Dashboard Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5">
+        {/* KPI 1: Total Income */}
+        <div className="executive-card bg-gradient-to-br from-slate-900/95 to-slate-900/70 border-emerald-500/30 p-5 relative overflow-hidden group hover:border-emerald-500/60">
+          <div className="flex justify-between items-start mb-3">
+            <span className="text-xs font-bold font-mono uppercase tracking-wider text-slate-400 group-hover:text-emerald-400 transition-colors">Total Income</span>
+            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+              <TrendingUp className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="text-2xl lg:text-3xl font-black font-mono text-white tracking-tight mb-2">
+            ₹{totalOverviewIncome.toLocaleString()}
+          </div>
+          <div className="flex items-center justify-between text-xs">
+            <span className="inline-flex items-center gap-1 text-emerald-400 font-semibold">
+              <ArrowUpRight className="w-3.5 h-3.5" /> Gross Inflow
+            </span>
+            <span className="text-slate-400 font-mono">{overviewIncomes.length} txns</span>
+          </div>
+          <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500/0 via-emerald-500/70 to-emerald-500/0 opacity-0 group-hover:opacity-100 transition-opacity" />
+        </div>
+
+        {/* KPI 2: Total Expense */}
+        <div className="executive-card bg-gradient-to-br from-slate-900/95 to-slate-900/70 border-rose-500/30 p-5 relative overflow-hidden group hover:border-rose-500/60">
+          <div className="flex justify-between items-start mb-3">
+            <span className="text-xs font-bold font-mono uppercase tracking-wider text-slate-400 group-hover:text-rose-400 transition-colors">Total Expense</span>
+            <div className="w-8 h-8 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400">
+              <TrendingDown className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="text-2xl lg:text-3xl font-black font-mono text-white tracking-tight mb-2">
+            ₹{totalOverviewExpense.toLocaleString()}
+          </div>
+          <div className="flex items-center justify-between text-xs">
+            <span className="inline-flex items-center gap-1 text-rose-400 font-semibold">
+              <ArrowDownRight className="w-3.5 h-3.5" /> Gross Outflow
+            </span>
+            <span className="text-slate-400 font-mono">{overviewExpenses.length} txns</span>
+          </div>
+          <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-rose-500/0 via-rose-500/70 to-rose-500/0 opacity-0 group-hover:opacity-100 transition-opacity" />
+        </div>
+
+        {/* KPI 3: Net Balance / Liquid Assets */}
+        <div className="executive-card bg-gradient-to-br from-slate-900/95 to-slate-900/70 border-amber-500/40 p-5 relative overflow-hidden group hover:border-amber-500 shadow-[0_0_20px_rgba(245,158,11,0.12)]">
+          <div className="flex justify-between items-start mb-3">
+            <span className="text-xs font-bold font-mono uppercase tracking-wider text-amber-400">Net Balance</span>
+            <div className="w-8 h-8 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400">
+              <Wallet className="w-4 h-4" />
+            </div>
+          </div>
+          <div className={`text-2xl lg:text-3xl font-black font-mono tracking-tight mb-2 ${totalOverviewBalance >= 0 ? 'text-amber-400' : 'text-rose-400'}`}>
+            ₹{totalOverviewBalance.toLocaleString()}
+          </div>
+          <div className="flex items-center justify-between text-xs">
+            <span className="bg-amber-500/15 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded text-[11px] font-semibold">
+              In Hand: ₹{totalInHand.toLocaleString()}
+            </span>
+            <span className="text-slate-400 text-[11px]">Liquid Reserve</span>
+          </div>
+          <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-amber-500/0 via-amber-500 to-amber-500/0" />
+        </div>
+
+        {/* KPI 4: Meta Ad Expense */}
+        <div className="executive-card bg-gradient-to-br from-slate-900/95 to-slate-900/70 border-cyan-500/30 p-5 relative overflow-hidden group hover:border-cyan-500/60">
+          <div className="flex justify-between items-start mb-3">
+            <span className="text-xs font-bold font-mono uppercase tracking-wider text-slate-400 group-hover:text-cyan-400 transition-colors">Meta Ad Expense</span>
+            <div className="w-8 h-8 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
+              <Sparkles className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="text-2xl lg:text-3xl font-black font-mono text-white tracking-tight mb-2">
+            ₹{totalOverviewAdExpense.toLocaleString()}
+          </div>
+          <div className="flex items-center justify-between text-xs">
+            <span className="inline-flex items-center gap-1 text-cyan-400 font-semibold">
+              <ShieldCheck className="w-3.5 h-3.5" /> Campaign Outflow
+            </span>
+            <span className="text-slate-400 font-mono font-medium">Meta FB/IG</span>
+          </div>
+          <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-500/0 via-cyan-500/70 to-cyan-500/0 opacity-0 group-hover:opacity-100 transition-opacity" />
+        </div>
+
+        {/* KPI 5: Pending Staff Approvals */}
+        <div className={`executive-card bg-gradient-to-br from-slate-900/95 to-slate-900/70 p-5 relative overflow-hidden group transition-all duration-300 ${pendingExpenses.length > 0 ? 'border-amber-500/50 shadow-[0_0_18px_rgba(245,158,11,0.18)]' : 'border-purple-500/30 hover:border-purple-500/60'}`}>
+          <div className="flex justify-between items-start mb-3">
+            <span className="text-xs font-bold font-mono uppercase tracking-wider text-slate-400 group-hover:text-purple-400 transition-colors">Pending Approvals</span>
+            <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${pendingExpenses.length > 0 ? 'bg-amber-500 text-slate-950 shadow-md' : 'bg-purple-500/10 border border-purple-500/20 text-purple-400'}`}>
+              <AlertCircle className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="text-2xl lg:text-3xl font-black font-mono text-white tracking-tight mb-2">
+            {pendingExpenses.length}
+          </div>
+          <div className="flex items-center justify-between text-xs">
+            {pendingExpenses.length > 0 ? (
+              <span className="bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded text-[11px] font-bold animate-pulse">
+                Action Required
+              </span>
+            ) : (
+              <span className="text-emerald-400 font-semibold">All Approved</span>
+            )}
+            <span className="text-slate-400 text-[11px]">Staff Portal Queue</span>
+          </div>
+          <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500/0 via-purple-500/70 to-purple-500/0 opacity-0 group-hover:opacity-100 transition-opacity" />
+        </div>
       </div>
 
       <Tabs defaultValue="income" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-8 max-w-6xl mb-4 h-auto">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="income">Income</TabsTrigger>
-          <TabsTrigger value="expense">Expense</TabsTrigger>
-          <TabsTrigger value="ad-expense">Ad Expense</TabsTrigger>
-          <TabsTrigger value="bank-deposit">Bank Deposit</TabsTrigger>
-          <TabsTrigger value="ledger">Ledger</TabsTrigger>
-          <TabsTrigger value="pending-expense" className="flex items-center gap-1.5">
-            Pending Expense
+        {/* Sleek Glassmorphic Pill Navigation */}
+        <TabsList className="flex flex-wrap items-center justify-start gap-2 bg-slate-900/80 backdrop-blur-2xl border border-white/10 p-2 rounded-2xl shadow-xl w-full h-auto mb-6">
+          <TabsTrigger value="overview" className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-yellow-500 data-[state=active]:text-slate-950 data-[state=active]:font-bold data-[state=active]:shadow-lg">
+            <PieChart className="w-4 h-4" /> Executive Overview
+          </TabsTrigger>
+          <TabsTrigger value="income" className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-500 data-[state=active]:to-teal-400 data-[state=active]:text-slate-950 data-[state=active]:font-bold data-[state=active]:shadow-lg">
+            <TrendingUp className="w-4 h-4" /> Income
+          </TabsTrigger>
+          <TabsTrigger value="expense" className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-rose-500 data-[state=active]:to-red-500 data-[state=active]:text-white data-[state=active]:font-bold data-[state=active]:shadow-lg">
+            <TrendingDown className="w-4 h-4" /> Expense
+          </TabsTrigger>
+          <TabsTrigger value="ad-expense" className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500 data-[state=active]:to-blue-500 data-[state=active]:text-slate-950 data-[state=active]:font-bold data-[state=active]:shadow-lg">
+            <Sparkles className="w-4 h-4" /> Ad Expense (Meta Ad)
+          </TabsTrigger>
+          <TabsTrigger value="bank-deposit" className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:font-bold data-[state=active]:shadow-lg">
+            <Landmark className="w-4 h-4" /> Bank Deposit
+          </TabsTrigger>
+          <TabsTrigger value="ledger" className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-violet-600 data-[state=active]:text-white data-[state=active]:font-bold data-[state=active]:shadow-lg">
+            <FileText className="w-4 h-4" /> Client Ledger
+          </TabsTrigger>
+          <TabsTrigger value="pending-expense" className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-orange-500 data-[state=active]:text-slate-950 data-[state=active]:font-bold data-[state=active]:shadow-lg">
+            <AlertCircle className="w-4 h-4" /> Pending Expense
             {pendingExpenses.length > 0 && (
-              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-amber-500 text-white font-bold">
+              <span className="px-2 py-0.5 rounded-full text-[11px] bg-slate-950 text-amber-400 font-extrabold shadow-inner ml-1">
                 {pendingExpenses.length}
               </span>
             )}
           </TabsTrigger>
-          <TabsTrigger value="settings">Settings</TabsTrigger>
+          <TabsTrigger value="settings" className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-slate-700 data-[state=active]:to-slate-800 data-[state=active]:text-white data-[state=active]:font-bold data-[state=active]:shadow-lg">
+            <Settings className="w-4 h-4" /> Settings & Master Data
+          </TabsTrigger>
         </TabsList>
 
         {/* OVERVIEW TAB */}
-        <TabsContent value="overview" className="space-y-4">
-          <GlassCard>
-            <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between pb-2">
-              <CardTitle className="text-2xl font-bold">Total Overview</CardTitle>
-              <div className="flex gap-2 mt-2 md:mt-0">
-                <div className="w-[140px]">
-                  <Autocomplete
-                    value={overviewFilters.month === 'All' ? '' : overviewFilters.month}
-                    onChange={v => setOverviewFilters({ ...overviewFilters, month: v || 'All' })}
-                    suggestions={['All', ...Array.from(new Set(getUniqueValues([...incomes, ...expenses, ...bankDeposits], 'month').filter(Boolean))).map(String)]}
-                    placeholder="All Months"
-                  />
-                </div>
-                <div className="w-[140px]">
-                  <Autocomplete
-                    value={overviewFilters.year === 'All' ? '' : overviewFilters.year}
-                    onChange={v => setOverviewFilters({ ...overviewFilters, year: v || 'All' })}
-                    suggestions={['All', ...Array.from(new Set(getUniqueValues([...incomes, ...expenses, ...bankDeposits], 'year').filter(Boolean))).map(String)]}
-                    placeholder="All Years"
-                  />
-                </div>
+        <TabsContent value="overview" className="space-y-6">
+          <GlassCard className="bg-slate-900/90 border-white/10 shadow-2xl">
+            <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between pb-4 border-b border-white/10">
+              <div>
+                <CardTitle className="text-2xl font-extrabold text-white flex items-center gap-3">
+                  Executive Financial Pulse
+                  <span className="executive-badge bg-amber-500/15 text-amber-400 border-amber-500/30">
+                    {overviewFilters.month === 'All' ? 'Full Period' : `${overviewFilters.month} ${overviewFilters.year === 'All' ? '' : overviewFilters.year}`}
+                  </span>
+                </CardTitle>
+                <CardDescription className="text-slate-400 mt-1">Detailed synthesis of accounts balance and cash flow.</CardDescription>
               </div>
             </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 pt-4">
-                <div className="bg-green-100 dark:bg-green-900/30 p-6 rounded-xl border border-green-200 dark:border-green-800 flex flex-col items-center justify-center">
-                  <span className="text-green-800 dark:text-green-400 text-sm font-semibold uppercase tracking-wider mb-2">Total Income</span>
-                  <span className="text-4xl font-bold text-green-900 dark:text-green-300">₹{totalOverviewIncome.toLocaleString()}</span>
+            <CardContent className="pt-6">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div className="bg-emerald-950/40 p-6 rounded-2xl border border-emerald-500/30 flex flex-col items-center justify-center relative overflow-hidden shadow-lg group hover:border-emerald-500/60 transition-all">
+                  <span className="text-emerald-400 text-xs font-bold font-mono uppercase tracking-widest mb-2">Total Gross Income</span>
+                  <span className="text-4xl font-black text-emerald-300 font-mono">₹{totalOverviewIncome.toLocaleString()}</span>
+                  <span className="text-[11px] text-emerald-500 mt-2 font-semibold">100% Invoiced Revenue</span>
                 </div>
-                <div className="bg-red-100 dark:bg-red-900/30 p-6 rounded-xl border border-red-200 dark:border-red-800 flex flex-col items-center justify-center">
-                  <span className="text-red-800 dark:text-red-400 text-sm font-semibold uppercase tracking-wider mb-2">Total Expense</span>
-                  <span className="text-4xl font-bold text-red-900 dark:text-red-300">₹{totalOverviewExpense.toLocaleString()}</span>
+                <div className="bg-rose-950/40 p-6 rounded-2xl border border-rose-500/30 flex flex-col items-center justify-center relative overflow-hidden shadow-lg group hover:border-rose-500/60 transition-all">
+                  <span className="text-rose-400 text-xs font-bold font-mono uppercase tracking-widest mb-2">Total Gross Expense</span>
+                  <span className="text-4xl font-black text-rose-300 font-mono">₹{totalOverviewExpense.toLocaleString()}</span>
+                  <span className="text-[11px] text-rose-500 mt-2 font-semibold">Including Meta Ad & Office</span>
                 </div>
-                <div className="bg-blue-100 dark:bg-blue-900/30 p-6 rounded-xl border border-blue-200 dark:border-blue-800 flex flex-col items-center justify-center">
-                  <span className="text-blue-800 dark:text-blue-400 text-sm font-semibold uppercase tracking-wider mb-2">Total Bank Deposit</span>
-                  <span className="text-4xl font-bold text-blue-900 dark:text-blue-300">₹{totalOverviewDeposit.toLocaleString()}</span>
+                <div className="bg-blue-950/40 p-6 rounded-2xl border border-blue-500/30 flex flex-col items-center justify-center relative overflow-hidden shadow-lg group hover:border-blue-500/60 transition-all">
+                  <span className="text-blue-400 text-xs font-bold font-mono uppercase tracking-widest mb-2">Total Bank Deposits</span>
+                  <span className="text-4xl font-black text-blue-300 font-mono">₹{totalOverviewDeposit.toLocaleString()}</span>
+                  <span className="text-[11px] text-blue-500 mt-2 font-semibold">Transferred to Bank</span>
                 </div>
-                <div className="bg-orange-100 dark:bg-orange-900/30 p-6 rounded-xl border border-orange-200 dark:border-orange-800 flex flex-col items-center justify-center">
-                  <span className="text-orange-800 dark:text-orange-400 text-sm font-semibold uppercase tracking-wider mb-2">In Hand</span>
-                  <span className="text-4xl font-bold text-orange-900 dark:text-orange-300">₹{totalInHand.toLocaleString()}</span>
+                <div className="bg-amber-950/40 p-6 rounded-2xl border border-amber-500/40 flex flex-col items-center justify-center relative overflow-hidden shadow-xl group hover:border-amber-500 transition-all shadow-[0_0_20px_rgba(245,158,11,0.1)]">
+                  <span className="text-amber-400 text-xs font-bold font-mono uppercase tracking-widest mb-2">In Hand Cash Reserve</span>
+                  <span className="text-4xl font-black text-amber-300 font-mono">₹{totalInHand.toLocaleString()}</span>
+                  <span className="text-[11px] text-amber-400/80 mt-2 font-semibold">Cash Income minus Deposits</span>
                 </div>
               </div>
             </CardContent>
@@ -751,7 +917,7 @@ const AdminAccountsPage = () => {
         </TabsContent>
 
         {/* INCOME TAB */}
-        <TabsContent value="income" className="space-y-4 mt-4">
+        <TabsContent value="income" className="space-y-6">
           <GlassCard>
             <CardHeader className="flex flex-row items-center justify-between cursor-pointer" onClick={() => setShowIncomeForm(!showIncomeForm)}>
               <CardTitle>Add Income</CardTitle>
@@ -1191,51 +1357,66 @@ const AdminAccountsPage = () => {
                 </div>
               </div>
 
-              <div className="rounded-md border">
+              <div className="rounded-xl border border-white/10 bg-slate-900/60 backdrop-blur-xl overflow-hidden shadow-xl">
                 <Table>
                   <TableHeader>
-                    <TableRow className="bg-destructive/10 hover:bg-destructive/10">
-                      <TableHead>Submitted By</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Client Name</TableHead>
-                      <TableHead>Category</TableHead>
-                      <TableHead>Bank</TableHead>
-                      <TableHead>Ref No.</TableHead>
-                      <TableHead>Month</TableHead>
-                      <TableHead>Year</TableHead>
-                      <TableHead>Remarks</TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
-                      <TableHead className="text-right">GST</TableHead>
-                      <TableHead className="w-[80px]"></TableHead>
+                    <TableRow className="bg-slate-950/80 hover:bg-slate-950/80 text-slate-400 font-mono text-xs uppercase tracking-wider border-b border-white/10">
+                      <TableHead className="py-4">Submitted By</TableHead>
+                      <TableHead className="py-4">Date</TableHead>
+                      <TableHead className="py-4">Client Name</TableHead>
+                      <TableHead className="py-4">Category</TableHead>
+                      <TableHead className="py-4">Bank</TableHead>
+                      <TableHead className="py-4">Ref No.</TableHead>
+                      <TableHead className="py-4">Period</TableHead>
+                      <TableHead className="py-4">Remarks</TableHead>
+                      <TableHead className="py-4 text-right">Amount</TableHead>
+                      <TableHead className="py-4 text-right">GST</TableHead>
+                      <TableHead className="py-4 w-[90px] text-center">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
-                  <TableBody>
+                  <TableBody className="divide-y divide-white/5">
                     {filteredExpenses.map((exp) => (
-                      <TableRow key={exp.id}>
-                        <TableCell className="font-medium text-primary">{exp.staffName || '-'}</TableCell>
-                        <TableCell>{formatDate(exp.date)}</TableCell>
-                        <TableCell>{exp.clientName || '-'}</TableCell>
-                        <TableCell className="font-medium">{exp.category}</TableCell>
-                        <TableCell>{exp.bank || '-'}</TableCell>
-                        <TableCell>{exp.rfNo || '-'}</TableCell>
-                        <TableCell>{exp.month}</TableCell>
-                        <TableCell>{exp.year}</TableCell>
-                        <TableCell className="max-w-[150px] truncate" title={exp.remarks}>{exp.remarks || '-'}</TableCell>
-                        <TableCell className="text-right font-medium">₹{exp.amount.toLocaleString()}</TableCell>
-                        <TableCell className="text-right font-medium text-amber-600 dark:text-amber-400">{exp.gstAmount ? `₹${exp.gstAmount.toLocaleString()}` : '-'}</TableCell>
-                        <TableCell className="flex gap-1 justify-end">
-                          <Button variant="ghost" size="icon" onClick={() => setEditingExpense(exp)} className="text-blue-500 hover:text-blue-700">
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" onClick={() => handleDeleteExpense(exp.id)} className="text-red-500 hover:text-red-700">
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                      <TableRow key={exp.id} className="hover:bg-slate-800/40 transition-colors group">
+                        <TableCell className="py-3.5">
+                          {exp.staffName ? (
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-rose-500 to-amber-500 flex items-center justify-center text-[11px] font-extrabold text-white shadow-sm shrink-0">
+                                {exp.staffName.charAt(0).toUpperCase()}
+                              </div>
+                              <span className="font-semibold text-white">{exp.staffName}</span>
+                            </div>
+                          ) : (
+                            <span className="text-slate-500 font-mono">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="font-mono text-xs text-slate-300">{formatDate(exp.date)}</TableCell>
+                        <TableCell className="font-semibold text-slate-200">{exp.clientName || '-'}</TableCell>
+                        <TableCell>
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-500/15 text-rose-400 border border-rose-500/30">
+                            {exp.category}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-xs font-medium text-slate-300">{exp.bank || '-'}</TableCell>
+                        <TableCell className="font-mono text-xs text-slate-400">{exp.rfNo || '-'}</TableCell>
+                        <TableCell className="text-xs text-slate-300 font-semibold">{exp.month.slice(0, 3)} {exp.year}</TableCell>
+                        <TableCell className="max-w-[150px] truncate text-xs text-slate-300" title={exp.remarks}>{exp.remarks || '-'}</TableCell>
+                        <TableCell className="text-right font-mono text-base font-extrabold text-rose-400">₹{exp.amount.toLocaleString()}</TableCell>
+                        <TableCell className="text-right font-mono text-xs font-semibold text-amber-400">{exp.gstAmount ? `₹${exp.gstAmount.toLocaleString()}` : '-'}</TableCell>
+                        <TableCell className="text-center">
+                          <div className="flex gap-1 justify-center opacity-80 group-hover:opacity-100 transition-opacity">
+                            <Button variant="ghost" size="icon" onClick={() => setEditingExpense(exp)} className="h-8 w-8 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded-lg">
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => handleDeleteExpense(exp.id)} className="h-8 w-8 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 rounded-lg">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
                     {filteredExpenses.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={12} className="text-center py-4 text-muted-foreground">No expense records found</TableCell>
+                        <TableCell colSpan={11} className="text-center py-8 text-slate-500 font-medium">No expense records found matching criteria</TableCell>
                       </TableRow>
                     )}
                   </TableBody>
@@ -1306,43 +1487,58 @@ const AdminAccountsPage = () => {
                 </div>
               </div>
 
-              <div className="overflow-x-auto rounded-md border">
+              <div className="rounded-xl border border-white/10 bg-slate-900/60 backdrop-blur-xl overflow-hidden shadow-xl">
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead>Submitted By</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Client Name</TableHead>
-                      <TableHead>Category</TableHead>
-                      <TableHead>Payment Mode</TableHead>
-                      <TableHead>Bank</TableHead>
-                      <TableHead>Ref No.</TableHead>
-                      <TableHead>Remarks</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>GST</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+                    <TableRow className="bg-slate-950/80 hover:bg-slate-950/80 text-slate-400 font-mono text-xs uppercase tracking-wider border-b border-white/10">
+                      <TableHead className="py-4">Submitted By</TableHead>
+                      <TableHead className="py-4">Date</TableHead>
+                      <TableHead className="py-4">Client Name</TableHead>
+                      <TableHead className="py-4">Category</TableHead>
+                      <TableHead className="py-4">Payment Mode</TableHead>
+                      <TableHead className="py-4">Bank</TableHead>
+                      <TableHead className="py-4">Ref No.</TableHead>
+                      <TableHead className="py-4">Remarks</TableHead>
+                      <TableHead className="py-4 text-right">Amount</TableHead>
+                      <TableHead className="py-4 text-right">GST</TableHead>
+                      <TableHead className="py-4 w-[90px] text-center">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
-                  <TableBody>
+                  <TableBody className="divide-y divide-white/5">
                     {filteredAdExpenses.map((exp) => (
-                      <TableRow key={exp.id}>
-                        <TableCell className="font-medium text-primary">{exp.staffName || '-'}</TableCell>
-                        <TableCell>{formatDate(exp.date)}</TableCell>
-                        <TableCell className="font-semibold text-primary">{exp.clientName || '-'}</TableCell>
-                        <TableCell className="font-medium text-purple-600 dark:text-purple-400">{exp.category}</TableCell>
-                        <TableCell>{exp.paymentMethod || '-'}</TableCell>
-                        <TableCell>{exp.bank || '-'}</TableCell>
-                        <TableCell>{exp.rfNo || '-'}</TableCell>
-                        <TableCell>{exp.remarks || '-'}</TableCell>
-                        <TableCell className="font-semibold text-destructive">₹{exp.amount.toLocaleString()}</TableCell>
-                        <TableCell>{exp.isGst && exp.gstAmount ? `₹${exp.gstAmount}` : '-'}</TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-1">
-                            <Button variant="ghost" size="sm" onClick={() => setEditingExpense({ ...exp })} className="p-1 h-7 w-7 text-blue-500 hover:text-blue-700">
-                              <Pencil className="w-4 h-4" />
+                      <TableRow key={exp.id} className="hover:bg-slate-800/40 transition-colors group">
+                        <TableCell className="py-3.5">
+                          {exp.staffName ? (
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center text-[11px] font-extrabold text-white shadow-sm shrink-0">
+                                {exp.staffName.charAt(0).toUpperCase()}
+                              </div>
+                              <span className="font-semibold text-white">{exp.staffName}</span>
+                            </div>
+                          ) : (
+                            <span className="text-slate-500 font-mono">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="font-mono text-xs text-slate-300">{formatDate(exp.date)}</TableCell>
+                        <TableCell className="font-bold text-cyan-300">{exp.clientName || '-'}</TableCell>
+                        <TableCell>
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-500/15 text-purple-400 border border-purple-500/30">
+                            {exp.category}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-xs text-slate-300 font-medium">{exp.paymentMethod || '-'}</TableCell>
+                        <TableCell className="text-xs font-semibold text-slate-300">{exp.bank || '-'}</TableCell>
+                        <TableCell className="font-mono text-xs text-slate-400">{exp.rfNo || '-'}</TableCell>
+                        <TableCell className="max-w-[150px] truncate text-xs text-slate-300" title={exp.remarks}>{exp.remarks || '-'}</TableCell>
+                        <TableCell className="text-right font-mono text-base font-extrabold text-cyan-400">₹{exp.amount.toLocaleString()}</TableCell>
+                        <TableCell className="text-right font-mono text-xs font-semibold text-amber-400">{exp.isGst && exp.gstAmount ? `₹${exp.gstAmount.toLocaleString()}` : '-'}</TableCell>
+                        <TableCell className="text-center">
+                          <div className="flex gap-1 justify-center opacity-80 group-hover:opacity-100 transition-opacity">
+                            <Button variant="ghost" size="icon" onClick={() => setEditingExpense({ ...exp })} className="h-8 w-8 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded-lg">
+                              <Pencil className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="sm" onClick={() => handleDeleteExpense(exp.id)} className="p-1 h-7 w-7 text-red-500 hover:text-red-700">
-                              <Trash2 className="w-4 h-4" />
+                            <Button variant="ghost" size="icon" onClick={() => handleDeleteExpense(exp.id)} className="h-8 w-8 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 rounded-lg">
+                              <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
                         </TableCell>
@@ -1350,7 +1546,7 @@ const AdminAccountsPage = () => {
                     ))}
                     {filteredAdExpenses.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={12} className="text-center py-8 text-muted-foreground">No Ad expense records found</TableCell>
+                        <TableCell colSpan={11} className="text-center py-8 text-slate-500 font-medium">No Ad expense records found matching criteria</TableCell>
                       </TableRow>
                     )}
                   </TableBody>
@@ -1663,74 +1859,96 @@ const AdminAccountsPage = () => {
         </TabsContent>
 
         {/* PENDING EXPENSE TAB */}
-        <TabsContent value="pending-expense" className="space-y-4 mt-4">
-          <GlassCard>
-            <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-4 gap-4">
+        <TabsContent value="pending-expense" className="space-y-6">
+          <GlassCard className="bg-slate-900/90 border-white/10 shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-96 h-96 bg-amber-500/5 rounded-full blur-3xl pointer-events-none" />
+            <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-6 gap-4 border-b border-white/10 relative z-10">
               <div>
-                <CardTitle className="text-xl font-bold flex items-center gap-2">
-                  Pending Staff Expenses
-                  {pendingExpenses.length > 0 && (
-                    <span className="px-2.5 py-0.5 rounded-full text-xs bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
-                      {pendingExpenses.length} Pending
+                <CardTitle className="text-2xl font-extrabold text-white flex items-center gap-3">
+                  Pending Staff Expenses Queue
+                  {pendingExpenses.length > 0 ? (
+                    <span className="executive-badge bg-amber-500/20 text-amber-300 border-amber-500/40 animate-pulse">
+                      {pendingExpenses.length} Awaiting Confirmation
+                    </span>
+                  ) : (
+                    <span className="executive-badge bg-emerald-500/20 text-emerald-400 border-emerald-500/40">
+                      All Clear
                     </span>
                   )}
                 </CardTitle>
-                <CardDescription>Review and edit expenses submitted by staff before approving them into main accounts.</CardDescription>
+                <CardDescription className="text-slate-400 mt-1">
+                  Review staff submissions. Clicking <strong className="text-emerald-400 font-semibold">✓ Confirm & Move to Ledger</strong> automatically verifies and transfers the record to your Expense / Meta Ad tables.
+                </CardDescription>
               </div>
               {pendingExpenses.length > 0 && (
                 <Button
                   onClick={handleApproveAllPendingExpenses}
-                  className="bg-success hover:bg-success/90 text-success-foreground font-semibold flex items-center gap-2 shadow-sm"
+                  className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-slate-950 font-extrabold flex items-center gap-2 shadow-[0_0_20px_rgba(16,185,129,0.3)] px-5 py-2.5 rounded-xl border border-emerald-400/50 transition-all transform hover:scale-105"
                 >
-                  <Check className="h-4 w-4" />
-                  Approve All ({pendingExpenses.length})
+                  <Check className="h-5 w-5 stroke-[3]" />
+                  Confirm & Approve All ({pendingExpenses.length})
                 </Button>
               )}
             </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto rounded-md border">
+            <CardContent className="pt-6 relative z-10">
+              <div className="rounded-xl border border-white/10 bg-slate-900/60 backdrop-blur-xl overflow-hidden shadow-xl">
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead>Submitted By</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Client Name</TableHead>
-                      <TableHead>Category</TableHead>
-                      <TableHead>Payment Mode</TableHead>
-                      <TableHead>Bank</TableHead>
-                      <TableHead>Ref No.</TableHead>
-                      <TableHead>Remarks</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>GST</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+                    <TableRow className="bg-slate-950/80 hover:bg-slate-950/80 text-slate-400 font-mono text-xs uppercase tracking-wider border-b border-white/10">
+                      <TableHead className="py-4">Submitted By</TableHead>
+                      <TableHead className="py-4">Date</TableHead>
+                      <TableHead className="py-4">Client Name</TableHead>
+                      <TableHead className="py-4">Category</TableHead>
+                      <TableHead className="py-4">Payment Mode</TableHead>
+                      <TableHead className="py-4">Bank</TableHead>
+                      <TableHead className="py-4">Ref No.</TableHead>
+                      <TableHead className="py-4">Remarks</TableHead>
+                      <TableHead className="py-4 text-right">Amount</TableHead>
+                      <TableHead className="py-4 text-right">GST</TableHead>
+                      <TableHead className="py-4 text-right w-[180px]">Verification Action</TableHead>
                     </TableRow>
                   </TableHeader>
-                  <TableBody>
+                  <TableBody className="divide-y divide-white/5">
                     {pendingExpenses.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={11} className="text-center py-12 text-muted-foreground">
-                          No pending expenses found. All staff submissions have been approved.
+                        <TableCell colSpan={11} className="text-center py-16">
+                          <div className="flex flex-col items-center justify-center gap-3">
+                            <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 mb-1">
+                              <ShieldCheck className="w-8 h-8" />
+                            </div>
+                            <h3 className="text-lg font-bold text-white">No Pending Submissions</h3>
+                            <p className="text-sm text-slate-400 max-w-md">All external API entries and staff expense requests have been confirmed and transferred to the main ledger.</p>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ) : (
                       pendingExpenses.map(item => {
                         const isEditing = editingPendingExpense?.id === item.id;
                         return (
-                          <TableRow key={item.id} className="hover:bg-muted/50">
-                            <TableCell className="font-medium text-primary">
-                              {item.staffName || 'Staff Member'}
+                          <TableRow key={item.id} className="hover:bg-slate-800/40 transition-colors group">
+                            <TableCell className="py-3.5">
+                              {item.staffName ? (
+                                <div className="flex items-center gap-2.5">
+                                  <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-amber-500 to-orange-500 flex items-center justify-center text-[11px] font-extrabold text-slate-950 shadow-sm shrink-0">
+                                    {item.staffName.charAt(0).toUpperCase()}
+                                  </div>
+                                  <span className="font-semibold text-white">{item.staffName}</span>
+                                </div>
+                              ) : (
+                                <span className="text-slate-500 font-mono">Staff Member</span>
+                              )}
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="font-mono text-xs text-slate-300">
                               {isEditing ? (
                                 <Input
                                   type="date"
-                                  className="[&::-webkit-calendar-picker-indicator]:block w-[135px] text-xs h-8"
+                                  className="w-[135px] text-xs h-8 bg-slate-950 border-white/20"
                                   value={editingPendingExpense.date}
                                   onChange={e => setEditingPendingExpense({ ...editingPendingExpense, date: e.target.value })}
                                 />
                               ) : formatDate(item.date)}
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="font-semibold text-slate-200">
                               {isEditing ? (
                                 <Autocomplete
                                   value={editingPendingExpense.clientName || ''}
@@ -1741,7 +1959,7 @@ const AdminAccountsPage = () => {
                                 />
                               ) : (item.clientName || '-')}
                             </TableCell>
-                            <TableCell className="font-medium">
+                            <TableCell>
                               {isEditing ? (
                                 <Autocomplete
                                   value={editingPendingExpense.category}
@@ -1750,9 +1968,13 @@ const AdminAccountsPage = () => {
                                   placeholder="Category..."
                                   className="w-[140px]"
                                 />
-                              ) : item.category}
+                              ) : (
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                                  {item.category}
+                                </span>
+                              )}
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="text-xs font-medium text-slate-300">
                               {isEditing ? (
                                 <Autocomplete
                                   value={editingPendingExpense.paymentMethod || ''}
@@ -1763,7 +1985,7 @@ const AdminAccountsPage = () => {
                                 />
                               ) : (item.paymentMethod || '-')}
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="text-xs font-semibold text-slate-300">
                               {isEditing ? (
                                 <Autocomplete
                                   value={editingPendingExpense.bank || ''}
@@ -1774,38 +1996,38 @@ const AdminAccountsPage = () => {
                                 />
                               ) : (item.bank || '-')}
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="font-mono text-xs text-slate-400">
                               {isEditing ? (
                                 <Input
-                                  className="w-[100px] text-xs h-8"
+                                  className="w-[100px] text-xs h-8 bg-slate-950 border-white/20"
                                   value={editingPendingExpense.rfNo || ''}
                                   onChange={e => setEditingPendingExpense({ ...editingPendingExpense, rfNo: e.target.value })}
                                 />
                               ) : (item.rfNo || '-')}
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="max-w-[150px] truncate text-xs text-slate-300">
                               {isEditing ? (
                                 <Input
-                                  className="w-[150px] text-xs h-8"
+                                  className="w-[150px] text-xs h-8 bg-slate-950 border-white/20"
                                   value={editingPendingExpense.remarks || ''}
                                   onChange={e => setEditingPendingExpense({ ...editingPendingExpense, remarks: e.target.value })}
                                 />
                               ) : (item.remarks || '-')}
                             </TableCell>
-                            <TableCell className="font-semibold text-destructive">
+                            <TableCell className="text-right font-mono text-base font-extrabold text-amber-400">
                               {isEditing ? (
                                 <Input
                                   type="number"
                                   step="0.01"
-                                  className="w-[100px] text-xs h-8"
+                                  className="w-[100px] text-xs h-8 bg-slate-950 border-white/20 text-right"
                                   value={editingPendingExpense.amount}
                                   onChange={e => setEditingPendingExpense({ ...editingPendingExpense, amount: Number(e.target.value) || 0 })}
                                 />
                               ) : `₹${item.amount.toLocaleString()}`}
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="text-right font-mono text-xs text-amber-300">
                               {isEditing ? (
-                                <div className="flex items-center gap-1">
+                                <div className="flex items-center justify-end gap-1">
                                   <Checkbox
                                     id={`admin-edit-gst-${item.id}`}
                                     checked={editingPendingExpense.isGst}
@@ -1817,23 +2039,29 @@ const AdminAccountsPage = () => {
                             </TableCell>
                             <TableCell className="text-right">
                               {isEditing ? (
-                                <div className="flex justify-end gap-1">
-                                  <Button size="sm" variant="ghost" onClick={handleUpdatePendingExpense} className="h-8 w-8 p-0 text-success hover:text-success/80">
-                                    <Check className="h-4 w-4" />
+                                <div className="flex justify-end gap-2">
+                                  <Button size="sm" onClick={handleUpdatePendingExpense} className="h-8 px-3 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold text-xs">
+                                    Save
                                   </Button>
-                                  <Button size="sm" variant="ghost" onClick={() => setEditingPendingExpense(null)} className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground">
-                                    <X className="h-4 w-4" />
+                                  <Button size="sm" variant="ghost" onClick={() => setEditingPendingExpense(null)} className="h-8 px-2 text-slate-400 hover:text-white">
+                                    Cancel
                                   </Button>
                                 </div>
                               ) : (
-                                <div className="flex justify-end gap-1">
-                                  <Button size="sm" variant="ghost" onClick={() => handleApprovePendingExpense(item.id)} className="h-8 w-8 p-0 text-success hover:text-success hover:bg-success/10" title="Approve this expense">
-                                    <Check className="h-4 w-4" />
+                                <div className="flex justify-end items-center gap-1.5">
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleApprovePendingExpense(item.id)}
+                                    className="h-8 px-3 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-slate-950 font-extrabold text-xs shadow-[0_0_12px_rgba(16,185,129,0.25)] flex items-center gap-1.5 transition-transform active:scale-95"
+                                    title="Confirm & Move to main Expense table"
+                                  >
+                                    <Check className="h-3.5 w-3.5 stroke-[3]" />
+                                    Confirm
                                   </Button>
-                                  <Button size="sm" variant="ghost" onClick={() => setEditingPendingExpense({ ...item })} className="h-8 w-8 p-0 text-muted-foreground hover:text-primary" title="Edit row">
+                                  <Button size="icon" variant="ghost" onClick={() => setEditingPendingExpense({ ...item })} className="h-8 w-8 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded-lg" title="Edit row">
                                     <Pencil className="h-4 w-4" />
                                   </Button>
-                                  <Button size="sm" variant="ghost" onClick={() => handleDeletePendingExpense(item.id)} className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive" title="Delete row">
+                                  <Button size="icon" variant="ghost" onClick={() => handleDeletePendingExpense(item.id)} className="h-8 w-8 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 rounded-lg" title="Delete row">
                                     <Trash2 className="h-4 w-4" />
                                   </Button>
                                 </div>
