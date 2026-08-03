@@ -52,6 +52,7 @@ const AdminAccountsPage = () => {
     paymentMethod: string;
     bank: string;
     remarks: string;
+    isGst?: boolean;
   };
   const [sheetRows, setSheetRows] = useState<SheetRow[]>([]);
   const [sheetParsed, setSheetParsed] = useState(false);
@@ -1979,6 +1980,7 @@ const AdminAccountsPage = () => {
                           paymentMethod: '',
                           bank: 'HDFC',
                           remarks: narration,
+                          isGst: false,
                         });
                       }
 
@@ -2022,6 +2024,11 @@ const AdminAccountsPage = () => {
 
                             try {
                               if (row.withdrawAmt > 0) {
+                                const amountVal = row.withdrawAmt;
+                                const isGst = !!row.isGst;
+                                const withoutGstVal = isGst ? Number((amountVal / 1.18).toFixed(2)) : amountVal;
+                                const gstVal = isGst ? Number((amountVal - withoutGstVal).toFixed(2)) : 0;
+
                                 // Save as Expense
                                 await accountService.createExpense({
                                   date: row.date,
@@ -2030,16 +2037,21 @@ const AdminAccountsPage = () => {
                                   bank: row.bank || 'HDFC',
                                   clientName: row.clientName || undefined,
                                   rfNo: row.refNo || undefined,
-                                  amount: row.withdrawAmt,
-                                  isGst: false,
-                                  gstAmount: 0,
-                                  withoutGstAmount: row.withdrawAmt,
+                                  amount: amountVal,
+                                  isGst: isGst,
+                                  gstAmount: gstVal,
+                                  withoutGstAmount: withoutGstVal,
                                   month,
                                   year,
                                   remarks: row.remarks || row.narration || ''
                                 });
                                 saved++;
                               } else if (row.depositAmt > 0) {
+                                const amountVal = row.depositAmt;
+                                const isGst = !!row.isGst;
+                                const withoutGstVal = isGst ? Number((amountVal / 1.18).toFixed(2)) : amountVal;
+                                const gstVal = isGst ? Number((amountVal - withoutGstVal).toFixed(2)) : 0;
+
                                 // Save as Income
                                 await accountService.createIncome({
                                   date: row.date,
@@ -2047,10 +2059,10 @@ const AdminAccountsPage = () => {
                                   category: row.category || 'Bank Deposit',
                                   paymentMethod: row.paymentMethod || 'Bank Transfer',
                                   bank: row.bank || 'HDFC',
-                                  amount: row.depositAmt,
-                                  isGst: false,
-                                  gstAmount: 0,
-                                  withoutGstAmount: row.depositAmt,
+                                  amount: amountVal,
+                                  isGst: isGst,
+                                  gstAmount: gstVal,
+                                  withoutGstAmount: withoutGstVal,
                                   month,
                                   year,
                                   remarks: row.remarks || row.narration || '',
@@ -2107,6 +2119,7 @@ const AdminAccountsPage = () => {
                         <TableHead>Narration</TableHead>
                         <TableHead>Ref No.</TableHead>
                         <TableHead className="text-right">Amount</TableHead>
+                        <TableHead>GST (18%)</TableHead>
                         <TableHead>Type</TableHead>
                         <TableHead>Category <span className="text-amber-500 text-[10px] font-normal">(admin fills)</span></TableHead>
                         <TableHead>Client Name <span className="text-amber-500 text-[10px] font-normal">(admin fills)</span></TableHead>
@@ -2140,6 +2153,25 @@ const AdminAccountsPage = () => {
                               <span className={isWithdraw ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}>
                                 ₹{(isWithdraw ? row.withdrawAmt : row.depositAmt).toLocaleString('en-IN')}
                               </span>
+                            </TableCell>
+                            {/* GST Checkbox & Calculation */}
+                            <TableCell>
+                              <div className="flex items-center gap-1.5 min-w-[100px]">
+                                <Checkbox
+                                  id={`sheet-gst-${idx}`}
+                                  checked={row.isGst || false}
+                                  onCheckedChange={(checked) => setSheetRows(prev => prev.map((r, i) => i === idx ? { ...r, isGst: checked === true } : r))}
+                                />
+                                <Label htmlFor={`sheet-gst-${idx}`} className="text-xs cursor-pointer select-none">
+                                  {row.isGst ? (
+                                    <span className="font-semibold text-primary">
+                                      ₹{((isWithdraw ? row.withdrawAmt : row.depositAmt) - (isWithdraw ? row.withdrawAmt : row.depositAmt) / 1.18).toFixed(2)}
+                                    </span>
+                                  ) : (
+                                    <span className="text-muted-foreground">Include</span>
+                                  )}
+                                </Label>
+                              </div>
                             </TableCell>
                             <TableCell>
                               <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold ${
@@ -2215,7 +2247,7 @@ const AdminAccountsPage = () => {
                       })}
                       {sheetRows.length === 0 && (
                         <TableRow>
-                          <TableCell colSpan={12} className="text-center py-8 text-muted-foreground">
+                          <TableCell colSpan={13} className="text-center py-8 text-muted-foreground">
                             No rows remaining.
                           </TableCell>
                         </TableRow>
