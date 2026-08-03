@@ -15,7 +15,7 @@ git reset --hard origin/main
 # Install backend dependencies
 echo "📦 Installing backend dependencies..."
 cd server || exit 1
-npm install
+npm install --legacy-peer-deps
 
 # Restart backend
 echo "🔄 Restarting backend..."
@@ -24,7 +24,7 @@ pm2 restart royal300-backend || pm2 start index.js --name royal300-backend
 # Build frontend
 echo "🏗️  Building frontend..."
 cd ..
-npm install
+npm install --legacy-peer-deps
 npm run build
 
 # Reload Nginx
