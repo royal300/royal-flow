@@ -10,10 +10,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { useToast } from '@/hooks/use-toast';
 import { Checkbox } from '@/components/ui/checkbox';
 import { accountService, settingsService, Income, Expense, PendingExpense, BankDeposit } from '@/lib/storage';
-import { Trash2, Download, Pencil, ChevronUp, ChevronDown, FileText, Check, X } from 'lucide-react';
+import { Trash2, Download, Pencil, ChevronUp, ChevronDown, FileText, Check, X, Upload, AlertCircle } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Autocomplete } from '@/components/ui/autocomplete';
+import * as XLSX from 'xlsx';
 
 const AdminAccountsPage = () => {
   const { toast } = useToast();
@@ -37,6 +38,25 @@ const AdminAccountsPage = () => {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [pendingExpenses, setPendingExpenses] = useState<PendingExpense[]>([]);
   const [bankDeposits, setBankDeposits] = useState<BankDeposit[]>([]);
+
+  // Sheet Upload State
+  type SheetRow = {
+    date: string;          // parsed date YYYY-MM-DD
+    narration: string;     // from Narration column
+    refNo: string;         // from Chq./Ref.No.
+    withdrawAmt: number;   // > 0 means debit/expense
+    depositAmt: number;    // > 0 means credit/income
+    // editable fields (admin fills later)
+    category: string;
+    clientName: string;
+    paymentMethod: string;
+    bank: string;
+    remarks: string;
+  };
+  const [sheetRows, setSheetRows] = useState<SheetRow[]>([]);
+  const [sheetParsed, setSheetParsed] = useState(false);
+  const [sheetSaving, setSheetSaving] = useState(false);
+  const sheetFileInputRef = useRef<HTMLInputElement>(null);
 
   // Income Form State
   const [incomeForm, setIncomeForm] = useState({ date: '', clientName: '', category: '', paymentMethod: '', bank: '', amount: '', remarks: '', invoicePrefix: 'INV', invoiceNumber: '', rfNo: '', chequeNo: '', isGst: false });
@@ -685,7 +705,7 @@ const AdminAccountsPage = () => {
       </div>
 
       <Tabs defaultValue="income" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-8 max-w-6xl mb-4 h-auto">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-9 max-w-6xl mb-4 h-auto">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="income">Income</TabsTrigger>
           <TabsTrigger value="expense">Expense</TabsTrigger>
@@ -699,6 +719,10 @@ const AdminAccountsPage = () => {
                 {pendingExpenses.length}
               </span>
             )}
+          </TabsTrigger>
+          <TabsTrigger value="sheet-upload" className="flex items-center gap-1.5">
+            <Upload className="h-3.5 w-3.5" />
+            Sheet Upload
           </TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
@@ -1846,6 +1870,360 @@ const AdminAccountsPage = () => {
                   </TableBody>
                 </Table>
               </div>
+            </CardContent>
+          </GlassCard>
+        </TabsContent>
+
+        {/* SHEET UPLOAD TAB */}
+        <TabsContent value="sheet-upload" className="space-y-4 mt-4">
+          <GlassCard>
+            <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-4 gap-4">
+              <div>
+                <CardTitle className="text-xl font-bold flex items-center gap-2">
+                  <Upload className="h-5 w-5 text-blue-500" />
+                  Bank Statement Sheet Upload
+                </CardTitle>
+                <CardDescription>
+                  Upload your HDFC bank statement (.xls / .xlsx). Date &amp; Ref No. will be auto-filled.
+                  Fill the remaining fields then click <strong>Update All</strong> to save.
+                  Withdrawals → <span className="text-red-600 font-semibold">Expense</span> &nbsp;|&nbsp;
+                  Deposits → <span className="text-green-600 font-semibold">Income</span>
+                </CardDescription>
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                <Button
+                  variant="outline"
+                  className="flex items-center gap-2"
+                  onClick={() => sheetFileInputRef.current?.click()}
+                >
+                  <Upload className="h-4 w-4" />
+                  Choose XLS File
+                </Button>
+                <input
+                  ref={sheetFileInputRef}
+                  type="file"
+                  accept=".xls,.xlsx"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    try {
+                      const arrayBuffer = await file.arrayBuffer();
+                      const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+                      const sheetName = workbook.SheetNames[0];
+                      const worksheet = workbook.Sheets[sheetName];
+                      // Convert to array of arrays
+                      const raw: any[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+
+                      // Find the header row: look for row containing 'Date' and 'Narration'
+                      let headerRowIdx = -1;
+                      for (let i = 0; i < raw.length; i++) {
+                        const rowStr = raw[i].map((c: any) => String(c).toLowerCase().trim()).join(' ');
+                        if (rowStr.includes('date') && rowStr.includes('narration')) {
+                          headerRowIdx = i;
+                          break;
+                        }
+                      }
+                      if (headerRowIdx === -1) {
+                        toast({ title: 'Could not find transaction table in the sheet', variant: 'destructive' });
+                        return;
+                      }
+
+                      const headers: string[] = raw[headerRowIdx].map((c: any) => String(c).trim().toLowerCase());
+                      const dateIdx = headers.findIndex(h => h === 'date');
+                      const narrationIdx = headers.findIndex(h => h.includes('narration'));
+                      const refIdx = headers.findIndex(h => h.includes('chq') || h.includes('ref'));
+                      const withdrawIdx = headers.findIndex(h => h.includes('withdrawal') || h.includes('withdraw'));
+                      const depositIdx = headers.findIndex(h => h.includes('deposit'));
+
+                      const parsed: SheetRow[] = [];
+
+                      for (let i = headerRowIdx + 2; i < raw.length; i++) {
+                        const row = raw[i];
+                        const rawDate = String(row[dateIdx] ?? '').trim();
+                        if (!rawDate || rawDate.startsWith('*') || rawDate === '') break;
+
+                        // Parse date: could be DD/MM/YY or DD/MM/YYYY or Excel serial
+                        let parsedDate = '';
+                        if (/^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(rawDate)) {
+                          const parts = rawDate.split('/');
+                          const day = parts[0].padStart(2, '0');
+                          const mon = parts[1].padStart(2, '0');
+                          let yr = parts[2];
+                          if (yr.length === 2) yr = '20' + yr;
+                          parsedDate = `${yr}-${mon}-${day}`;
+                        } else if (!isNaN(Number(rawDate))) {
+                          // Excel serial date
+                          const jsDate = XLSX.SSF.parse_date_code(Number(rawDate));
+                          if (jsDate) {
+                            parsedDate = `${jsDate.y}-${String(jsDate.m).padStart(2,'0')}-${String(jsDate.d).padStart(2,'0')}`;
+                          }
+                        }
+                        if (!parsedDate) continue;
+
+                        const narration = String(row[narrationIdx] ?? '').trim();
+                        const refNo = String(row[refIdx] ?? '').trim();
+                        const withdrawAmt = parseFloat(String(row[withdrawIdx] ?? '0').replace(/,/g, '')) || 0;
+                        const depositAmt = parseFloat(String(row[depositIdx] ?? '0').replace(/,/g, '')) || 0;
+
+                        if (withdrawAmt === 0 && depositAmt === 0) continue;
+
+                        parsed.push({
+                          date: parsedDate,
+                          narration,
+                          refNo,
+                          withdrawAmt,
+                          depositAmt,
+                          category: '',
+                          clientName: '',
+                          paymentMethod: '',
+                          bank: 'HDFC',
+                          remarks: narration,
+                        });
+                      }
+
+                      if (parsed.length === 0) {
+                        toast({ title: 'No valid transactions found in the sheet', variant: 'destructive' });
+                        return;
+                      }
+
+                      setSheetRows(parsed);
+                      setSheetParsed(true);
+                      toast({ title: `✅ Parsed ${parsed.length} transactions from sheet` });
+                    } catch (err) {
+                      console.error(err);
+                      toast({ title: 'Failed to read the file. Make sure it is a valid XLS/XLSX.', variant: 'destructive' });
+                    }
+                    // reset input so same file can be re-uploaded
+                    e.target.value = '';
+                  }}
+                />
+                {sheetParsed && sheetRows.length > 0 && (
+                  <>
+                    <Button
+                      variant="ghost"
+                      onClick={() => { setSheetRows([]); setSheetParsed(false); }}
+                      className="text-muted-foreground"
+                    >
+                      <X className="h-4 w-4 mr-1" /> Clear
+                    </Button>
+                    <Button
+                      disabled={sheetSaving}
+                      onClick={async () => {
+                        setSheetSaving(true);
+                        let saved = 0;
+                        let failed = 0;
+                        try {
+                          for (const row of sheetRows) {
+                            const dateObj = new Date(row.date);
+                            const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+                            const month = monthNames[dateObj.getMonth()] || '';
+                            const year = dateObj.getFullYear().toString();
+
+                            try {
+                              if (row.withdrawAmt > 0) {
+                                // Save as Expense
+                                await accountService.createExpense({
+                                  date: row.date,
+                                  category: row.category || 'Bank Statement',
+                                  paymentMethod: row.paymentMethod || undefined,
+                                  bank: row.bank || 'HDFC',
+                                  clientName: row.clientName || undefined,
+                                  rfNo: row.refNo || undefined,
+                                  amount: row.withdrawAmt,
+                                  isGst: false,
+                                  gstAmount: 0,
+                                  withoutGstAmount: row.withdrawAmt,
+                                  month,
+                                  year,
+                                  remarks: row.remarks || row.narration || ''
+                                });
+                                saved++;
+                              } else if (row.depositAmt > 0) {
+                                // Save as Income
+                                await accountService.createIncome({
+                                  date: row.date,
+                                  clientName: row.clientName || 'Bank Statement',
+                                  category: row.category || 'Bank Deposit',
+                                  paymentMethod: row.paymentMethod || 'Bank Transfer',
+                                  bank: row.bank || 'HDFC',
+                                  amount: row.depositAmt,
+                                  isGst: false,
+                                  gstAmount: 0,
+                                  withoutGstAmount: row.depositAmt,
+                                  month,
+                                  year,
+                                  remarks: row.remarks || row.narration || '',
+                                  invoiceNumber: '',
+                                  rfNo: row.refNo || undefined,
+                                  chequeNo: undefined
+                                });
+                                saved++;
+                              }
+                            } catch {
+                              failed++;
+                            }
+                          }
+                          toast({
+                            title: `✅ Saved ${saved} records${failed > 0 ? `, ${failed} failed` : ''}`,
+                            description: 'Withdrawals added to Expense, Deposits added to Income.'
+                          });
+                          setSheetRows([]);
+                          setSheetParsed(false);
+                          loadData();
+                        } finally {
+                          setSheetSaving(false);
+                        }
+                      }}
+                      className="bg-blue-600 hover:bg-blue-700 text-white font-semibold flex items-center gap-2"
+                    >
+                      <Check className="h-4 w-4" />
+                      {sheetSaving ? 'Saving...' : `Update All (${sheetRows.length})`}
+                    </Button>
+                  </>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent>
+              {!sheetParsed ? (
+                <div className="flex flex-col items-center justify-center py-20 border-2 border-dashed border-muted-foreground/30 rounded-xl gap-4">
+                  <Upload className="h-12 w-12 text-muted-foreground/40" />
+                  <p className="text-muted-foreground text-center">
+                    Click <strong>Choose XLS File</strong> above to upload your bank statement.<br />
+                    Supports HDFC statement format (.xls / .xlsx)
+                  </p>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/40 px-4 py-2 rounded-lg">
+                    <AlertCircle className="h-3.5 w-3.5 text-amber-500" />
+                    Red rows = Withdrawal (→ Expense) &nbsp;|&nbsp; Green rows = Deposit (→ Income)
+                  </div>
+                </div>
+              ) : (
+                <div className="overflow-x-auto rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/60">
+                        <TableHead className="w-[50px]">#</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Narration</TableHead>
+                        <TableHead>Ref No.</TableHead>
+                        <TableHead className="text-right">Amount</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Category <span className="text-amber-500 text-[10px] font-normal">(admin fills)</span></TableHead>
+                        <TableHead>Client Name <span className="text-amber-500 text-[10px] font-normal">(admin fills)</span></TableHead>
+                        <TableHead>Payment Mode <span className="text-amber-500 text-[10px] font-normal">(admin fills)</span></TableHead>
+                        <TableHead>Bank</TableHead>
+                        <TableHead>Remarks</TableHead>
+                        <TableHead className="text-right">Remove</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {sheetRows.map((row, idx) => {
+                        const isWithdraw = row.withdrawAmt > 0;
+                        return (
+                          <TableRow
+                            key={idx}
+                            className={
+                              isWithdraw
+                                ? 'bg-red-50 dark:bg-red-950/20 border-l-4 border-l-red-500 hover:bg-red-100/60 dark:hover:bg-red-900/30'
+                                : 'bg-green-50 dark:bg-green-950/20 border-l-4 border-l-green-500 hover:bg-green-100/60 dark:hover:bg-green-900/30'
+                            }
+                          >
+                            <TableCell className="text-xs text-muted-foreground font-medium">{idx + 1}</TableCell>
+                            <TableCell className="font-medium text-sm whitespace-nowrap">
+                              {row.date ? new Date(row.date).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }) : '-'}
+                            </TableCell>
+                            <TableCell className="text-xs max-w-[220px]">
+                              <span className="line-clamp-2" title={row.narration}>{row.narration || '-'}</span>
+                            </TableCell>
+                            <TableCell className="text-xs font-mono text-muted-foreground">{row.refNo || '-'}</TableCell>
+                            <TableCell className="text-right font-bold whitespace-nowrap">
+                              <span className={isWithdraw ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}>
+                                ₹{(isWithdraw ? row.withdrawAmt : row.depositAmt).toLocaleString('en-IN')}
+                              </span>
+                            </TableCell>
+                            <TableCell>
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold ${
+                                isWithdraw
+                                  ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'
+                                  : 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'
+                              }`}>
+                                {isWithdraw ? 'Expense' : 'Income'}
+                              </span>
+                            </TableCell>
+                            {/* Category */}
+                            <TableCell>
+                              <Autocomplete
+                                value={row.category}
+                                onChange={v => setSheetRows(prev => prev.map((r, i) => i === idx ? { ...r, category: v } : r))}
+                                suggestions={categories}
+                                placeholder="Category..."
+                                className="w-[140px]"
+                              />
+                            </TableCell>
+                            {/* Client Name */}
+                            <TableCell>
+                              <Autocomplete
+                                value={row.clientName}
+                                onChange={v => setSheetRows(prev => prev.map((r, i) => i === idx ? { ...r, clientName: v } : r))}
+                                suggestions={clients}
+                                placeholder="Client..."
+                                className="w-[130px]"
+                              />
+                            </TableCell>
+                            {/* Payment Mode */}
+                            <TableCell>
+                              <Autocomplete
+                                value={row.paymentMethod}
+                                onChange={v => setSheetRows(prev => prev.map((r, i) => i === idx ? { ...r, paymentMethod: v } : r))}
+                                suggestions={paymentMethods}
+                                placeholder="Mode..."
+                                className="w-[120px]"
+                              />
+                            </TableCell>
+                            {/* Bank */}
+                            <TableCell>
+                              <Autocomplete
+                                value={row.bank}
+                                onChange={v => setSheetRows(prev => prev.map((r, i) => i === idx ? { ...r, bank: v } : r))}
+                                suggestions={banks}
+                                placeholder="Bank..."
+                                className="w-[110px]"
+                              />
+                            </TableCell>
+                            {/* Remarks */}
+                            <TableCell>
+                              <Input
+                                value={row.remarks}
+                                onChange={e => setSheetRows(prev => prev.map((r, i) => i === idx ? { ...r, remarks: e.target.value } : r))}
+                                className="w-[160px] text-xs h-8"
+                                placeholder="Remarks..."
+                              />
+                            </TableCell>
+                            {/* Remove */}
+                            <TableCell className="text-right">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setSheetRows(prev => prev.filter((_, i) => i !== idx))}
+                                className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                      {sheetRows.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={12} className="text-center py-8 text-muted-foreground">
+                            No rows remaining.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
             </CardContent>
           </GlassCard>
         </TabsContent>
