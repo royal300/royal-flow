@@ -24,7 +24,9 @@ pm2 restart royal300-backend || pm2 start index.js --name royal300-backend
 # Build frontend
 echo "🏗️  Building frontend..."
 cd ..
-npm install --legacy-peer-deps
+npm install --legacy-peer-deps || npm install --force
+# Ensure xlsx is always installed (needed for sheet upload feature)
+npm install xlsx --legacy-peer-deps --no-save 2>/dev/null || npm install xlsx --force --no-save
 npm run build
 
 # Reload Nginx
