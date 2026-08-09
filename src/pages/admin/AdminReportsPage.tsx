@@ -55,6 +55,15 @@ const formatDateDDMMYYYY = (dateStr: string) => {
   return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
 };
 
+const formatMonthMMYYYY = (monthStr: string) => {
+  if (!monthStr) return '-';
+  const parts = monthStr.split('-');
+  if (parts.length === 2) {
+    return `${parts[1]}-${parts[0]}`; // MM-YYYY e.g. 08-2026
+  }
+  return monthStr;
+};
+
 // Helper for local timezone YYYY-MM-DD
 const getLocalDateString = (dateObj: Date = new Date()) => {
   const year = dateObj.getFullYear();
@@ -642,7 +651,7 @@ const AdminReportsPage = () => {
                 </div>
 
                 <div className="sm:ml-auto text-xs text-muted-foreground pt-4 sm:pt-0">
-                  Showing activities for <strong className="text-foreground">{selectedMonth}</strong> ({analyticsStaffFilter})
+                  Showing activities for <strong className="text-foreground">{formatMonthMMYYYY(selectedMonth)}</strong> ({analyticsStaffFilter})
                 </div>
               </div>
             </CardContent>
@@ -699,7 +708,7 @@ const AdminReportsPage = () => {
                 Client Work Volume (Bar Chart)
               </CardTitle>
               <CardDescription>
-                Shows which client works were done most during {selectedMonth}. Click on any client bar to view detailed task type breakdown.
+                Shows which client works were done most during {formatMonthMMYYYY(selectedMonth)}. Click on any client bar to view detailed task type breakdown.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -859,7 +868,7 @@ const AdminReportsPage = () => {
                   {selectedClientModal.clientName} — Task Breakdown
                 </DialogTitle>
                 <DialogDescription className="text-xs">
-                  Month: <strong className="text-foreground">{selectedMonth}</strong> • Staff Filter: <strong className="text-foreground">{analyticsStaffFilter}</strong>
+                  Month: <strong className="text-foreground">{formatMonthMMYYYY(selectedMonth)}</strong> • Staff Filter: <strong className="text-foreground">{analyticsStaffFilter}</strong>
                 </DialogDescription>
               </DialogHeader>
 
