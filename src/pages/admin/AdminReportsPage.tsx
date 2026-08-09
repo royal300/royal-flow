@@ -280,7 +280,7 @@ const AdminReportsPage = () => {
               </div>
 
               {/* Type Filter */}
-              <div className="w-[150px]">
+              <div className="w-[180px]">
                 <Autocomplete
                   value={creativeTypeFilter}
                   onChange={setCreativeTypeFilter}
@@ -292,13 +292,26 @@ const AdminReportsPage = () => {
 
               {/* Date Filter */}
               <div className="flex items-center gap-1.5">
-                <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <div
+                  className="relative cursor-pointer"
+                  onClick={(e) => {
+                    const inputEl = e.currentTarget.querySelector('input');
+                    if (inputEl && 'showPicker' in inputEl) {
+                      try { (inputEl as any).showPicker(); } catch (err) {}
+                    }
+                  }}
+                >
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
                   <Input
                     type="date"
                     value={selectedDate}
                     onChange={(e) => setSelectedDate(e.target.value)}
-                    className="pl-9 w-[150px] h-9 text-xs"
+                    onClick={(e) => {
+                      if ('showPicker' in e.currentTarget) {
+                        try { (e.currentTarget as any).showPicker(); } catch (err) {}
+                      }
+                    }}
+                    className="pl-9 w-[160px] h-9 text-xs cursor-pointer"
                   />
                 </div>
                 {selectedDate && (
@@ -671,13 +684,26 @@ const AdminReportsPage = () => {
             </div>
 
             <div className="flex items-center gap-2">
-              <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <div
+                className="relative cursor-pointer"
+                onClick={(e) => {
+                  const inputEl = e.currentTarget.querySelector('input');
+                  if (inputEl && 'showPicker' in inputEl) {
+                    try { (inputEl as any).showPicker(); } catch (err) {}
+                  }
+                }}
+              >
+                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
                 <Input
                   type="date"
                   value={selectedDate}
                   onChange={(e) => setSelectedDate(e.target.value)}
-                  className="pl-9 w-[180px] h-9 text-xs"
+                  onClick={(e) => {
+                    if ('showPicker' in e.currentTarget) {
+                      try { (e.currentTarget as any).showPicker(); } catch (err) {}
+                    }
+                  }}
+                  className="pl-9 w-[180px] h-9 text-xs cursor-pointer"
                 />
               </div>
               {selectedDate && (
