@@ -177,15 +177,15 @@ export const Autocomplete = ({
         </div>
       </div>
       {isOpen && (
-        <div ref={listRef} className="absolute z-50 w-full mt-1 bg-popover text-popover-foreground border rounded-md shadow-md max-h-60 overflow-auto">
+        <div ref={listRef} className="absolute z-[9999] w-full mt-1 bg-background border border-border text-foreground rounded-md shadow-2xl max-h-60 overflow-auto py-1 divide-y divide-border/20">
           {emptyValue && (
             <div
               onClick={() => selectSuggestion(emptyValue)}
               className={cn(
-                "px-3 py-2 text-xs cursor-pointer text-left transition-colors border-b",
+                "px-3 py-2 text-xs cursor-pointer text-left transition-colors font-semibold",
                 (value === emptyValue || value === '')
-                  ? "bg-accent text-accent-foreground font-semibold"
-                  : "hover:bg-accent hover:text-accent-foreground text-muted-foreground"
+                  ? "bg-primary/20 text-primary font-bold"
+                  : "hover:bg-muted text-muted-foreground"
               )}
             >
               {emptyValue === 'All' ? 'All / Reset' : 'Clear selection'}
@@ -198,10 +198,10 @@ export const Autocomplete = ({
                 onClick={() => selectSuggestion(s)}
                 onMouseEnter={() => setActiveIndex(idx)}
                 className={cn(
-                  "px-3 py-2 text-xs cursor-pointer text-left transition-colors",
+                  "px-3 py-2 text-xs cursor-pointer text-left transition-colors font-medium",
                   idx === activeIndex || value === s
-                    ? "bg-accent text-accent-foreground font-medium"
-                    : "hover:bg-accent hover:text-accent-foreground"
+                    ? "bg-primary text-black font-bold"
+                    : "hover:bg-muted text-foreground"
                 )}
               >
                 {s}

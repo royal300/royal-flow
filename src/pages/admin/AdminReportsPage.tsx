@@ -34,6 +34,13 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
 
 const formatDateDDMMYYYY = (dateStr: string) => {
   if (!dateStr) return '-';
@@ -77,6 +84,13 @@ const AdminReportsPage = () => {
     new Date().toISOString().substring(0, 7) // YYYY-MM
   );
   const [analyticsStaffFilter, setAnalyticsStaffFilter] = useState<string>('All');
+
+  // Bar Chart Click Modal state
+  const [selectedClientModal, setSelectedClientModal] = useState<{
+    clientName: string;
+    totalItems: number;
+    taskCount: number;
+  } | null>(null);
 
   useEffect(() => {
     loadReports();
@@ -152,7 +166,6 @@ const AdminReportsPage = () => {
   const totalReels = monthCreativeReports.filter(r => r.creativeType === 'Reels').reduce((sum, r) => sum + (r.itemCount || 1), 0);
   const totalLongVideos = monthCreativeReports.filter(r => r.creativeType === 'Long Video').reduce((sum, r) => sum + (r.itemCount || 1), 0);
   const totalShooting = monthCreativeReports.filter(r => r.creativeType === 'Shooting').length;
-  const totalAllItems = totalCreatives + totalReels + totalLongVideos + totalShooting;
 
   // Client distribution statistics for bar chart
   const clientDistribution: Record<string, { totalItems: number; taskCount: number }> = {};
@@ -242,7 +255,7 @@ const AdminReportsPage = () => {
         {/* --- TAB 1: DAILY REPORT RECORDS (Task 3 & 4) --- */}
         <TabsContent value="creative-reports" className="space-y-6">
           {/* Controls Bar */}
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-muted/20 p-4 rounded-xl border border-border">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-muted/20 p-4 rounded-xl border border-border relative z-30 overflow-visible">
             <div className="flex flex-wrap items-center gap-3">
               {/* Staff Filter */}
               <div className="w-[170px]">
@@ -504,7 +517,7 @@ const AdminReportsPage = () => {
         {/* --- TAB 2: MONTHLY ANALYTICS (Task 5) --- */}
         <TabsContent value="monthly-analytics" className="space-y-6">
           {/* Filter Section */}
-          <GlassCard>
+          <GlassCard className="relative z-30 overflow-visible">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Filter className="w-5 h-5 text-primary" />
@@ -514,7 +527,7 @@ const AdminReportsPage = () => {
                 Select a month and staff member to analyze total creative activities and top client work.
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="overflow-visible">
               <div className="flex flex-col sm:flex-row items-center gap-4">
                 <div className="space-y-1.5 w-full sm:w-[200px]">
                   <label className="text-xs font-semibold block text-muted-foreground">Select Month</label>
@@ -595,7 +608,7 @@ const AdminReportsPage = () => {
                 Client Work Volume (Bar Chart)
               </CardTitle>
               <CardDescription>
-                Shows which client works were done most during {selectedMonth}
+                Shows which client works were done most during {selectedMonth}. Click on any client bar to view detailed task type breakdown.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -604,19 +617,29 @@ const AdminReportsPage = () => {
                   No creative report activities logged for this month and staff filter.
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-3">
                   {sortedClientStats.map((item, idx) => {
                     const percentage = Math.round((item.totalItems / maxClientItems) * 100);
 
                     return (
-                      <div key={item.client} className="space-y-1.5">
+                      <div
+                        key={item.client}
+                        onClick={() => setSelectedClientModal({
+                          clientName: item.client,
+                          totalItems: item.totalItems,
+                          taskCount: item.taskCount
+                        })}
+                        className="space-y-1.5 p-2.5 rounded-xl cursor-pointer hover:bg-yellow-500/10 border border-border/40 hover:border-yellow-500/40 transition-all duration-200 group bg-card/60"
+                        title="Click to view detailed breakdown"
+                      >
                         <div className="flex items-center justify-between text-xs font-semibold">
                           <span className="flex items-center gap-2">
                             <span className="w-5 text-muted-foreground text-[11px]">#{idx + 1}</span>
-                            <span className="text-foreground text-sm">{item.client}</span>
+                            <span className="text-foreground text-sm group-hover:text-primary transition-colors">{item.client}</span>
                           </span>
-                          <span className="text-primary font-bold">
+                          <span className="text-primary font-bold flex items-center gap-1.5">
                             {item.totalItems} Items <span className="text-muted-foreground font-normal">({item.taskCount} tasks)</span>
+                            <Badge variant="outline" className="ml-1 text-[10px] group-hover:bg-primary group-hover:text-black">Details →</Badge>
                           </span>
                         </div>
                         <div className="w-full h-4 bg-muted/40 rounded-full overflow-hidden p-0.5 border border-border/50">
@@ -709,6 +732,109 @@ const AdminReportsPage = () => {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Client Detail Breakdown Modal (Request 2) */}
+      <Dialog open={!!selectedClientModal} onOpenChange={(open) => !open && setSelectedClientModal(null)}>
+        {selectedClientModal && (() => {
+          const clientTasks = monthCreativeReports.filter(
+            r => (r.clientName || 'Unspecified Client') === selectedClientModal.clientName
+          );
+
+          const typeBreakdown = {
+            'Creative': clientTasks.filter(r => r.creativeType === 'Creative').reduce((sum, r) => sum + (r.itemCount || 1), 0),
+            'Reels': clientTasks.filter(r => r.creativeType === 'Reels').reduce((sum, r) => sum + (r.itemCount || 1), 0),
+            'Long Video': clientTasks.filter(r => r.creativeType === 'Long Video').reduce((sum, r) => sum + (r.itemCount || 1), 0),
+            'Shooting': clientTasks.filter(r => r.creativeType === 'Shooting').length,
+          };
+
+          return (
+            <DialogContent className="max-w-2xl bg-background border-border shadow-2xl p-6 overflow-hidden">
+              <DialogHeader>
+                <DialogTitle className="text-xl font-bold flex items-center gap-2">
+                  <Film className="w-5 h-5 text-primary" />
+                  {selectedClientModal.clientName} — Task Breakdown
+                </DialogTitle>
+                <DialogDescription className="text-xs">
+                  Month: <strong className="text-foreground">{selectedMonth}</strong> • Staff Filter: <strong className="text-foreground">{analyticsStaffFilter}</strong>
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-4 my-2">
+                {/* Total Summary Banner */}
+                <div className="bg-yellow-500/10 border border-yellow-500/30 p-3 rounded-lg flex items-center justify-between">
+                  <span className="text-xs font-semibold text-foreground">Total Work Delivered for Client:</span>
+                  <Badge className="bg-primary text-black font-bold text-sm">
+                    {selectedClientModal.totalItems} Total Items ({selectedClientModal.taskCount} tasks)
+                  </Badge>
+                </div>
+
+                {/* Type Breakdown Cards */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="bg-indigo-500/10 border border-indigo-500/20 p-3 rounded-lg text-center">
+                    <span className="text-[11px] font-semibold text-muted-foreground block">Creative</span>
+                    <span className="text-xl font-bold text-indigo-500">{typeBreakdown['Creative']}</span>
+                  </div>
+                  <div className="bg-purple-500/10 border border-purple-500/20 p-3 rounded-lg text-center">
+                    <span className="text-[11px] font-semibold text-muted-foreground block">Reels</span>
+                    <span className="text-xl font-bold text-purple-500">{typeBreakdown['Reels']}</span>
+                  </div>
+                  <div className="bg-blue-500/10 border border-blue-500/20 p-3 rounded-lg text-center">
+                    <span className="text-[11px] font-semibold text-muted-foreground block">Long Video</span>
+                    <span className="text-xl font-bold text-blue-500">{typeBreakdown['Long Video']}</span>
+                  </div>
+                  <div className="bg-amber-500/10 border border-amber-500/20 p-3 rounded-lg text-center">
+                    <span className="text-[11px] font-semibold text-muted-foreground block">Shooting</span>
+                    <span className="text-xl font-bold text-amber-500">{typeBreakdown['Shooting']}</span>
+                  </div>
+                </div>
+
+                {/* Task Log Table */}
+                <div className="space-y-2 pt-2">
+                  <h4 className="text-xs font-bold text-muted-foreground uppercase">Detailed Task Submissions</h4>
+                  <div className="max-h-60 overflow-y-auto border border-border rounded-lg">
+                    <Table>
+                      <TableHeader className="bg-muted/50">
+                        <TableRow>
+                          <TableHead className="text-xs py-2">Date (DD/MM/YYYY)</TableHead>
+                          <TableHead className="text-xs py-2">Staff</TableHead>
+                          <TableHead className="text-xs py-2">Type</TableHead>
+                          <TableHead className="text-xs py-2 text-center">Items</TableHead>
+                          <TableHead className="text-xs py-2">Remarks</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {clientTasks.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={5} className="text-center py-4 text-xs text-muted-foreground">
+                              No tasks found.
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          clientTasks.map((t) => (
+                            <TableRow key={t.id} className="text-xs">
+                              <TableCell className="font-semibold py-2 whitespace-nowrap">{formatDateDDMMYYYY(t.date)}</TableCell>
+                              <TableCell className="py-2">{t.staffName}</TableCell>
+                              <TableCell className="py-2">
+                                <Badge className="bg-indigo-600 text-white text-[10px] px-1.5 py-0">
+                                  {t.creativeType}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-center font-bold py-2">{t.itemCount ?? 1}</TableCell>
+                              <TableCell className="py-2 text-muted-foreground max-w-[160px] truncate" title={t.content}>
+                                {t.content}
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              </div>
+            </DialogContent>
+          );
+        })()}
+      </Dialog>
     </div>
   );
 };
