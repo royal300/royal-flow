@@ -16,7 +16,8 @@ import {
   Filter,
   Grid,
   ListFilter,
-  Film
+  Film,
+  Pin
 } from 'lucide-react';
 import {
   Staff,
@@ -41,6 +42,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
+import { cn } from '@/lib/utils';
 
 const formatDateDDMMYYYY = (dateStr: string) => {
   if (!dateStr) return '-';
@@ -53,14 +55,92 @@ const formatDateDDMMYYYY = (dateStr: string) => {
   return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
 };
 
+// Helper for local timezone YYYY-MM-DD
+const getLocalDateString = (dateObj: Date = new Date()) => {
+  const year = dateObj.getFullYear();
+  const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+  const day = String(dateObj.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 const getLast3DaysDates = (): string[] => {
   const dates: string[] = [];
   for (let i = 0; i < 3; i++) {
     const d = new Date();
     d.setDate(d.getDate() - i);
-    dates.push(d.toISOString().split('T')[0]);
+    dates.push(getLocalDateString(d));
   }
   return dates;
+};
+
+const getDateBadgeLabel = (dateStr: string) => {
+  const todayStr = getLocalDateString(new Date());
+
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = getLocalDateString(yesterday);
+
+  const dayBefore = new Date();
+  dayBefore.setDate(dayBefore.getDate() - 2);
+  const dayBeforeStr = getLocalDateString(dayBefore);
+
+  if (dateStr === todayStr) return 'Today';
+  if (dateStr === yesterdayStr) return 'Yesterday';
+  if (dateStr === dayBeforeStr) return 'Day Before Yesterday';
+  return '';
+};
+
+// Sticky note pastel styles generator per staff member
+const stickyColors = [
+  {
+    bg: 'bg-[#FFFDF0] dark:bg-amber-950/40',
+    border: 'border-amber-300/80 dark:border-amber-700/60',
+    text: 'text-amber-950 dark:text-amber-100',
+    pin: 'text-amber-600',
+    shadow: 'shadow-amber-900/5',
+    accent: 'bg-amber-500'
+  },
+  {
+    bg: 'bg-[#F0F7FF] dark:bg-blue-950/40',
+    border: 'border-blue-300/80 dark:border-blue-700/60',
+    text: 'text-blue-950 dark:text-blue-100',
+    pin: 'text-blue-600',
+    shadow: 'shadow-blue-900/5',
+    accent: 'bg-blue-500'
+  },
+  {
+    bg: 'bg-[#F0FDF4] dark:bg-emerald-950/40',
+    border: 'border-emerald-300/80 dark:border-emerald-700/60',
+    text: 'text-emerald-950 dark:text-emerald-100',
+    pin: 'text-emerald-600',
+    shadow: 'shadow-emerald-900/5',
+    accent: 'bg-emerald-500'
+  },
+  {
+    bg: 'bg-[#FDF2F8] dark:bg-pink-950/40',
+    border: 'border-pink-300/80 dark:border-pink-700/60',
+    text: 'text-pink-950 dark:text-pink-100',
+    pin: 'text-pink-600',
+    shadow: 'shadow-pink-900/5',
+    accent: 'bg-pink-500'
+  },
+  {
+    bg: 'bg-[#FAF5FF] dark:bg-purple-950/40',
+    border: 'border-purple-300/80 dark:border-purple-700/60',
+    text: 'text-purple-950 dark:text-purple-100',
+    pin: 'text-purple-600',
+    shadow: 'shadow-purple-900/5',
+    accent: 'bg-purple-500'
+  },
+];
+
+const getStickyStyle = (staffName: string) => {
+  let hash = 0;
+  for (let i = 0; i < staffName.length; i++) {
+    hash = staffName.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const index = Math.abs(hash) % stickyColors.length;
+  return stickyColors[index];
 };
 
 const AdminReportsPage = () => {
@@ -130,7 +210,7 @@ const AdminReportsPage = () => {
   const filteredCreativeReports = dailyReports.filter(r => {
     if (r.reportType !== 'creative') return false;
 
-    // Default to last 3 days unless full history is checked or specific date filter selected
+    // Default to last 3 days (Today, Yesterday, Day Before Yesterday) unless full history or specific date filter selected
     if (!showFullHistory && !selectedDate && !last3Days.includes(r.date)) {
       return false;
     }
@@ -252,7 +332,7 @@ const AdminReportsPage = () => {
           </TabsTrigger>
         </TabsList>
 
-        {/* --- TAB 1: DAILY REPORT RECORDS (Task 3 & 4) --- */}
+        {/* --- TAB 1: DAILY REPORT RECORDS --- */}
         <TabsContent value="creative-reports" className="space-y-6">
           {/* Controls Bar */}
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-muted/20 p-4 rounded-xl border border-border relative z-30 overflow-visible">
@@ -361,14 +441,14 @@ const AdminReportsPage = () => {
           <div className="flex items-center justify-between text-xs text-muted-foreground px-1">
             <div className="flex items-center gap-2">
               <Badge variant={showFullHistory ? "default" : "secondary"} className="text-[11px]">
-                {showFullHistory ? "Full History View" : "Default View: Last 3 Days"}
+                {showFullHistory ? "Full History View" : "Default View: Today, Yesterday & Day Before"}
               </Badge>
               {selectedDate && <Badge variant="outline">Filtered Date: {formatDateDDMMYYYY(selectedDate)}</Badge>}
             </div>
             <span>Found {filteredCreativeReports.length} records</span>
           </div>
 
-          {/* BOX VIEW (Task 3: Date-wise & Staff-wise organized boxes) */}
+          {/* BOX VIEW (Compact Sticky Note Board) */}
           {viewMode === 'boxes' ? (
             <div className="space-y-6">
               {sortedGroupedDates.length === 0 ? (
@@ -384,76 +464,92 @@ const AdminReportsPage = () => {
                   const staffGroupMap = groupedByDateAndStaff[dateKey];
                   const staffNamesInDay = Object.keys(staffGroupMap);
                   const dayTotalEntries = staffNamesInDay.reduce((sum, s) => sum + staffGroupMap[s].length, 0);
+                  const badgeLabel = getDateBadgeLabel(dateKey);
 
                   return (
-                    <GlassCard key={dateKey} className="border-yellow-500/30 overflow-hidden">
+                    <GlassCard key={dateKey} className="border-yellow-500/30 overflow-hidden shadow-sm">
                       {/* Day Header Box */}
-                      <div className="bg-yellow-500/15 border-b border-yellow-500/25 px-5 py-3 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <Calendar className="w-5 h-5 text-primary" />
-                          <span className="text-base font-bold text-foreground">
+                      <div className="bg-yellow-500/15 border-b border-yellow-500/25 px-4 py-2.5 flex items-center justify-between">
+                        <div className="flex items-center gap-2.5">
+                          <Calendar className="w-4 h-4 text-primary" />
+                          <span className="text-sm font-extrabold text-foreground">
                             {formatDateDDMMYYYY(dateKey)}
                           </span>
-                          <Badge variant="outline" className="bg-background text-xs">
+                          {badgeLabel && (
+                            <Badge className="bg-amber-500 text-black font-extrabold text-[11px] px-2 py-0 shadow-xs">
+                              {badgeLabel}
+                            </Badge>
+                          )}
+                          <Badge variant="outline" className="bg-background text-[11px] font-medium">
                             {staffNamesInDay.length} Staff Member{staffNamesInDay.length > 1 ? 's' : ''}
                           </Badge>
                         </div>
-                        <Badge className="bg-primary text-black font-semibold text-xs">
-                          {dayTotalEntries} Total Entry{dayTotalEntries > 1 ? 'ies' : ''}
+                        <Badge className="bg-primary text-black font-extrabold text-xs">
+                          {dayTotalEntries} Total {dayTotalEntries === 1 ? 'Entry' : 'Entries'}
                         </Badge>
                       </div>
 
-                      {/* Staff Boxes for this Date */}
-                      <CardContent className="p-5 space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Staff Sticky Notes Grid */}
+                      <CardContent className="p-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
                           {staffNamesInDay.map((staffName) => {
                             const staffEntries = staffGroupMap[staffName];
+                            const style = getStickyStyle(staffName);
 
                             return (
                               <div
                                 key={staffName}
-                                className="bg-muted/30 border border-border rounded-xl p-4 space-y-3 hover:border-yellow-500/40 transition-colors"
+                                className={cn(
+                                  "border rounded-2xl p-3.5 space-y-3 transition-all duration-200 hover:-translate-y-1 relative shadow-md",
+                                  style.bg,
+                                  style.border,
+                                  style.shadow
+                                )}
                               >
-                                {/* Staff Header Box */}
-                                <div className="flex items-center justify-between pb-2 border-b border-border">
-                                  <div className="flex items-center gap-2.5">
-                                    <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary text-xs">
+                                {/* Sticky Note Pin Header */}
+                                <div className="flex items-center justify-between pb-2 border-b border-black/10 dark:border-white/10">
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <Pin className={cn("w-3.5 h-3.5 rotate-45 shrink-0", style.pin)} />
+                                    <div className="w-7 h-7 rounded-full bg-white dark:bg-zinc-800 border border-black/10 flex items-center justify-center font-extrabold text-xs shrink-0 shadow-xs">
                                       {staffName.charAt(0)}
                                     </div>
-                                    <div>
-                                      <h4 className="font-bold text-sm leading-none">{staffName}</h4>
-                                      <span className="text-[11px] text-muted-foreground">
+                                    <div className="min-w-0">
+                                      <h4 className="font-extrabold text-xs leading-none truncate text-foreground">{staffName}</h4>
+                                      <span className="text-[10px] font-medium text-muted-foreground">
                                         {staffEntries.length} task{staffEntries.length > 1 ? 's' : ''} reported
                                       </span>
                                     </div>
                                   </div>
+                                  <Badge className={cn("text-[10px] px-1.5 py-0 font-bold text-white", style.accent)}>
+                                    {staffEntries.length}
+                                  </Badge>
                                 </div>
 
-                                {/* Staff Tasks Table / List */}
+                                {/* Staff Tasks inside Sticky Note */}
                                 <div className="space-y-2">
                                   {staffEntries.map((item) => (
                                     <div
                                       key={item.id}
-                                      className="bg-card border border-border/80 p-3 rounded-lg text-xs space-y-1.5"
+                                      className="bg-white/90 dark:bg-zinc-900/90 border border-black/10 dark:border-white/10 p-2.5 rounded-xl text-xs space-y-1 shadow-xs hover:shadow-sm transition-shadow"
                                     >
-                                      <div className="flex items-center justify-between font-bold">
-                                        <span className="text-foreground text-sm">{item.clientName}</span>
-                                        <Badge className="bg-indigo-600 text-white text-[10px] px-2 py-0.5">
-                                          {item.creativeType}
+                                      <div className="flex items-center justify-between font-bold gap-2">
+                                        <span className="text-foreground text-xs font-bold truncate">{item.clientName || 'NA'}</span>
+                                        <Badge className="bg-indigo-600 text-white text-[10px] px-2 py-0.2 shrink-0 font-semibold">
+                                          {item.creativeType || 'Creative'}
                                         </Badge>
                                       </div>
 
-                                      <div className="flex items-center justify-between text-muted-foreground text-[11px]">
-                                        <span>
-                                          Count: <strong className="text-foreground font-semibold">{item.itemCount ?? 1}</strong>
+                                      <div className="flex items-center justify-between text-muted-foreground text-[10px]">
+                                        <span className="font-medium text-foreground">
+                                          Count: <strong className="font-extrabold">{item.itemCount ?? 1}</strong>
                                         </span>
-                                        <span>
+                                        <span className="text-[10px] text-muted-foreground">
                                           {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                         </span>
                                       </div>
 
                                       {item.content && (
-                                        <p className="text-muted-foreground text-[11px] pt-1 border-t border-border/40 whitespace-pre-wrap">
+                                        <p className="text-muted-foreground text-[11px] pt-1 border-t border-black/5 dark:border-white/5 whitespace-pre-wrap leading-tight">
                                           {item.content}
                                         </p>
                                       )}
@@ -527,7 +623,7 @@ const AdminReportsPage = () => {
           )}
         </TabsContent>
 
-        {/* --- TAB 2: MONTHLY ANALYTICS (Task 5) --- */}
+        {/* --- TAB 2: MONTHLY ANALYTICS --- */}
         <TabsContent value="monthly-analytics" className="space-y-6">
           {/* Filter Section */}
           <GlassCard className="relative z-30 overflow-visible">
@@ -759,7 +855,7 @@ const AdminReportsPage = () => {
         </TabsContent>
       </Tabs>
 
-      {/* Client Detail Breakdown Modal (Request 2) */}
+      {/* Client Detail Breakdown Modal */}
       <Dialog open={!!selectedClientModal} onOpenChange={(open) => !open && setSelectedClientModal(null)}>
         {selectedClientModal && (() => {
           const clientTasks = monthCreativeReports.filter(
