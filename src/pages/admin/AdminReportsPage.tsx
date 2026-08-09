@@ -155,8 +155,7 @@ const AdminReportsPage = () => {
   const [creativeTypeFilter, setCreativeTypeFilter] = useState<string>('All');
   const [activeTab, setActiveTab] = useState<string>('creative-reports');
 
-  // Task 4 state: Default show last 3 days
-  const [showFullHistory, setShowFullHistory] = useState<boolean>(false);
+  // Task 4 state: Organized Box View vs Table View
   const [viewMode, setViewMode] = useState<'boxes' | 'table'>('boxes');
 
   // Task 5 state: Monthly Analytics
@@ -198,8 +197,6 @@ const AdminReportsPage = () => {
   const creativeClients = getUniqueValues(dailyReports.filter(r => r.reportType === 'creative'), 'clientName');
   const creativeTypes = ['Long Video', 'Creative', 'Reels', 'Shooting'];
 
-  const last3Days = getLast3DaysDates();
-
   const filteredGeneralReports = dailyReports.filter(r => {
     if (r.reportType && r.reportType !== 'general') return false;
     const matchesStaff = generalStaffFilter === 'All' || !generalStaffFilter || r.staffName.toLowerCase().includes(generalStaffFilter.toLowerCase());
@@ -209,11 +206,6 @@ const AdminReportsPage = () => {
 
   const filteredCreativeReports = dailyReports.filter(r => {
     if (r.reportType !== 'creative') return false;
-
-    // Default to last 3 days (Today, Yesterday, Day Before Yesterday) unless full history or specific date filter selected
-    if (!showFullHistory && !selectedDate && !last3Days.includes(r.date)) {
-      return false;
-    }
 
     const matchesStaff = creativeStaffFilter === 'All' || !creativeStaffFilter || r.staffName.toLowerCase().includes(creativeStaffFilter.toLowerCase());
     const matchesClient = creativeClientFilter === 'All' || !creativeClientFilter || (r.clientName && r.clientName.toLowerCase().includes(creativeClientFilter.toLowerCase()));
@@ -402,18 +394,8 @@ const AdminReportsPage = () => {
               </div>
             </div>
 
-            {/* Task 4: Full History Checkbox + View Switcher */}
+            {/* View Switcher */}
             <div className="flex items-center gap-3">
-              <label className="flex items-center gap-2 cursor-pointer bg-background px-3 py-2 rounded-lg border border-border text-xs font-semibold select-none hover:bg-muted/50 transition-colors">
-                <input
-                  type="checkbox"
-                  checked={showFullHistory}
-                  onChange={(e) => setShowFullHistory(e.target.checked)}
-                  className="h-4 w-4 rounded accent-primary cursor-pointer"
-                />
-                <span>View Full History</span>
-              </label>
-
               <div className="flex items-center bg-background rounded-lg border border-border p-1">
                 <Button
                   variant={viewMode === 'boxes' ? 'royal' : 'ghost'}
@@ -440,8 +422,8 @@ const AdminReportsPage = () => {
           {/* Active Filter Info Banner */}
           <div className="flex items-center justify-between text-xs text-muted-foreground px-1">
             <div className="flex items-center gap-2">
-              <Badge variant={showFullHistory ? "default" : "secondary"} className="text-[11px]">
-                {showFullHistory ? "Full History View" : "Default View: Today, Yesterday & Day Before"}
+              <Badge variant="default" className="text-[11px]">
+                All Tasks View
               </Badge>
               {selectedDate && <Badge variant="outline">Filtered Date: {formatDateDDMMYYYY(selectedDate)}</Badge>}
             </div>
