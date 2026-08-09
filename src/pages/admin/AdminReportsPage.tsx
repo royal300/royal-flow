@@ -17,7 +17,8 @@ import {
   Grid,
   ListFilter,
   Film,
-  Pin
+  Pin,
+  Globe
 } from 'lucide-react';
 import {
   Staff,
@@ -204,7 +205,7 @@ const AdminReportsPage = () => {
 
   const staffNames = staffList.map(s => s.name);
   const creativeClients = getUniqueValues(dailyReports.filter(r => r.reportType === 'creative'), 'clientName');
-  const creativeTypes = ['Long Video', 'Creative', 'Reels', 'Shooting'];
+  const creativeTypes = ['Long Video', 'Creative', 'Reels', 'Shooting', 'Website Product Listing'];
 
   const filteredGeneralReports = dailyReports.filter(r => {
     if (r.reportType && r.reportType !== 'general') return false;
@@ -247,6 +248,7 @@ const AdminReportsPage = () => {
   const totalReels = monthCreativeReports.filter(r => r.creativeType === 'Reels').reduce((sum, r) => sum + (r.itemCount || 1), 0);
   const totalLongVideos = monthCreativeReports.filter(r => r.creativeType === 'Long Video').reduce((sum, r) => sum + (r.itemCount || 1), 0);
   const totalShooting = monthCreativeReports.filter(r => r.creativeType === 'Shooting').length;
+  const totalWebsiteListing = monthCreativeReports.filter(r => r.creativeType === 'Website Product Listing').reduce((sum, r) => sum + (r.itemCount || 1), 0);
 
   // Client distribution statistics for bar chart
   const clientDistribution: Record<string, { totalItems: number; taskCount: number }> = {};
@@ -658,44 +660,54 @@ const AdminReportsPage = () => {
           </GlassCard>
 
           {/* Activity Totals Metrics */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <GlassCard className="p-4 flex items-center gap-4 border-indigo-500/20">
-              <div className="w-12 h-12 rounded-xl bg-indigo-500/10 flex items-center justify-center shrink-0">
-                <Film className="w-6 h-6 text-indigo-500" />
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+            <GlassCard className="p-3.5 flex items-center gap-3 border-indigo-500/20">
+              <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center shrink-0">
+                <Film className="w-5 h-5 text-indigo-500" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground font-medium">Creatives Made</p>
-                <p className="text-2xl font-bold">{totalCreatives}</p>
+                <p className="text-[11px] text-muted-foreground font-medium">Creatives Made</p>
+                <p className="text-xl font-bold">{totalCreatives}</p>
               </div>
             </GlassCard>
 
             <GlassCard className="p-4 flex items-center gap-4 border-purple-500/20">
-              <div className="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center shrink-0">
-                <Video className="w-6 h-6 text-purple-500" />
+              <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center shrink-0">
+                <Video className="w-5 h-5 text-purple-500" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground font-medium">Reels Created</p>
-                <p className="text-2xl font-bold">{totalReels}</p>
+                <p className="text-[11px] text-muted-foreground font-medium">Reels Created</p>
+                <p className="text-xl font-bold">{totalReels}</p>
               </div>
             </GlassCard>
 
             <GlassCard className="p-4 flex items-center gap-4 border-blue-500/20">
-              <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0">
-                <Layers className="w-6 h-6 text-blue-500" />
+              <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0">
+                <Layers className="w-5 h-5 text-blue-500" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground font-medium">Long Videos</p>
-                <p className="text-2xl font-bold">{totalLongVideos}</p>
+                <p className="text-[11px] text-muted-foreground font-medium">Long Videos</p>
+                <p className="text-xl font-bold">{totalLongVideos}</p>
               </div>
             </GlassCard>
 
             <GlassCard className="p-4 flex items-center gap-4 border-yellow-500/20">
-              <div className="w-12 h-12 rounded-xl bg-yellow-500/10 flex items-center justify-center shrink-0">
-                <CameraIcon className="w-6 h-6 text-yellow-500" />
+              <div className="w-10 h-10 rounded-xl bg-yellow-500/10 flex items-center justify-center shrink-0">
+                <CameraIcon className="w-5 h-5 text-yellow-500" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground font-medium">Shooting Sessions</p>
-                <p className="text-2xl font-bold">{totalShooting}</p>
+                <p className="text-[11px] text-muted-foreground font-medium">Shooting Sessions</p>
+                <p className="text-xl font-bold">{totalShooting}</p>
+              </div>
+            </GlassCard>
+
+            <GlassCard className="p-4 flex items-center gap-4 border-teal-500/20">
+              <div className="w-10 h-10 rounded-xl bg-teal-500/10 flex items-center justify-center shrink-0">
+                <Globe className="w-5 h-5 text-teal-500" />
+              </div>
+              <div>
+                <p className="text-[11px] text-muted-foreground font-medium">Product Listing</p>
+                <p className="text-xl font-bold">{totalWebsiteListing}</p>
               </div>
             </GlassCard>
           </div>
@@ -858,6 +870,7 @@ const AdminReportsPage = () => {
             'Reels': clientTasks.filter(r => r.creativeType === 'Reels').reduce((sum, r) => sum + (r.itemCount || 1), 0),
             'Long Video': clientTasks.filter(r => r.creativeType === 'Long Video').reduce((sum, r) => sum + (r.itemCount || 1), 0),
             'Shooting': clientTasks.filter(r => r.creativeType === 'Shooting').length,
+            'Website Product Listing': clientTasks.filter(r => r.creativeType === 'Website Product Listing').reduce((sum, r) => sum + (r.itemCount || 1), 0),
           };
 
           return (
@@ -882,22 +895,26 @@ const AdminReportsPage = () => {
                 </div>
 
                 {/* Type Breakdown Cards */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <div className="bg-indigo-500/10 border border-indigo-500/20 p-3 rounded-lg text-center">
-                    <span className="text-[11px] font-semibold text-muted-foreground block">Creative</span>
-                    <span className="text-xl font-bold text-indigo-500">{typeBreakdown['Creative']}</span>
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                  <div className="bg-indigo-500/10 border border-indigo-500/20 p-2.5 rounded-lg text-center">
+                    <span className="text-[10px] font-semibold text-muted-foreground block truncate">Creative</span>
+                    <span className="text-lg font-bold text-indigo-500">{typeBreakdown['Creative']}</span>
                   </div>
-                  <div className="bg-purple-500/10 border border-purple-500/20 p-3 rounded-lg text-center">
-                    <span className="text-[11px] font-semibold text-muted-foreground block">Reels</span>
-                    <span className="text-xl font-bold text-purple-500">{typeBreakdown['Reels']}</span>
+                  <div className="bg-purple-500/10 border border-purple-500/20 p-2.5 rounded-lg text-center">
+                    <span className="text-[10px] font-semibold text-muted-foreground block truncate">Reels</span>
+                    <span className="text-lg font-bold text-purple-500">{typeBreakdown['Reels']}</span>
                   </div>
-                  <div className="bg-blue-500/10 border border-blue-500/20 p-3 rounded-lg text-center">
-                    <span className="text-[11px] font-semibold text-muted-foreground block">Long Video</span>
-                    <span className="text-xl font-bold text-blue-500">{typeBreakdown['Long Video']}</span>
+                  <div className="bg-blue-500/10 border border-blue-500/20 p-2.5 rounded-lg text-center">
+                    <span className="text-[10px] font-semibold text-muted-foreground block truncate">Long Video</span>
+                    <span className="text-lg font-bold text-blue-500">{typeBreakdown['Long Video']}</span>
                   </div>
-                  <div className="bg-amber-500/10 border border-amber-500/20 p-3 rounded-lg text-center">
-                    <span className="text-[11px] font-semibold text-muted-foreground block">Shooting</span>
-                    <span className="text-xl font-bold text-amber-500">{typeBreakdown['Shooting']}</span>
+                  <div className="bg-amber-500/10 border border-amber-500/20 p-2.5 rounded-lg text-center">
+                    <span className="text-[10px] font-semibold text-muted-foreground block truncate">Shooting</span>
+                    <span className="text-lg font-bold text-amber-500">{typeBreakdown['Shooting']}</span>
+                  </div>
+                  <div className="bg-teal-500/10 border border-teal-500/20 p-2.5 rounded-lg text-center">
+                    <span className="text-[10px] font-semibold text-muted-foreground block truncate" title="Website Product Listing">Product Listing</span>
+                    <span className="text-lg font-bold text-teal-500">{typeBreakdown['Website Product Listing']}</span>
                   </div>
                 </div>
 

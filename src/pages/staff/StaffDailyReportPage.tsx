@@ -125,7 +125,7 @@ const StaffDailyReportPage = () => {
             return;
         }
 
-        const needsItemCount = ['Long Video', 'Creative', 'Reels'].includes(creativeForm.creativeType);
+        const needsItemCount = ['Long Video', 'Creative', 'Reels', 'Website Product Listing'].includes(creativeForm.creativeType);
         const countVal = Number(creativeForm.itemCount);
         if (needsItemCount && (!creativeForm.itemCount || isNaN(countVal) || countVal < 1 || countVal > 100)) {
             toast({ title: 'No. of items cannot be greater than 100 or less than 1', variant: 'destructive' });
@@ -196,7 +196,7 @@ const StaffDailyReportPage = () => {
         }
     };
 
-    const showItemCountField = ['Long Video', 'Creative', 'Reels'].includes(creativeForm.creativeType);
+    const showItemCountField = ['Long Video', 'Creative', 'Reels', 'Website Product Listing'].includes(creativeForm.creativeType);
 
     // Group submitted reports day-wise
     const groupedReports = reports.reduce((acc, report) => {
@@ -258,8 +258,8 @@ const StaffDailyReportPage = () => {
                                             <Label className="text-xs font-medium mb-1.5 block">Report Type</Label>
                                             <Autocomplete
                                                 value={creativeForm.creativeType}
-                                                onChange={v => setCreativeForm({ ...creativeForm, creativeType: v, itemCount: ['Long Video', 'Creative', 'Reels'].includes(v) ? creativeForm.itemCount : '' })}
-                                                suggestions={['Long Video', 'Creative', 'Reels', 'Shooting']}
+                                                onChange={v => setCreativeForm({ ...creativeForm, creativeType: v, itemCount: ['Long Video', 'Creative', 'Reels', 'Website Product Listing'].includes(v) ? creativeForm.itemCount : '' })}
+                                                suggestions={['Long Video', 'Creative', 'Reels', 'Shooting', 'Website Product Listing']}
                                                 placeholder="Type or select report type..."
                                             />
                                         </div>
