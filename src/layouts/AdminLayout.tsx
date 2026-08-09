@@ -56,7 +56,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
 
       {/* Sidebar */}
       <aside className={cn(
-        "fixed lg:static inset-y-0 left-0 z-50 bg-[#FACC15] border-r border-yellow-500/40 text-black flex flex-col transition-all duration-300 ease-in-out overflow-hidden shrink-0 shadow-lg",
+        "fixed inset-y-0 left-0 z-50 bg-[#FACC15] border-r border-yellow-500/40 text-black flex flex-col transition-all duration-300 ease-in-out overflow-hidden shrink-0 shadow-lg h-screen",
         sidebarOpen ? "translate-x-0 w-64" : "-translate-x-full lg:translate-x-0",
         isCollapsed ? "lg:w-0 lg:border-r-0" : "lg:w-64"
       )}>
@@ -131,7 +131,10 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
       </aside>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col min-h-screen w-full min-w-0">
+      <div className={cn(
+        "flex-1 flex flex-col min-h-screen w-full min-w-0 transition-all duration-300 ease-in-out",
+        isCollapsed ? "lg:ml-0" : "lg:ml-64"
+      )}>
         {/* Top bar */}
         <header className="h-16 bg-card border-b border-border flex items-center justify-between px-4 lg:px-6 sticky top-0 z-30">
           <div className="flex items-center gap-3">

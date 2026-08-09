@@ -48,7 +48,7 @@ const StaffLayout = ({ children }: StaffLayoutProps) => {
 
       {/* Sidebar */}
       <aside className={cn(
-        "fixed lg:static inset-y-0 left-0 z-50 w-64 bg-[#FACC15] border-r border-yellow-500/40 text-black flex flex-col transition-transform duration-300 shadow-lg",
+        "fixed inset-y-0 left-0 z-50 w-64 bg-[#FACC15] border-r border-yellow-500/40 text-black flex flex-col transition-transform duration-300 shadow-lg h-screen",
         sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
       )}>
         {/* Logo */}
@@ -113,7 +113,7 @@ const StaffLayout = ({ children }: StaffLayoutProps) => {
       </aside>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col min-h-screen w-full">
+      <div className="flex-1 flex flex-col min-h-screen w-full lg:ml-64">
         {/* Top bar */}
         <header className="h-16 bg-card border-b border-border flex items-center justify-between px-4 lg:px-6 sticky top-0 z-30">
           <button
