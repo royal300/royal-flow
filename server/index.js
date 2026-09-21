@@ -624,6 +624,51 @@ app.post('/api/external/add-expense', async (req, res) => {
     }
 });
 
+// Helper to dispatch webhook to 3rd party system when an expense is approved
+async function sendApprovalWebhook(record) {
+    if (!record || !record.webhookUrl) return;
+    try {
+        const payload = {
+            event: 'expense.approved',
+            id: record.id,
+            externalId: record.externalId || null,
+            status: 'Approved',
+            approvedAt: new Date().toISOString(),
+            amount: record.amount,
+            clientName: record.clientName,
+            category: record.category,
+            bank: record.bank,
+            paymentMethod: record.paymentMethod,
+            rfNo: record.rfNo || '',
+            isGst: record.isGst || false,
+            gstAmount: record.gstAmount || 0,
+            withoutGstAmount: record.withoutGstAmount || record.amount,
+            month: record.month,
+            year: record.year
+        };
+
+        console.log(`📡 Dispatching approval webhook to ${record.webhookUrl} for expense ID ${record.id} (externalId: ${record.externalId || 'none'})...`);
+
+        const response = await fetch(record.webhookUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'User-Agent': 'Royal300-Webhook-Dispatcher/1.0'
+            },
+            body: JSON.stringify(payload),
+            signal: AbortSignal.timeout(10000) // 10-second timeout
+        });
+
+        if (!response.ok) {
+            console.warn(`⚠️ Webhook to ${record.webhookUrl} returned status ${response.status}: ${response.statusText}`);
+        } else {
+            console.log(`✅ Webhook delivered successfully to ${record.webhookUrl} for expense ${record.id}`);
+        }
+    } catch (webhookErr) {
+        console.error(`❌ Failed to send webhook to ${record.webhookUrl}:`, webhookErr.message);
+    }
+}
+
 // --- External Website Pending Expense Endpoint (for 3rd party websites) ---
 app.post('/api/external/add-pending-expense', async (req, res) => {
     try {
@@ -641,7 +686,9 @@ app.post('/api/external/add-pending-expense', async (req, res) => {
             paymentMethod = 'GPay',
             paymentMode,
             remarks = '',
-            rfNo = ''
+            rfNo = '',
+            externalId,
+            webhookUrl
         } = req.body;
 
         if (!date || !clientName || amount === undefined || amount === null || amount === '') {
@@ -692,21 +739,183 @@ app.post('/api/external/add-pending-expense', async (req, res) => {
             month: month,
             year: year,
             remarks: remarks ? remarks.trim() : '',
+            externalId: externalId ? String(externalId).trim() : undefined,
+            webhookUrl: webhookUrl ? String(webhookUrl).trim() : undefined,
             createdAt: new Date().toISOString()
         });
 
         await newPendingExpense.save();
-        console.log(`✅ External Pending Expense Added: ₹${amountVal} | Client: ${clientName} | Submitter: ${submitterName} | Category: ${newPendingExpense.category}`);
+        console.log(`✅ External Pending Expense Added: ₹${amountVal} | Client: ${clientName} | Submitter: ${submitterName} | Category: ${newPendingExpense.category}${externalId ? ` | ExternalId: ${externalId}` : ''}`);
 
         res.json({
             success: true,
             message: 'Pending expense added successfully from 3rd party website!',
             pendingExpenseId: newPendingExpense.id,
+            externalId: newPendingExpense.externalId || null,
             pendingExpense: newPendingExpense
         });
     } catch (error) {
         console.error('❌ Error in /api/external/add-pending-expense:', error);
         res.status(500).json({ error: 'Failed to add external pending expense record' });
+    }
+});
+
+// --- External Website Update Pending Expense Endpoint ---
+// Allows 3rd party to edit the pending expense as long as it has NOT been approved.
+// If already approved, returns HTTP 403 Forbidden with error message.
+app.put('/api/external/update-pending-expense/:id', async (req, res) => {
+    try {
+        const idParam = req.params.id;
+
+        // 1. First check if it is still in PendingExpense (search by Royal300 id or 3rd party externalId)
+        const pendingRecord = await PendingExpense.findOne({
+            $or: [{ id: idParam }, { externalId: idParam }]
+        });
+
+        if (!pendingRecord) {
+            // Check if it has already been approved into Expense collection
+            const approvedExpense = await Expense.findOne({
+                $or: [{ id: idParam }, { externalId: idParam }]
+            });
+
+            if (approvedExpense) {
+                return res.status(403).json({
+                    success: false,
+                    error: 'Expense has already been approved by Admin and cannot be modified.',
+                    status: 'Approved',
+                    expenseId: approvedExpense.id,
+                    externalId: approvedExpense.externalId || null
+                });
+            }
+
+            return res.status(404).json({
+                success: false,
+                error: 'Expense record not found in system.'
+            });
+        }
+
+        // 2. Extract updates
+        const {
+            date,
+            clientName,
+            category,
+            amount,
+            gst,
+            isGst,
+            bank,
+            paymentMethod,
+            paymentMode,
+            remarks,
+            rfNo,
+            webhookUrl
+        } = req.body;
+
+        // Update fields if provided
+        if (clientName) pendingRecord.clientName = clientName.trim();
+        if (category) pendingRecord.category = category.trim();
+        if (bank) pendingRecord.bank = bank.trim();
+        if (paymentMethod || paymentMode) pendingRecord.paymentMethod = (paymentMode || paymentMethod).trim();
+        if (remarks !== undefined) pendingRecord.remarks = remarks.trim();
+        if (rfNo !== undefined) pendingRecord.rfNo = rfNo.trim();
+        if (webhookUrl !== undefined) pendingRecord.webhookUrl = webhookUrl.trim();
+
+        // Handle date & month/year recalculation
+        if (date) {
+            const dateObj = new Date(date);
+            if (isNaN(dateObj.getTime())) {
+                return res.status(400).json({ error: 'Invalid date format provided' });
+            }
+            pendingRecord.date = dateObj.toISOString().split('T')[0];
+            const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+            pendingRecord.month = monthNames[dateObj.getMonth()];
+            pendingRecord.year = dateObj.getFullYear().toString();
+        }
+
+        // Handle amount & GST recalculation
+        const hasGstUpdate = gst !== undefined || isGst !== undefined;
+        const currentGst = hasGstUpdate ? Boolean(gst || isGst || gst === 'true' || isGst === 'true') : pendingRecord.isGst;
+        const amountVal = amount !== undefined ? Number(amount) : pendingRecord.amount;
+
+        if (isNaN(amountVal)) {
+            return res.status(400).json({ error: 'Amount must be a valid number' });
+        }
+
+        pendingRecord.amount = amountVal;
+        pendingRecord.isGst = currentGst;
+        pendingRecord.withoutGstAmount = currentGst ? Number((amountVal / 1.18).toFixed(2)) : amountVal;
+        pendingRecord.gstAmount = currentGst ? Number((amountVal - pendingRecord.withoutGstAmount).toFixed(2)) : 0;
+        pendingRecord.updatedAt = new Date().toISOString();
+
+        await pendingRecord.save();
+        console.log(`✅ External Pending Expense Updated: ID ${pendingRecord.id} | Amount: ₹${pendingRecord.amount} | Client: ${pendingRecord.clientName}`);
+
+        res.json({
+            success: true,
+            message: 'Pending expense updated successfully!',
+            pendingExpenseId: pendingRecord.id,
+            externalId: pendingRecord.externalId || null,
+            pendingExpense: pendingRecord
+        });
+    } catch (error) {
+        console.error('❌ Error in /api/external/update-pending-expense:', error);
+        res.status(500).json({ error: 'Failed to update pending expense' });
+    }
+});
+
+// --- External Website Expense Status Check Endpoint ---
+// Checks if an expense is still Pending or has been Approved
+app.get('/api/external/expense-status/:id', async (req, res) => {
+    try {
+        const idParam = req.params.id;
+
+        // Check PendingExpense
+        const pendingRecord = await PendingExpense.findOne({
+            $or: [{ id: idParam }, { externalId: idParam }]
+        });
+
+        if (pendingRecord) {
+            return res.json({
+                success: true,
+                id: pendingRecord.id,
+                externalId: pendingRecord.externalId || null,
+                status: 'Pending',
+                canEdit: true,
+                amount: pendingRecord.amount,
+                clientName: pendingRecord.clientName,
+                date: pendingRecord.date,
+                category: pendingRecord.category,
+                createdAt: pendingRecord.createdAt,
+                updatedAt: pendingRecord.updatedAt || null
+            });
+        }
+
+        // Check Approved Expense
+        const approvedExpense = await Expense.findOne({
+            $or: [{ id: idParam }, { externalId: idParam }]
+        });
+
+        if (approvedExpense) {
+            return res.json({
+                success: true,
+                id: approvedExpense.id,
+                externalId: approvedExpense.externalId || null,
+                status: 'Approved',
+                canEdit: false,
+                amount: approvedExpense.amount,
+                clientName: approvedExpense.clientName,
+                date: approvedExpense.date,
+                category: approvedExpense.category,
+                approvedAt: approvedExpense.createdAt
+            });
+        }
+
+        res.status(404).json({
+            success: false,
+            error: 'Expense record not found in system.'
+        });
+    } catch (error) {
+        console.error('❌ Error in /api/external/expense-status:', error);
+        res.status(500).json({ error: 'Failed to fetch expense status' });
     }
 });
 
@@ -784,10 +993,18 @@ app.post('/api/pending-expense/:id/approve', async (req, res) => {
             month: record.month,
             year: record.year,
             remarks: record.remarks,
+            externalId: record.externalId,
+            webhookUrl: record.webhookUrl,
             createdAt: new Date().toISOString()
         });
         await newExpense.save();
         await PendingExpense.deleteOne({ id: req.params.id });
+
+        // Trigger outbound webhook to 3rd party if webhookUrl was configured
+        if (record.webhookUrl) {
+            sendApprovalWebhook(newExpense);
+        }
+
         res.json({ success: true, expense: newExpense });
     } catch (error) {
         console.error('Error approving pending expense:', error);
@@ -819,10 +1036,20 @@ app.post('/api/pending-expense/approve-all', async (req, res) => {
             month: record.month,
             year: record.year,
             remarks: record.remarks,
+            externalId: record.externalId,
+            webhookUrl: record.webhookUrl,
             createdAt: new Date().toISOString()
         }));
         await Expense.insertMany(expensesToCreate);
         await PendingExpense.deleteMany({});
+
+        // Trigger outbound webhooks for all approved records with a webhookUrl
+        for (const exp of expensesToCreate) {
+            if (exp.webhookUrl) {
+                sendApprovalWebhook(exp);
+            }
+        }
+
         res.json({ success: true, count: expensesToCreate.length });
     } catch (error) {
         console.error('Error approving all pending expenses:', error);

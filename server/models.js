@@ -122,6 +122,8 @@ const expenseSchema = new mongoose.Schema({
   month: String,
   year: String,
   remarks: String,
+  externalId: { type: String, index: true },
+  webhookUrl: String,
   createdAt: String
 });
 
@@ -143,6 +145,8 @@ const pendingExpenseSchema = new mongoose.Schema({
   month: String,
   year: String,
   remarks: String,
+  externalId: { type: String, index: true },
+  webhookUrl: String,
   createdAt: String,
   updatedAt: String
 });

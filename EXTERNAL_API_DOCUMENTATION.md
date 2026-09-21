@@ -89,6 +89,8 @@ Use this endpoint when data submitted by a 3rd party website or team member shou
 ### Request Parameters (`JSON Body`)
 | Parameter | Type | Required? | Default Value | Description |
 | :--- | :--- | :--- | :--- | :--- |
+| `externalId` | String | No | `null` | Your system's unique identifier for this record (e.g. `"EXP_88921"`). Highly recommended to link records across systems. |
+| `webhookUrl` | String | No | `null` | Full HTTPS URL of your system's webhook listener (e.g. `"https://your-site.com/api/webhooks/royal300-status"`). Royal300 will send a real-time `POST` request to this URL the instant an Admin approves the expense! |
 | `submittedBy` | String | No | `"3rd Party Portal"` | Name of the person, portal, or system submitting (e.g., `"Rahul (Ad Manager)"`). |
 | `clientName` | String | **Yes** | — | Name of the client or company. |
 | `date` | String | **Yes** | — | Date of expense (`YYYY-MM-DD`). |
@@ -103,6 +105,8 @@ Use this endpoint when data submitted by a 3rd party website or team member shou
 #### Example JSON Request Body (`POST /api/external/add-pending-expense`)
 ```json
 {
+  "externalId": "EXP_98213",
+  "webhookUrl": "https://third-party-site.com/api/webhooks/royal300-status",
   "submittedBy": "Amit (Meta Ad Team)",
   "clientName": "Royal300 Gaming Corp",
   "date": "2026-07-22",
@@ -119,8 +123,11 @@ Use this endpoint when data submitted by a 3rd party website or team member shou
   "success": true,
   "message": "Pending expense added successfully from 3rd party website!",
   "pendingExpenseId": "f9b8c7d6-e5a4-3b2c-1d0e-9f8e7d6c5b4a",
+  "externalId": "EXP_98213",
   "pendingExpense": {
     "id": "f9b8c7d6-e5a4-3b2c-1d0e-9f8e7d6c5b4a",
+    "externalId": "EXP_98213",
+    "webhookUrl": "https://third-party-site.com/api/webhooks/royal300-status",
     "staffId": "external_user",
     "staffName": "Amit (Meta Ad Team)",
     "status": "Pending",
@@ -139,6 +146,134 @@ Use this endpoint when data submitted by a 3rd party website or team member shou
     "remarks": "Meta ad campaign top-up from 3rd party portal",
     "createdAt": "2026-07-22T12:05:01.456Z"
   }
+}
+```
+
+---
+
+## 3. Edit Pending Expense Endpoint (Before Admin Approval)
+Third-party systems can allow their users to **edit or update** an expense record as long as the expense is still **Pending**.
+* You can pass either the Royal300 `id` OR your own `externalId` in the URL parameter `:id`.
+
+* **URL**: `/api/external/update-pending-expense/:id`
+* **Method**: `PUT`
+* **Headers**: `Content-Type: application/json`
+
+### Updatable Fields (`JSON Body`)
+All fields are optional; only send fields you want to update:
+`date`, `clientName`, `amount`, `gst`, `category`, `bank`, `paymentMethod`, `remarks`, `rfNo`, `webhookUrl`.
+
+#### Example Request (`PUT /api/external/update-pending-expense/EXP_98213`)
+```json
+{
+  "amount": 28000,
+  "remarks": "Updated campaign top-up amount"
+}
+```
+
+#### Success Response (`200 OK`)
+```json
+{
+  "success": true,
+  "message": "Pending expense updated successfully!",
+  "pendingExpenseId": "f9b8c7d6-e5a4-3b2c-1d0e-9f8e7d6c5b4a",
+  "externalId": "EXP_98213",
+  "pendingExpense": { ... }
+}
+```
+
+#### 🔒 Locked / Already Approved Response (`403 Forbidden`)
+If the Royal300 Admin has **already approved** this expense, any update attempt is strictly rejected:
+```json
+{
+  "success": false,
+  "error": "Expense has already been approved by Admin and cannot be modified.",
+  "status": "Approved",
+  "expenseId": "f9b8c7d6-e5a4-3b2c-1d0e-9f8e7d6c5b4a",
+  "externalId": "EXP_98213"
+}
+```
+*(Your system should use this response or the webhook below to immediately disable the edit button in your portal).*
+
+---
+
+## 4. Outbound Webhook: Real-time Approval Notification
+When an Admin reviews and clicks **"Approve"** (or **"Approve All"**) inside Royal300, Royal300 immediately dispatches an automated HTTP `POST` request to the `webhookUrl` you specified.
+
+* **Method**: `POST`
+* **Headers**:
+  * `Content-Type: application/json`
+  * `User-Agent: Royal300-Webhook-Dispatcher/1.0`
+
+### Webhook Payload Dispatched to Your Server
+```json
+{
+  "event": "expense.approved",
+  "id": "f9b8c7d6-e5a4-3b2c-1d0e-9f8e7d6c5b4a",
+  "externalId": "EXP_98213",
+  "status": "Approved",
+  "approvedAt": "2026-09-22T00:15:30.123Z",
+  "amount": 25000,
+  "clientName": "Royal300 Gaming Corp",
+  "category": "Meta AD",
+  "bank": "HDFC",
+  "paymentMethod": "GPay",
+  "rfNo": "REF-789102",
+  "isGst": true,
+  "gstAmount": 3813.56,
+  "withoutGstAmount": 21186.44,
+  "month": "July",
+  "year": "2026"
+}
+```
+
+### 🎯 What Your 3rd-Party Server Should Do:
+1. Receive the `POST` request on your webhook endpoint.
+2. Look up the record by `externalId` (or `id`) in your database.
+3. Update its status to `Approved`.
+4. In your frontend user interface, check if `status === 'Approved'`:
+   - **Hide or remove the "Edit" button immediately.**
+5. Return a `200 OK` response: `{"received": true}`.
+
+---
+
+## 5. Check Expense Status & Editability Endpoint
+If your system wants to actively check whether an expense is still editable or has already been approved:
+
+* **URL**: `/api/external/expense-status/:id`
+* **Method**: `GET`
+*(Pass either Royal300 `id` or your `externalId` in `:id`)*
+
+#### Response when Pending (Editable)
+```json
+{
+  "success": true,
+  "id": "f9b8c7d6-e5a4-3b2c-1d0e-9f8e7d6c5b4a",
+  "externalId": "EXP_98213",
+  "status": "Pending",
+  "canEdit": true,
+  "amount": 25000,
+  "clientName": "Royal300 Gaming Corp",
+  "date": "2026-07-22",
+  "category": "Meta AD",
+  "createdAt": "2026-07-22T12:05:01.456Z",
+  "updatedAt": null
+}
+```
+
+#### Response when Approved (Locked)
+```json
+{
+  "success": true,
+  "id": "f9b8c7d6-e5a4-3b2c-1d0e-9f8e7d6c5b4a",
+  "externalId": "EXP_98213",
+  "status": "Approved",
+  "canEdit": false,
+  "amount": 25000,
+  "clientName": "Royal300 Gaming Corp",
+  "date": "2026-07-22",
+  "category": "Meta AD",
+  "approvedAt": "2026-07-22T14:20:00.000Z"
 }
 ```
 

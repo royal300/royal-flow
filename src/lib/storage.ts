@@ -132,6 +132,8 @@ export interface Expense {
   month: string;
   year: string;
   remarks?: string;
+  externalId?: string;
+  webhookUrl?: string;
   createdAt: string;
 }
 
