@@ -1180,10 +1180,10 @@ const AdminAccountsPage = () => {
               <div className="flex flex-col md:flex-row gap-4 justify-between mb-4">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 flex-1">
                   <Autocomplete
-                    value={expenseFilters.category === 'All' ? '' : expenseFilters.category}
-                    onChange={v => setExpenseFilters({ ...expenseFilters, category: v || 'All' })}
-                    suggestions={['All', ...Array.from(new Set([...categories, ...getUniqueValues(expenses, 'category')].filter(Boolean))).map(String)]}
-                    placeholder="All Categories"
+                    value={expenseFilters.month === 'All' ? '' : expenseFilters.month}
+                    onChange={v => setExpenseFilters({ ...expenseFilters, month: v || 'All' })}
+                    suggestions={['All', ...Array.from(new Set(getUniqueValues(expenses, 'month').filter(Boolean))).map(String)]}
+                    placeholder="All Months"
                   />
                   <Autocomplete
                     value={expenseFilters.clientName === 'All' ? '' : expenseFilters.clientName}
@@ -1192,10 +1192,10 @@ const AdminAccountsPage = () => {
                     placeholder="All Clients"
                   />
                   <Autocomplete
-                    value={expenseFilters.month === 'All' ? '' : expenseFilters.month}
-                    onChange={v => setExpenseFilters({ ...expenseFilters, month: v || 'All' })}
-                    suggestions={['All', ...Array.from(new Set(getUniqueValues(expenses, 'month').filter(Boolean))).map(String)]}
-                    placeholder="All Months"
+                    value={expenseFilters.category === 'All' ? '' : expenseFilters.category}
+                    onChange={v => setExpenseFilters({ ...expenseFilters, category: v || 'All' })}
+                    suggestions={['All', ...Array.from(new Set([...categories, ...getUniqueValues(expenses, 'category')].filter(Boolean))).map(String)]}
+                    placeholder="All Categories"
                   />
                   <Autocomplete
                     value={expenseFilters.year === 'All' ? '' : expenseFilters.year}
