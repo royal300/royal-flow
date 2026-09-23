@@ -1181,18 +1181,18 @@ const AdminAccountsPage = () => {
                 <div className="grid grid-cols-2 md:grid-cols-12 gap-3 flex-1 items-center">
                   <div className="col-span-1 md:col-span-4">
                     <Autocomplete
-                      value={expenseFilters.category === 'All' ? '' : expenseFilters.category}
-                      onChange={v => setExpenseFilters({ ...expenseFilters, category: v || 'All' })}
-                      suggestions={['All', ...Array.from(new Set([...categories, ...getUniqueValues(expenses, 'category')].filter(Boolean))).map(String)]}
-                      placeholder="All Categories"
-                    />
-                  </div>
-                  <div className="col-span-1 md:col-span-4">
-                    <Autocomplete
                       value={expenseFilters.clientName === 'All' ? '' : expenseFilters.clientName}
                       onChange={v => setExpenseFilters({ ...expenseFilters, clientName: v || 'All' })}
                       suggestions={['All', ...Array.from(new Set([...clients, ...getUniqueValues(expenses, 'clientName')].filter(Boolean))).map(String)]}
                       placeholder="All Clients"
+                    />
+                  </div>
+                  <div className="col-span-1 md:col-span-4">
+                    <Autocomplete
+                      value={expenseFilters.category === 'All' ? '' : expenseFilters.category}
+                      onChange={v => setExpenseFilters({ ...expenseFilters, category: v || 'All' })}
+                      suggestions={['All', ...Array.from(new Set([...categories, ...getUniqueValues(expenses, 'category')].filter(Boolean))).map(String)]}
+                      placeholder="All Categories"
                     />
                   </div>
                   <div className="col-span-1 md:col-span-2">
