@@ -151,7 +151,7 @@ export const Autocomplete = ({
         onClick={handleOpenDropdown}
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
-        className="w-full bg-background border border-input rounded-md shadow-sm h-9 pr-14 text-xs"
+        className="w-full bg-background border border-input rounded-md shadow-sm h-9 pr-9 text-xs"
       />
       <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
         {displayValue && (

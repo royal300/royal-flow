@@ -1178,31 +1178,39 @@ const AdminAccountsPage = () => {
             </CardHeader>
             <CardContent>
               <div className="flex flex-col md:flex-row gap-4 justify-between mb-4">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 flex-1">
-                  <Autocomplete
-                    value={expenseFilters.month === 'All' ? '' : expenseFilters.month}
-                    onChange={v => setExpenseFilters({ ...expenseFilters, month: v || 'All' })}
-                    suggestions={['All', ...Array.from(new Set(getUniqueValues(expenses, 'month').filter(Boolean))).map(String)]}
-                    placeholder="All Months"
-                  />
-                  <Autocomplete
-                    value={expenseFilters.clientName === 'All' ? '' : expenseFilters.clientName}
-                    onChange={v => setExpenseFilters({ ...expenseFilters, clientName: v || 'All' })}
-                    suggestions={['All', ...Array.from(new Set([...clients, ...getUniqueValues(expenses, 'clientName')].filter(Boolean))).map(String)]}
-                    placeholder="All Clients"
-                  />
-                  <Autocomplete
-                    value={expenseFilters.category === 'All' ? '' : expenseFilters.category}
-                    onChange={v => setExpenseFilters({ ...expenseFilters, category: v || 'All' })}
-                    suggestions={['All', ...Array.from(new Set([...categories, ...getUniqueValues(expenses, 'category')].filter(Boolean))).map(String)]}
-                    placeholder="All Categories"
-                  />
-                  <Autocomplete
-                    value={expenseFilters.year === 'All' ? '' : expenseFilters.year}
-                    onChange={v => setExpenseFilters({ ...expenseFilters, year: v || 'All' })}
-                    suggestions={['All', ...Array.from(new Set(getUniqueValues(expenses, 'year').filter(Boolean))).map(String)]}
-                    placeholder="All Years"
-                  />
+                <div className="grid grid-cols-2 md:grid-cols-12 gap-3 flex-1 items-center">
+                  <div className="col-span-1 md:col-span-4">
+                    <Autocomplete
+                      value={expenseFilters.category === 'All' ? '' : expenseFilters.category}
+                      onChange={v => setExpenseFilters({ ...expenseFilters, category: v || 'All' })}
+                      suggestions={['All', ...Array.from(new Set([...categories, ...getUniqueValues(expenses, 'category')].filter(Boolean))).map(String)]}
+                      placeholder="All Categories"
+                    />
+                  </div>
+                  <div className="col-span-1 md:col-span-4">
+                    <Autocomplete
+                      value={expenseFilters.clientName === 'All' ? '' : expenseFilters.clientName}
+                      onChange={v => setExpenseFilters({ ...expenseFilters, clientName: v || 'All' })}
+                      suggestions={['All', ...Array.from(new Set([...clients, ...getUniqueValues(expenses, 'clientName')].filter(Boolean))).map(String)]}
+                      placeholder="All Clients"
+                    />
+                  </div>
+                  <div className="col-span-1 md:col-span-2">
+                    <Autocomplete
+                      value={expenseFilters.month === 'All' ? '' : expenseFilters.month}
+                      onChange={v => setExpenseFilters({ ...expenseFilters, month: v || 'All' })}
+                      suggestions={['All', ...Array.from(new Set(getUniqueValues(expenses, 'month').filter(Boolean))).map(String)]}
+                      placeholder="All Months"
+                    />
+                  </div>
+                  <div className="col-span-1 md:col-span-2">
+                    <Autocomplete
+                      value={expenseFilters.year === 'All' ? '' : expenseFilters.year}
+                      onChange={v => setExpenseFilters({ ...expenseFilters, year: v || 'All' })}
+                      suggestions={['All', ...Array.from(new Set(getUniqueValues(expenses, 'year').filter(Boolean))).map(String)]}
+                      placeholder="All Years"
+                    />
+                  </div>
                 </div>
                 <div className="flex flex-wrap gap-2 shrink-0">
                   <div className="bg-destructive/10 text-destructive px-4 py-2 rounded-lg border border-destructive/20 shadow-sm flex items-center justify-center gap-3">
