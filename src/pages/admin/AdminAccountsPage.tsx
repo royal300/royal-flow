@@ -331,11 +331,16 @@ const AdminAccountsPage = () => {
       const amountVal = Number(editingIncome.amount);
       const withoutGstVal = editingIncome.isGst ? Number((amountVal / 1.18).toFixed(2)) : amountVal;
       const gstVal = editingIncome.isGst ? Number((amountVal - withoutGstVal).toFixed(2)) : 0;
+      const dateObj = new Date(editingIncome.date);
+      const derivedMonth = !isNaN(dateObj.getTime()) ? dateObj.toLocaleString('default', { month: 'long' }) : editingIncome.month;
+      const derivedYear = !isNaN(dateObj.getTime()) ? dateObj.getFullYear().toString() : editingIncome.year;
       const updatedData = {
         ...editingIncome,
         amount: amountVal,
         gstAmount: gstVal,
-        withoutGstAmount: withoutGstVal
+        withoutGstAmount: withoutGstVal,
+        month: derivedMonth,
+        year: derivedYear
       };
       await accountService.updateIncome(editingIncome.id, updatedData);
       toast({ title: 'Income updated successfully' });
@@ -353,11 +358,16 @@ const AdminAccountsPage = () => {
       const amountVal = Number(editingExpense.amount);
       const withoutGstVal = editingExpense.isGst ? Number((amountVal / 1.18).toFixed(2)) : amountVal;
       const gstVal = editingExpense.isGst ? Number((amountVal - withoutGstVal).toFixed(2)) : 0;
+      const dateObj = new Date(editingExpense.date);
+      const derivedMonth = !isNaN(dateObj.getTime()) ? dateObj.toLocaleString('default', { month: 'long' }) : editingExpense.month;
+      const derivedYear = !isNaN(dateObj.getTime()) ? dateObj.getFullYear().toString() : editingExpense.year;
       const updatedData = {
         ...editingExpense,
         amount: amountVal,
         gstAmount: gstVal,
-        withoutGstAmount: withoutGstVal
+        withoutGstAmount: withoutGstVal,
+        month: derivedMonth,
+        year: derivedYear
       };
       await accountService.updateExpense(editingExpense.id, updatedData);
       toast({ title: 'Expense updated successfully' });
@@ -372,7 +382,14 @@ const AdminAccountsPage = () => {
     e.preventDefault();
     if (!editingBankDeposit) return;
     try {
-      await accountService.updateBankDeposit(editingBankDeposit.id, editingBankDeposit);
+      const dateObj = new Date(editingBankDeposit.date);
+      const derivedMonth = !isNaN(dateObj.getTime()) ? dateObj.toLocaleString('default', { month: 'long' }) : editingBankDeposit.month;
+      const derivedYear = !isNaN(dateObj.getTime()) ? dateObj.getFullYear().toString() : editingBankDeposit.year;
+      await accountService.updateBankDeposit(editingBankDeposit.id, {
+        ...editingBankDeposit,
+        month: derivedMonth,
+        year: derivedYear
+      });
       toast({ title: 'Bank Deposit updated successfully' });
       setEditingBankDeposit(null);
       loadData();
@@ -444,19 +461,21 @@ const AdminAccountsPage = () => {
   };
 
   const getRecordMonth = (dateStr?: string, storedMonth?: string) => {
-    if (storedMonth && storedMonth.trim()) return storedMonth.trim();
-    if (!dateStr) return '';
-    const dateObj = new Date(dateStr);
-    if (isNaN(dateObj.getTime())) return '';
-    return dateObj.toLocaleString('default', { month: 'long' });
+    // Always derive from date when available so edits are reflected immediately
+    if (dateStr) {
+      const dateObj = new Date(dateStr);
+      if (!isNaN(dateObj.getTime())) return dateObj.toLocaleString('default', { month: 'long' });
+    }
+    return storedMonth?.trim() || '';
   };
 
   const getRecordYear = (dateStr?: string, storedYear?: string | number) => {
-    if (storedYear && storedYear.toString().trim()) return storedYear.toString().trim();
-    if (!dateStr) return '';
-    const dateObj = new Date(dateStr);
-    if (isNaN(dateObj.getTime())) return '';
-    return dateObj.getFullYear().toString();
+    // Always derive from date when available so edits are reflected immediately
+    if (dateStr) {
+      const dateObj = new Date(dateStr);
+      if (!isNaN(dateObj.getTime())) return dateObj.getFullYear().toString();
+    }
+    return storedYear?.toString().trim() || '';
   };
 
   const isDateInRange = (dateStr: string, startStr: string, endStr: string) => {

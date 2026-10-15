@@ -5,7 +5,7 @@
 echo "🚀 Starting deployment process..."
 
 # 1. Commit changes
-COMMIT_MSG="${1:-"Update system features and fixes"}"
+COMMIT_MSG="${1:-"Fix: month field now updates automatically when date is edited in Income, Expense, and Bank Deposit tables"}"
 if [[ -n $(git status -s) ]]; then
     echo "📦 Staging changes..."
     git add .
