@@ -1035,9 +1035,9 @@ const AdminAccountsPage = () => {
                   />
                 </div>
                 <div className="flex flex-wrap gap-2 shrink-0">
-                  <div className="bg-green-800 text-white px-4 py-2 rounded-lg border border-green-900 shadow-sm flex items-center justify-center gap-3">
-                    <span className="font-semibold text-sm text-green-100">Total Income:</span>
-                    <span className="text-xl font-bold text-white">₹{totalIncome.toLocaleString()}</span>
+                  <div className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 px-4 py-2 rounded-lg border border-emerald-500/20 shadow-sm backdrop-blur-md flex items-center justify-center gap-3">
+                    <span className="font-semibold text-sm">Total Income:</span>
+                    <span className="text-xl font-bold">₹{totalIncome.toLocaleString()}</span>
                   </div>
                   <div className="bg-amber-500/10 text-amber-600 dark:text-amber-400 px-4 py-2 rounded-lg border border-amber-500/20 shadow-sm flex items-center justify-center gap-3">
                     <span className="font-semibold text-sm">Total GST:</span>
@@ -1046,23 +1046,23 @@ const AdminAccountsPage = () => {
                 </div>
               </div>
 
-              <div className="rounded-md border">
+              <div className="rounded-md border overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-green-100 hover:bg-green-200 text-green-900">
-                      <TableHead className="text-green-900 font-semibold">Date</TableHead>
-                      <TableHead className="text-green-900 font-semibold">Client Name</TableHead>
-                      <TableHead className="text-green-900 font-semibold">Category</TableHead>
-                      <TableHead className="text-green-900 font-semibold">Mode of Payment</TableHead>
-                      <TableHead className="text-green-900 font-semibold">Deposited Bank</TableHead>
-                      <TableHead className="text-green-900 font-semibold">Ref No.</TableHead>
-                      <TableHead className="text-green-900 font-semibold">Month</TableHead>
-                      <TableHead className="text-green-900 font-semibold">Year</TableHead>
-                      <TableHead className="text-green-900 font-semibold">PFI No.</TableHead>
-                      <TableHead className="text-green-900 font-semibold">Invoice No.</TableHead>
+                      <TableHead className="text-green-900 font-semibold whitespace-nowrap">Date</TableHead>
+                      <TableHead className="text-green-900 font-semibold whitespace-nowrap">Client Name</TableHead>
+                      <TableHead className="text-green-900 font-semibold whitespace-nowrap">Category</TableHead>
+                      <TableHead className="text-green-900 font-semibold whitespace-nowrap">Mode of Payment</TableHead>
+                      <TableHead className="text-green-900 font-semibold whitespace-nowrap">Deposited Bank</TableHead>
+                      <TableHead className="text-green-900 font-semibold whitespace-nowrap px-2">Ref No.</TableHead>
+                      <TableHead className="text-green-900 font-semibold whitespace-nowrap px-2">Month</TableHead>
+                      <TableHead className="text-green-900 font-semibold whitespace-nowrap px-2">Year</TableHead>
+                      <TableHead className="text-green-900 font-semibold whitespace-nowrap px-3">PFI No.</TableHead>
+                      <TableHead className="text-green-900 font-semibold whitespace-nowrap px-3">Invoice No.</TableHead>
                       <TableHead className="text-green-900 font-semibold">Remarks</TableHead>
-                      <TableHead className="text-right text-green-900 font-semibold">Amount</TableHead>
-                      <TableHead className="text-right text-green-900 font-semibold">GST</TableHead>
+                      <TableHead className="text-right text-green-900 font-semibold whitespace-nowrap">Amount</TableHead>
+                      <TableHead className="text-right text-green-900 font-semibold whitespace-nowrap">GST</TableHead>
                       <TableHead className="w-[80px] text-green-900"></TableHead>
                     </TableRow>
                   </TableHeader>
@@ -1074,10 +1074,10 @@ const AdminAccountsPage = () => {
 
                       return (
                         <TableRow key={inc.id}>
-                          <TableCell>{formatDate(inc.date)}</TableCell>
-                          <TableCell className="font-semibold text-blue-900 dark:text-blue-300">{inc.clientName}</TableCell>
-                          <TableCell>{inc.category || '-'}</TableCell>
-                          <TableCell>
+                          <TableCell className="whitespace-nowrap">{formatDate(inc.date)}</TableCell>
+                          <TableCell className="font-semibold text-blue-500 dark:text-blue-400 whitespace-nowrap">{inc.clientName}</TableCell>
+                          <TableCell className="whitespace-nowrap">{inc.category || '-'}</TableCell>
+                          <TableCell className="whitespace-nowrap">
                             <div className="flex flex-col">
                               <span>{inc.paymentMethod}</span>
                               {inc.paymentMethod.toLowerCase() === 'cheque' && inc.chequeNo && (
@@ -1087,15 +1087,15 @@ const AdminAccountsPage = () => {
                               )}
                             </div>
                           </TableCell>
-                          <TableCell>{inc.bank}</TableCell>
-                          <TableCell>{inc.rfNo || '-'}</TableCell>
-                          <TableCell>{inc.month}</TableCell>
-                          <TableCell>{inc.year}</TableCell>
-                          <TableCell>{displayPfiNo}</TableCell>
-                          <TableCell>{displayInvoiceNo}</TableCell>
+                          <TableCell className="whitespace-nowrap">{inc.bank}</TableCell>
+                          <TableCell className="px-2 whitespace-nowrap">{inc.rfNo || '-'}</TableCell>
+                          <TableCell className="px-2 whitespace-nowrap">{inc.month}</TableCell>
+                          <TableCell className="px-2 whitespace-nowrap">{inc.year}</TableCell>
+                          <TableCell className="px-3 whitespace-nowrap font-medium text-blue-500 dark:text-blue-400">{displayPfiNo}</TableCell>
+                          <TableCell className="px-3 whitespace-nowrap font-medium">{displayInvoiceNo}</TableCell>
                           <TableCell className="max-w-[150px] truncate" title={inc.remarks}>{inc.remarks || '-'}</TableCell>
-                          <TableCell className="text-right font-bold text-blue-900 dark:text-blue-300">₹{inc.amount.toLocaleString()}</TableCell>
-                          <TableCell className="text-right font-medium text-amber-600 dark:text-amber-400">{inc.gstAmount ? `₹${inc.gstAmount.toLocaleString()}` : '-'}</TableCell>
+                          <TableCell className="text-right font-bold text-blue-500 dark:text-blue-400 whitespace-nowrap">₹{inc.amount.toLocaleString()}</TableCell>
+                          <TableCell className="text-right font-medium text-amber-600 dark:text-amber-400 whitespace-nowrap">{inc.gstAmount ? `₹${inc.gstAmount.toLocaleString()}` : '-'}</TableCell>
                           <TableCell className="flex gap-1 justify-end">
                             <Button
                               variant="ghost"
