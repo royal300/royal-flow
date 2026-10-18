@@ -60,7 +60,7 @@ const AdminAccountsPage = () => {
   const sheetFileInputRef = useRef<HTMLInputElement>(null);
 
   // Income Form State
-  const [incomeForm, setIncomeForm] = useState({ date: '', clientName: '', category: '', paymentMethod: '', bank: '', amount: '', remarks: '', invoicePrefix: 'INV', invoiceNumber: '', rfNo: '', chequeNo: '', isGst: false });
+  const [incomeForm, setIncomeForm] = useState({ date: '', clientName: '', category: '', paymentMethod: '', bank: '', amount: '', remarks: '', invoicePrefix: 'PFI', invoiceNumber: '', rfNo: '', chequeNo: '', isGst: false });
   
   // Expense Form State
   const [expenseForm, setExpenseForm] = useState({ date: '', category: '', bank: '', clientName: '', paymentMethod: '', amount: '', remarks: '', rfNo: '', isGst: false });
@@ -237,7 +237,7 @@ const AdminAccountsPage = () => {
         chequeNo: incomeForm.chequeNo.trim() || undefined
       });
       toast({ title: 'Income added successfully' });
-      setIncomeForm({ date: '', clientName: '', category: '', paymentMethod: '', bank: '', amount: '', remarks: '', invoicePrefix: 'INV', invoiceNumber: '', rfNo: '', chequeNo: '', isGst: false });
+      setIncomeForm({ date: '', clientName: '', category: '', paymentMethod: '', bank: '', amount: '', remarks: '', invoicePrefix: 'PFI', invoiceNumber: '', rfNo: '', chequeNo: '', isGst: false });
       loadData();
     } catch (err) {
       toast({ title: 'Failed to add income', variant: 'destructive' });
@@ -682,7 +682,7 @@ const AdminAccountsPage = () => {
     let tableData: any[][] = [];
 
     if (title === 'Income Records') {
-      headers = ['Date', 'Client Name', 'Category', 'Mode of Payment', 'Deposited Bank', 'Ref No.', 'Month', 'Year', 'Invoice No.', 'PFI No.', 'Remarks', 'Amount', 'GST'];
+      headers = ['Date', 'Client Name', 'Category', 'Mode of Payment', 'Deposited Bank', 'Ref No.', 'Month', 'Year', 'PFI No.', 'Invoice No.', 'Remarks', 'Amount', 'GST'];
       tableData = data.map(row => {
         const isPfi = Boolean(row.pfiNo || (row.invoiceNumber && /^pfi/i.test(row.invoiceNumber.trim())));
         const displayInvoiceNo = !isPfi ? (row.invoiceNumber || '-') : '-';
@@ -696,8 +696,8 @@ const AdminAccountsPage = () => {
           row.rfNo || '-',
           row.month,
           row.year,
-          displayInvoiceNo,
           displayPfiNo,
+          displayInvoiceNo,
           row.remarks || '-',
           row.amount,
           row.gstAmount ? `₹${row.gstAmount}` : '-'
@@ -906,21 +906,21 @@ const AdminAccountsPage = () => {
                           <input
                             type="radio"
                             name="invoicePrefix"
-                            checked={incomeForm.invoicePrefix === 'INV'}
-                            onChange={() => setIncomeForm({ ...incomeForm, invoicePrefix: 'INV' })}
-                            className="accent-green-700"
-                          />
-                          INV
-                        </label>
-                        <label className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold cursor-pointer rounded hover:bg-accent/50">
-                          <input
-                            type="radio"
-                            name="invoicePrefix"
                             checked={incomeForm.invoicePrefix === 'PFI'}
                             onChange={() => setIncomeForm({ ...incomeForm, invoicePrefix: 'PFI' })}
                             className="accent-green-700"
                           />
                           PFI
+                        </label>
+                        <label className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold cursor-pointer rounded hover:bg-accent/50">
+                          <input
+                            type="radio"
+                            name="invoicePrefix"
+                            checked={incomeForm.invoicePrefix === 'INV'}
+                            onChange={() => setIncomeForm({ ...incomeForm, invoicePrefix: 'INV' })}
+                            className="accent-green-700"
+                          />
+                          INV
                         </label>
                       </div>
                       <Input
@@ -1058,8 +1058,8 @@ const AdminAccountsPage = () => {
                       <TableHead className="text-green-900 font-semibold">Ref No.</TableHead>
                       <TableHead className="text-green-900 font-semibold">Month</TableHead>
                       <TableHead className="text-green-900 font-semibold">Year</TableHead>
-                      <TableHead className="text-green-900 font-semibold">Invoice No.</TableHead>
                       <TableHead className="text-green-900 font-semibold">PFI No.</TableHead>
+                      <TableHead className="text-green-900 font-semibold">Invoice No.</TableHead>
                       <TableHead className="text-green-900 font-semibold">Remarks</TableHead>
                       <TableHead className="text-right text-green-900 font-semibold">Amount</TableHead>
                       <TableHead className="text-right text-green-900 font-semibold">GST</TableHead>
@@ -1075,7 +1075,7 @@ const AdminAccountsPage = () => {
                       return (
                         <TableRow key={inc.id}>
                           <TableCell>{formatDate(inc.date)}</TableCell>
-                          <TableCell className="font-semibold text-green-700 dark:text-green-400">{inc.clientName}</TableCell>
+                          <TableCell className="font-semibold text-blue-900 dark:text-blue-300">{inc.clientName}</TableCell>
                           <TableCell>{inc.category || '-'}</TableCell>
                           <TableCell>
                             <div className="flex flex-col">
@@ -1091,10 +1091,10 @@ const AdminAccountsPage = () => {
                           <TableCell>{inc.rfNo || '-'}</TableCell>
                           <TableCell>{inc.month}</TableCell>
                           <TableCell>{inc.year}</TableCell>
-                          <TableCell>{displayInvoiceNo}</TableCell>
                           <TableCell>{displayPfiNo}</TableCell>
+                          <TableCell>{displayInvoiceNo}</TableCell>
                           <TableCell className="max-w-[150px] truncate" title={inc.remarks}>{inc.remarks || '-'}</TableCell>
-                          <TableCell className="text-right font-medium">₹{inc.amount.toLocaleString()}</TableCell>
+                          <TableCell className="text-right font-bold text-blue-900 dark:text-blue-300">₹{inc.amount.toLocaleString()}</TableCell>
                           <TableCell className="text-right font-medium text-amber-600 dark:text-amber-400">{inc.gstAmount ? `₹${inc.gstAmount.toLocaleString()}` : '-'}</TableCell>
                           <TableCell className="flex gap-1 justify-end">
                             <Button
@@ -2543,19 +2543,19 @@ const AdminAccountsPage = () => {
                   <Input type="number" step="0.01" value={editingIncome.amount} onChange={e => setEditingIncome({ ...editingIncome, amount: Number(e.target.value) })} required />
                 </div>
                 <div className="space-y-2">
-                  <Label>Invoice No.</Label>
-                  <Input
-                    value={editingIncome.invoiceNumber || ''}
-                    onChange={e => setEditingIncome({ ...editingIncome, invoiceNumber: e.target.value })}
-                    placeholder="e.g. INV-1234"
-                  />
-                </div>
-                <div className="space-y-2">
                   <Label>PFI No.</Label>
                   <Input
                     value={editingIncome.pfiNo || ''}
                     onChange={e => setEditingIncome({ ...editingIncome, pfiNo: e.target.value })}
                     placeholder="e.g. PFI-1234"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Invoice No.</Label>
+                  <Input
+                    value={editingIncome.invoiceNumber || ''}
+                    onChange={e => setEditingIncome({ ...editingIncome, invoiceNumber: e.target.value })}
+                    placeholder="e.g. INV-1234"
                   />
                 </div>
                 <div className="space-y-2">
