@@ -108,6 +108,7 @@ export interface Income {
   month: string;
   year: string;
   invoiceNumber?: string;
+  pfiNo?: string;
   rfNo?: string;
   chequeNo?: string;
   remarks?: string;

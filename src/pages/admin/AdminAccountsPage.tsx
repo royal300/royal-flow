@@ -204,6 +204,19 @@ const AdminAccountsPage = () => {
     const withoutGstVal = incomeForm.isGst ? Number((amountVal / 1.18).toFixed(2)) : amountVal;
     const gstVal = incomeForm.isGst ? Number((amountVal - withoutGstVal).toFixed(2)) : 0;
 
+    const trimmedInvoice = incomeForm.invoiceNumber.trim();
+    const cleanNum = trimmedInvoice.replace(/^(INV|PFI)-?/i, '');
+    let finalInvoiceNumber = '';
+    let finalPfiNo = '';
+
+    if (cleanNum) {
+      if (incomeForm.invoicePrefix === 'PFI') {
+        finalPfiNo = `PFI-${cleanNum}`;
+      } else {
+        finalInvoiceNumber = `INV-${cleanNum}`;
+      }
+    }
+
     try {
       await accountService.createIncome({
         date: incomeForm.date,
@@ -218,7 +231,8 @@ const AdminAccountsPage = () => {
         month,
         year,
         remarks: incomeForm.remarks,
-        invoiceNumber: incomeForm.invoiceNumber.trim() ? `${incomeForm.invoicePrefix}-${incomeForm.invoiceNumber.trim().replace(/^(INV|PFI)-/i, '')}` : '',
+        invoiceNumber: finalInvoiceNumber || undefined,
+        pfiNo: finalPfiNo || undefined,
         rfNo: incomeForm.rfNo || undefined,
         chequeNo: incomeForm.chequeNo.trim() || undefined
       });
@@ -497,7 +511,9 @@ const AdminAccountsPage = () => {
   const filteredIncomes = incomes.filter(inc => {
     const recMonth = getRecordMonth(inc.date, inc.month);
     const recYear = getRecordYear(inc.date, inc.year);
-    const matchInvoice = !incomeFilters.invoiceNumber || (inc.invoiceNumber && inc.invoiceNumber.toLowerCase().includes(incomeFilters.invoiceNumber.toLowerCase()));
+    const matchInvoice = !incomeFilters.invoiceNumber || 
+      (inc.invoiceNumber && inc.invoiceNumber.toLowerCase().includes(incomeFilters.invoiceNumber.toLowerCase())) ||
+      (inc.pfiNo && inc.pfiNo.toLowerCase().includes(incomeFilters.invoiceNumber.toLowerCase()));
     const matchDateRange = isDateInRange(inc.date, incomeFilters.startDate, incomeFilters.endDate);
     const matchClient = incomeFilters.clientName === 'All' || !incomeFilters.clientName || (inc.clientName && inc.clientName.toLowerCase().includes(incomeFilters.clientName.toLowerCase()));
     const matchCategory = incomeFilters.category === 'All' || !incomeFilters.category || (inc.category && inc.category.toLowerCase().includes(incomeFilters.category.toLowerCase()));
@@ -666,10 +682,27 @@ const AdminAccountsPage = () => {
     let tableData: any[][] = [];
 
     if (title === 'Income Records') {
-      headers = ['Date', 'Client Name', 'Category', 'Mode of Payment', 'Deposited Bank', 'Ref No.', 'Month', 'Year', 'Invoice No.', 'Remarks', 'Amount', 'GST'];
-      tableData = data.map(row => [
-        formatDate(row.date), row.clientName, row.category || '-', row.paymentMethod && row.paymentMethod.toLowerCase() === 'cheque' && row.chequeNo ? `Cheque\nNo. : ${row.chequeNo}` : row.paymentMethod, row.bank, row.rfNo || '-', row.month, row.year, row.invoiceNumber || '-', row.remarks || '-', row.amount, row.gstAmount ? `₹${row.gstAmount}` : '-'
-      ]);
+      headers = ['Date', 'Client Name', 'Category', 'Mode of Payment', 'Deposited Bank', 'Ref No.', 'Month', 'Year', 'Invoice No.', 'PFI No.', 'Remarks', 'Amount', 'GST'];
+      tableData = data.map(row => {
+        const isPfi = Boolean(row.pfiNo || (row.invoiceNumber && /^pfi/i.test(row.invoiceNumber.trim())));
+        const displayInvoiceNo = !isPfi ? (row.invoiceNumber || '-') : '-';
+        const displayPfiNo = row.pfiNo ? row.pfiNo : (isPfi ? row.invoiceNumber : '-');
+        return [
+          formatDate(row.date),
+          row.clientName,
+          row.category || '-',
+          row.paymentMethod && row.paymentMethod.toLowerCase() === 'cheque' && row.chequeNo ? `Cheque\nNo. : ${row.chequeNo}` : row.paymentMethod,
+          row.bank,
+          row.rfNo || '-',
+          row.month,
+          row.year,
+          displayInvoiceNo,
+          displayPfiNo,
+          row.remarks || '-',
+          row.amount,
+          row.gstAmount ? `₹${row.gstAmount}` : '-'
+        ];
+      });
     } else if (title === 'Expense Records') {
       headers = ['Submitted By', 'Date', 'Client Name', 'Category', 'Bank', 'Ref No.', 'Month', 'Year', 'Remarks', 'Amount', 'GST'];
       tableData = data.map(row => [
@@ -959,7 +992,7 @@ const AdminAccountsPage = () => {
               <div className="flex flex-col md:flex-row gap-4 justify-between mb-4">
                 <div className="grid grid-cols-2 md:grid-cols-7 gap-3 flex-1">
                   <Input
-                    placeholder="Filter Invoice No."
+                    placeholder="Filter Invoice / PFI No."
                     value={incomeFilters.invoiceNumber}
                     onChange={e => setIncomeFilters({ ...incomeFilters, invoiceNumber: e.target.value })}
                     className="h-10"
@@ -1002,9 +1035,9 @@ const AdminAccountsPage = () => {
                   />
                 </div>
                 <div className="flex flex-wrap gap-2 shrink-0">
-                  <div className="bg-success/10 text-success px-4 py-2 rounded-lg border border-success/20 shadow-sm flex items-center justify-center gap-3">
-                    <span className="font-semibold text-sm">Total Income:</span>
-                    <span className="text-xl font-bold">₹{totalIncome.toLocaleString()}</span>
+                  <div className="bg-green-800 text-white px-4 py-2 rounded-lg border border-green-900 shadow-sm flex items-center justify-center gap-3">
+                    <span className="font-semibold text-sm text-green-100">Total Income:</span>
+                    <span className="text-xl font-bold text-white">₹{totalIncome.toLocaleString()}</span>
                   </div>
                   <div className="bg-amber-500/10 text-amber-600 dark:text-amber-400 px-4 py-2 rounded-lg border border-amber-500/20 shadow-sm flex items-center justify-center gap-3">
                     <span className="font-semibold text-sm">Total GST:</span>
@@ -1026,6 +1059,7 @@ const AdminAccountsPage = () => {
                       <TableHead className="text-green-900 font-semibold">Month</TableHead>
                       <TableHead className="text-green-900 font-semibold">Year</TableHead>
                       <TableHead className="text-green-900 font-semibold">Invoice No.</TableHead>
+                      <TableHead className="text-green-900 font-semibold">PFI No.</TableHead>
                       <TableHead className="text-green-900 font-semibold">Remarks</TableHead>
                       <TableHead className="text-right text-green-900 font-semibold">Amount</TableHead>
                       <TableHead className="text-right text-green-900 font-semibold">GST</TableHead>
@@ -1033,42 +1067,60 @@ const AdminAccountsPage = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredIncomes.map((inc) => (
-                      <TableRow key={inc.id}>
-                        <TableCell>{formatDate(inc.date)}</TableCell>
-                        <TableCell className="font-medium">{inc.clientName}</TableCell>
-                        <TableCell>{inc.category || '-'}</TableCell>
-                        <TableCell>
-                          <div className="flex flex-col">
-                            <span>{inc.paymentMethod}</span>
-                            {inc.paymentMethod.toLowerCase() === 'cheque' && inc.chequeNo && (
-                              <span className="text-xs text-muted-foreground font-medium mt-0.5">
-                                No. : {inc.chequeNo}
-                              </span>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>{inc.bank}</TableCell>
-                        <TableCell>{inc.rfNo || '-'}</TableCell>
-                        <TableCell>{inc.month}</TableCell>
-                        <TableCell>{inc.year}</TableCell>
-                        <TableCell>{inc.invoiceNumber || '-'}</TableCell>
-                        <TableCell className="max-w-[150px] truncate" title={inc.remarks}>{inc.remarks || '-'}</TableCell>
-                        <TableCell className="text-right font-medium">₹{inc.amount.toLocaleString()}</TableCell>
-                        <TableCell className="text-right font-medium text-amber-600 dark:text-amber-400">{inc.gstAmount ? `₹${inc.gstAmount.toLocaleString()}` : '-'}</TableCell>
-                        <TableCell className="flex gap-1 justify-end">
-                          <Button variant="ghost" size="icon" onClick={() => setEditingIncome(inc)} className="text-blue-500 hover:text-blue-700">
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" onClick={() => handleDeleteIncome(inc.id)} className="text-red-500 hover:text-red-700">
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {filteredIncomes.map((inc) => {
+                      const isPfi = Boolean(inc.pfiNo || (inc.invoiceNumber && /^pfi/i.test(inc.invoiceNumber.trim())));
+                      const displayInvoiceNo = !isPfi ? (inc.invoiceNumber || '-') : '-';
+                      const displayPfiNo = inc.pfiNo ? inc.pfiNo : (isPfi ? inc.invoiceNumber : '-');
+
+                      return (
+                        <TableRow key={inc.id}>
+                          <TableCell>{formatDate(inc.date)}</TableCell>
+                          <TableCell className="font-semibold text-green-700 dark:text-green-400">{inc.clientName}</TableCell>
+                          <TableCell>{inc.category || '-'}</TableCell>
+                          <TableCell>
+                            <div className="flex flex-col">
+                              <span>{inc.paymentMethod}</span>
+                              {inc.paymentMethod.toLowerCase() === 'cheque' && inc.chequeNo && (
+                                <span className="text-xs text-muted-foreground font-medium mt-0.5">
+                                  No. : {inc.chequeNo}
+                                </span>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>{inc.bank}</TableCell>
+                          <TableCell>{inc.rfNo || '-'}</TableCell>
+                          <TableCell>{inc.month}</TableCell>
+                          <TableCell>{inc.year}</TableCell>
+                          <TableCell>{displayInvoiceNo}</TableCell>
+                          <TableCell>{displayPfiNo}</TableCell>
+                          <TableCell className="max-w-[150px] truncate" title={inc.remarks}>{inc.remarks || '-'}</TableCell>
+                          <TableCell className="text-right font-medium">₹{inc.amount.toLocaleString()}</TableCell>
+                          <TableCell className="text-right font-medium text-amber-600 dark:text-amber-400">{inc.gstAmount ? `₹${inc.gstAmount.toLocaleString()}` : '-'}</TableCell>
+                          <TableCell className="flex gap-1 justify-end">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                setEditingIncome({
+                                  ...inc,
+                                  invoiceNumber: !isPfi ? (inc.invoiceNumber || '') : '',
+                                  pfiNo: inc.pfiNo ? inc.pfiNo : (isPfi ? inc.invoiceNumber : '')
+                                });
+                              }}
+                              className="text-blue-500 hover:text-blue-700"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => handleDeleteIncome(inc.id)} className="text-red-500 hover:text-red-700">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                     {filteredIncomes.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={12} className="text-center py-4 text-muted-foreground">No income records found</TableCell>
+                        <TableCell colSpan={14} className="text-center py-4 text-muted-foreground">No income records found</TableCell>
                       </TableRow>
                     )}
                   </TableBody>
@@ -2491,8 +2543,20 @@ const AdminAccountsPage = () => {
                   <Input type="number" step="0.01" value={editingIncome.amount} onChange={e => setEditingIncome({ ...editingIncome, amount: Number(e.target.value) })} required />
                 </div>
                 <div className="space-y-2">
-                  <Label>Invoice/Proforma No.</Label>
-                  <Input value={editingIncome.invoiceNumber || ''} onChange={e => setEditingIncome({ ...editingIncome, invoiceNumber: e.target.value })} />
+                  <Label>Invoice No.</Label>
+                  <Input
+                    value={editingIncome.invoiceNumber || ''}
+                    onChange={e => setEditingIncome({ ...editingIncome, invoiceNumber: e.target.value })}
+                    placeholder="e.g. INV-1234"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>PFI No.</Label>
+                  <Input
+                    value={editingIncome.pfiNo || ''}
+                    onChange={e => setEditingIncome({ ...editingIncome, pfiNo: e.target.value })}
+                    placeholder="e.g. PFI-1234"
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Ref No.</Label>

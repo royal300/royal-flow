@@ -98,6 +98,7 @@ const incomeSchema = new mongoose.Schema({
   month: String,
   year: String,
   invoiceNumber: String,
+  pfiNo: String,
   rfNo: String,
   chequeNo: String,
   remarks: String,
