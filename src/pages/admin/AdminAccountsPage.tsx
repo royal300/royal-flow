@@ -966,7 +966,7 @@ const AdminAccountsPage = () => {
                     </>
                   )}
                   <div className={incomeForm.isGst ? "md:col-span-1" : "md:col-span-1 md:col-start-4"}>
-                    <Button type="submit" className="w-full bg-green-800 hover:bg-green-900 text-white font-semibold">Add Income</Button>
+                    <Button type="submit" className="w-full bg-green-500/20 hover:bg-green-500/30 text-green-800 dark:text-green-200 border border-green-500/30 backdrop-blur-md shadow-sm font-semibold transition-all duration-200 active:scale-[0.98]">Add Income</Button>
                   </div>
                 </form>
               </CardContent>
