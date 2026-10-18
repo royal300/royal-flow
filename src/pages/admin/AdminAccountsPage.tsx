@@ -1318,14 +1318,14 @@ const AdminAccountsPage = () => {
                       <TableRow key={exp.id}>
                         <TableCell className="font-medium text-primary">{exp.staffName || '-'}</TableCell>
                         <TableCell>{formatDate(exp.date)}</TableCell>
-                        <TableCell>{exp.clientName || '-'}</TableCell>
+                        <TableCell className="font-semibold text-blue-500 dark:text-blue-400">{exp.clientName || '-'}</TableCell>
                         <TableCell className="font-medium">{exp.category}</TableCell>
                         <TableCell>{exp.bank || '-'}</TableCell>
                         <TableCell>{exp.rfNo || '-'}</TableCell>
                         <TableCell>{exp.month}</TableCell>
                         <TableCell>{exp.year}</TableCell>
                         <TableCell className="max-w-[150px] truncate" title={exp.remarks}>{exp.remarks || '-'}</TableCell>
-                        <TableCell className="text-right font-medium">₹{exp.amount.toLocaleString()}</TableCell>
+                        <TableCell className="text-right font-bold text-blue-500 dark:text-blue-400">₹{exp.amount.toLocaleString()}</TableCell>
                         <TableCell className="text-right font-medium text-amber-600 dark:text-amber-400">{exp.gstAmount ? `₹${exp.gstAmount.toLocaleString()}` : '-'}</TableCell>
                         <TableCell className="flex gap-1 justify-end">
                           <Button variant="ghost" size="icon" onClick={() => setEditingExpense(exp)} className="text-blue-500 hover:text-blue-700">
